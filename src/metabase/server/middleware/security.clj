@@ -236,7 +236,7 @@
 
 (defn- content-security-policy-header
   "`Content-Security-Policy` header. See https://content-security-policy.com for more details."
-  [nonce data-app-iframe? data-app-connect-hosts]
+  [nonce data-app-iframe? data-app-connect-hosts allow-blob-img?]
   {"Content-Security-Policy"
    (str/join
     (for [[k vs] {:default-src  ["'none'"]
@@ -307,7 +307,9 @@
                                             config/is-dev? (conj frontend-address))
                                           (into ["*"] always-allowed-resource-hosts))
                                   ;; Data apps need blob: to load icons for custom viz
-                                  data-app-iframe? (conj "blob:"))
+                                  data-app-iframe? (conj "blob:")
+                                  ;; EAJS custom viz icons load as blob: URLs from the SDK asset manager
+                                  allow-blob-img? (conj "blob:"))
                   :connect-src  (into
                                  ["'self'"
                                   ;; Google Identity Services
@@ -351,8 +353,8 @@
     (or (interactive-embedding-origins) "'none'")))
 
 (defn- content-security-policy-header-with-frame-ancestors
-  [frame-ancestors-mode nonce data-app-iframe? data-app-connect-hosts]
-  (cond-> (update (content-security-policy-header nonce data-app-iframe? data-app-connect-hosts)
+  [frame-ancestors-mode nonce data-app-iframe? data-app-connect-hosts allow-blob-img?]
+  (cond-> (update (content-security-policy-header nonce data-app-iframe? data-app-connect-hosts allow-blob-img?)
                   "Content-Security-Policy"
                   #(format "%s frame-ancestors %s;" % (frame-ancestors-value frame-ancestors-mode)))
     ;; Restrict native `<form action="…">` submissions to the app's declared
@@ -466,12 +468,12 @@
    `:frame-ancestors` controls clickjacking protection: `:any` (open embedding),
    `:self` (same-origin only), or `:none` (default — no framing unless interactive
    embedding is configured)."
-  [& {:keys [origin nonce frame-ancestors allow-cache? data-app-iframe? data-app-connect-hosts]
-      :or   {frame-ancestors :none, allow-cache? false, data-app-iframe? false}}]
+  [& {:keys [origin nonce frame-ancestors allow-cache? data-app-iframe? data-app-connect-hosts allow-blob-img?]
+      :or   {frame-ancestors :none, allow-cache? false, data-app-iframe? false, allow-blob-img? false}}]
   (merge
    (if allow-cache? cache-far-future-headers (cache-prevention-headers))
    strict-transport-security-header
-   (content-security-policy-header-with-frame-ancestors frame-ancestors nonce data-app-iframe? data-app-connect-hosts)
+   (content-security-policy-header-with-frame-ancestors frame-ancestors nonce data-app-iframe? data-app-connect-hosts allow-blob-img?)
    (access-control-headers origin (embedding.settings/embedding-app-origins-sdk))
    ;; Tell browsers not to render our site as an iframe (prevent clickjacking)
    (x-frame-options-header frame-ancestors)
@@ -553,7 +555,9 @@
                  ;; doc) and `frame-src` (both the iframe doc and the top page,
                  ;; whose `frame-src` gates the iframe's own navigations).
                  :data-app-connect-hosts      (when-let [slug (data-app-slug request)]
-                                                (drop-instance-origin (data-app-connect-src-hosts slug))))
+                                                (drop-instance-origin (data-app-connect-src-hosts slug)))
+                 ;; EAJS embed page renders custom viz icons as blob: <img> URLs
+                 :allow-blob-img?             (request/embed-sdk-eajs-entrypoint? request))
         cors-headers (when (always-allow-cors? request response)
                        {"Access-Control-Allow-Origin" "*"
                         "Access-Control-Allow-Headers" "*"
