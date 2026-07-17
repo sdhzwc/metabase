@@ -77,6 +77,8 @@ export const {
   setConversationTitle,
   setNavigateToPath,
   setProfileOverride,
+  reasoningStart,
+  reasoningDelta,
   toolCallStart,
   toolCallArgs,
   toolCallEnd,
@@ -603,7 +605,17 @@ export const sendAgentRequest = createAsyncThunk<
             );
           },
           onTextPart: function handleTextPart(delta) {
-            dispatchToConvo(addAgentTextDelta({ agentId, text: delta }));
+            dispatchToConvo(
+              addAgentTextDelta({ agentId, text: delta, nowMs: Date.now() }),
+            );
+          },
+          onReasoningStart: function handleReasoningStart() {
+            dispatchToConvo(reasoningStart({ agentId, nowMs: Date.now() }));
+          },
+          onReasoningDelta: function handleReasoningDelta(event) {
+            dispatchToConvo(
+              reasoningDelta({ agentId, text: event.delta, nowMs: Date.now() }),
+            );
           },
           onToolInputStart: function handleToolInputStart(event) {
             dispatchToConvo(
@@ -611,6 +623,7 @@ export const sendAgentRequest = createAsyncThunk<
                 toolCallId: event.toolCallId,
                 toolName: event.toolName,
                 agentId,
+                nowMs: Date.now(),
               }),
             );
           },
@@ -621,6 +634,7 @@ export const sendAgentRequest = createAsyncThunk<
                 toolName: event.toolName,
                 args: JSON.stringify(event.input),
                 agentId,
+                nowMs: Date.now(),
               }),
             );
           },
