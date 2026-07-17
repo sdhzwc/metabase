@@ -182,6 +182,7 @@ interface AgentMessageProps extends Omit<BaseMessageProps, "message"> {
   submittedFeedback: "positive" | "negative" | undefined;
   onInternalLinkClick?: (link: string) => void;
   extraActions?: ReactNode;
+  isStreaming?: boolean;
 }
 
 export const AgentMessage = ({
@@ -197,6 +198,7 @@ export const AgentMessage = ({
   onInternalLinkClick,
   hideActions,
   extraActions,
+  isStreaming = false,
   ...props
 }: AgentMessageProps) => {
   const messageId = "externalId" in message ? (message.externalId ?? "") : "";
@@ -212,6 +214,7 @@ export const AgentMessage = ({
           <AIMarkdown
             className={Styles.message}
             onInternalLinkClick={onInternalLinkClick}
+            isStreaming={isStreaming}
           >
             {m.message}
           </AIMarkdown>
@@ -546,6 +549,7 @@ export const Messages = ({
             hideActions={next?.role === "agent" || (isDoingScience && !next)}
             extraActions={getExtraActions?.(message.id)}
             onInternalLinkClick={onInternalLinkClick}
+            isStreaming={isDoingScience && !next}
           />
         ) : (
           <UserMessage
