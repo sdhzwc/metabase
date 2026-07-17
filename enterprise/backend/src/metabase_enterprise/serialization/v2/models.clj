@@ -61,7 +61,8 @@
 
 (def excluded-models
   "List of models which are not going to be serialized ever."
-  ["AiUsageLog"
+  ["AgentApiCallLog"
+   "AiUsageLog"
    "AnalysisFinding"
    "AnalysisFindingError"
    "ApiKey"
