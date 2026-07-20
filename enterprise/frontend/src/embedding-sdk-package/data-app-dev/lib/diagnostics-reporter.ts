@@ -51,10 +51,9 @@ const FLUSH_MS = 100;
 /**
  * Start mirroring the diagnostics store to the dev server. The manifest is NOT
  * reported: the dev server validates `data_app.yaml` itself and owns that status.
- * Sends each entry once
- * — tracked by id, which only ever increases, so `clearDevDiagnostics()` in the
- * toolbar doesn't cause the server to see entries twice — along with the current
- * connection status.
+ * Sends each entry once,
+ * tracked by an id that only ever increases, so nothing is mirrored twice — along
+ * with the current connection status.
  *
  * Returns a teardown fn.
  */

@@ -1,9 +1,13 @@
 /* eslint-disable metabase/no-literal-metabase-strings -- dev-only guidance for data-app authors, not whitelabel-able product UI */
-// Dev diagnostics store for the data-app dev toolbar. Captures typed events —
-// errors, structurally-reported blocked sandbox calls, CSP violations, SDK
-// calls — plus the latest connection and manifest status, so the toolbar can
-// show what went wrong (the sandbox otherwise reports blocked APIs only as an
-// opaque `#<Object>`).
+// The capture side of dev diagnostics. Records typed events — errors, blocked
+// sandbox calls, CSP violations, SDK calls — plus the latest connection status
+// (the sandbox otherwise reports blocked APIs only as an opaque `#<Object>`).
+//
+// This is a buffer, not a source anyone renders from. `installDiagnosticsReporter`
+// mirrors it to the dev server, which serves it at `/__data-app/diagnostics`, and
+// the toolbar reads that feed like any other client — so the panel and an agent
+// polling the same URL can't disagree. The manifest is not here at all: the dev
+// server validates `data_app.yaml` and serves it directly.
 //
 // Capture is opt-in: it only patches `console.error` / listens for uncaught
 // errors once `installDevDiagnostics()` is called. Nothing here runs on import,
@@ -124,7 +128,7 @@ export const recordDevDiagnostic = (event: DevDiagnosticEvent): void => {
  * want the message in the browser console. Falls back to `console.error` when
  * capture isn't installed.
  */
-export const logDevDiagnosticToConsole = (message: string): void => {
+const logDevDiagnosticToConsole = (message: string): void => {
   (uncapturedConsoleError ?? console.error)(message);
 };
 
@@ -168,6 +172,7 @@ export const subscribeDevDiagnostics = (listener: () => void): (() => void) => {
   };
 };
 
+/** Exported for tests; production clears through the dev server's DELETE. */
 export const clearDevDiagnostics = (): void => {
   entries = [];
   emit();
@@ -184,7 +189,9 @@ export const isFailedSdkCall = (entry: DevDiagnosticEntry): boolean =>
   (entry.error != null || (entry.status != null && entry.status >= 400));
 
 /**
- * Format an entry as a single human-readable line (the Errors/Blocked lists).
+ * Format an entry as a single human-readable line. Consumed through
+ * {@link splitDevDiagnostic} rather than directly; exported because it is the
+ * unit worth asserting on — every string a human or an agent reads starts here.
  */
 export const formatDevDiagnostic = (entry: DevDiagnosticEntry): string => {
   switch (entry.kind) {
