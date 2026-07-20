@@ -22,6 +22,7 @@ import {
   type DataAppDiagnosticPayload,
   type DataAppDiagnosticsMessage,
   type DataAppDiagnosticsReport,
+  truncateDiagnosticText,
 } from "../diagnostics-channel";
 import { DATA_APP_MANIFEST_EVENT } from "../manifest-status";
 
@@ -260,8 +261,15 @@ export function dataAppSandboxDevPlugin(
           diagnosticConnection = message?.connection ?? diagnosticConnection;
 
           if (Array.isArray(message?.entries) && message.entries.length > 0) {
+            // Re-capped server-side: the socket is only as trustworthy as any
+            // local process, and this buffer is re-serialized on every poll.
             const stamped = message.entries.map((entry) => ({
               ...entry,
+              summary: truncateDiagnosticText(String(entry.summary ?? "")),
+              detail:
+                entry.detail == null
+                  ? null
+                  : truncateDiagnosticText(String(entry.detail)),
               eventId: nextEventId++,
             }));
 

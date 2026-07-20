@@ -18,6 +18,23 @@ export const DATA_APP_DIAGNOSTICS_URL = "/__data-app/diagnostics";
 /** How many entries the dev server retains, matching the in-page ring buffer. */
 export const DATA_APP_DIAGNOSTICS_LIMIT = 200;
 
+/**
+ * Per-field character cap. The entry *count* is bounded, but a single
+ * `console.error("failed", rows)` serializes an arbitrarily large object into one
+ * string, which is then retained twice (page + server) and re-serialized on every
+ * poll. Bounding the count without bounding size bounds nothing.
+ */
+export const DATA_APP_DIAGNOSTIC_MAX_CHARS = 4000;
+
+/** Cap `value`, marking it so a reader knows the tail is missing. */
+export const truncateDiagnosticText = (
+  value: string,
+  max: number = DATA_APP_DIAGNOSTIC_MAX_CHARS,
+): string =>
+  value.length <= max
+    ? value
+    : `${value.slice(0, max)}… (truncated, ${value.length} chars)`;
+
 export interface DataAppDiagnosticPayload {
   /** Server-assigned, monotonic for the life of the dev server. */
   eventId: number;

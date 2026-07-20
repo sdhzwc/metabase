@@ -15,6 +15,7 @@ import {
   DATA_APP_DIAGNOSTICS_EVENT,
   type DataAppDiagnosticPayload,
   type DataAppDiagnosticsMessage,
+  truncateDiagnosticText,
 } from "../diagnostics-channel";
 
 /** The subset of `import.meta.hot` this needs, so tests can pass a stub. */
@@ -37,8 +38,8 @@ const toPayload = (entry: DevDiagnosticEntry): DataAppDiagnosticPayload => {
     eventId: entry.id,
     time: entry.time,
     kind: entry.kind,
-    summary,
-    detail,
+    summary: truncateDiagnosticText(summary),
+    detail: detail === null ? null : truncateDiagnosticText(detail),
     hint: devDiagnosticHint(entry),
     alert: isAlert(entry),
   };

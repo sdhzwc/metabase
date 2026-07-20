@@ -1,3 +1,5 @@
+import { DATA_APP_DIAGNOSTIC_MAX_CHARS } from "../../diagnostics-channel";
+
 import {
   type DevDiagnosticEntry,
   clearDevDiagnostics,
@@ -18,13 +20,15 @@ const last = (entries: readonly DevDiagnosticEntry[]) =>
 
 let forwarded: unknown[][] = [];
 let originalConsoleError: typeof console.error;
+/** The active capture's teardown, so a test can uninstall and reinstall. */
+let uninstall: () => void;
 
 beforeAll(() => {
   originalConsoleError = console.error;
   console.error = (...args: unknown[]) => {
     forwarded.push(args);
   };
-  installDevDiagnostics();
+  uninstall = installDevDiagnostics();
 });
 
 afterAll(() => {
@@ -271,5 +275,43 @@ describe("connection and manifest status", () => {
     clearDevDiagnostics();
 
     expect(getDevManifestStatus()).toMatchObject({ name: "Sales" });
+  });
+});
+
+describe("bounded entry size", () => {
+  it("truncates a huge logged object instead of retaining it whole", () => {
+    installDevDiagnostics();
+    clearDevDiagnostics();
+
+    // The count cap alone bounds nothing: one entry can be arbitrarily large,
+    // and it is retained twice and re-serialized on every poll.
+    console.error("rows", {
+      rows: Array.from({ length: 50_000 }, (_, i) => i),
+    });
+
+    const [entry] = getDevDiagnostics();
+    expect(entry.kind).toBe("error");
+    const message = entry.kind === "error" ? entry.message : "";
+    expect(message.length).toBeLessThan(DATA_APP_DIAGNOSTIC_MAX_CHARS * 2);
+    expect(message).toContain("truncated");
+  });
+});
+
+describe("installDevDiagnostics teardown", () => {
+  it("stops capturing, and a reinstall records once rather than twice", () => {
+    uninstall();
+    clearDevDiagnostics();
+
+    console.error("after teardown");
+    expect(getDevDiagnostics()).toHaveLength(0);
+
+    // Reinstalling wraps the restored console.error, not the previous wrapper —
+    // without the teardown resetting `installed`, an HMR reload of the dev entry
+    // would double every capture.
+    uninstall = installDevDiagnostics();
+    clearDevDiagnostics();
+    console.error("once");
+
+    expect(getDevDiagnostics()).toHaveLength(1);
   });
 });

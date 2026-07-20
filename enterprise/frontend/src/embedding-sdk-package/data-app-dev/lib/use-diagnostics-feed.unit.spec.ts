@@ -34,6 +34,20 @@ const ok = (body: DataAppDiagnosticsReport) =>
   // Only `ok` and `json` are read.
   ({ ok: true, json: () => Promise.resolve(body) }) as Response;
 
+/**
+ * A stub that filters by `startEventId` exactly as the dev server does, so a
+ * poll never re-delivers what the caller already has. Modelling the real
+ * contract keeps these tests from passing (or failing) on timing.
+ */
+const serveBuffer = (buffer: DataAppDiagnosticPayload[]) => (url: string) => {
+  const startEventId = Number(
+    new URL(url, "http://localhost").searchParams.get("startEventId"),
+  );
+  const entries = buffer.filter((item) => item.eventId >= startEventId);
+
+  return ok({ ...report(buffer), entries });
+};
+
 afterEach(() => jest.restoreAllMocks());
 
 describe("useDiagnosticsFeed", () => {
@@ -44,10 +58,11 @@ describe("useDiagnosticsFeed", () => {
       release = resolve;
     });
 
+    const serve = serveBuffer([entry(1)]);
     const fetchSpy = jest
       .spyOn(globalThis, "fetch")
       .mockReturnValueOnce(pending)
-      .mockResolvedValue(ok(report([entry(1)])));
+      .mockImplementation((url) => Promise.resolve(serve(String(url))));
 
     const { result } = renderHook(() => useDiagnosticsFeed("/feed", 10));
 
@@ -60,7 +75,7 @@ describe("useDiagnosticsFeed", () => {
     expect(fetchSpy).toHaveBeenCalledTimes(1);
 
     await act(async () => {
-      release(ok(report([entry(1)])));
+      release(serve("/feed?startEventId=0"));
       await pending;
     });
 
@@ -72,7 +87,10 @@ describe("useDiagnosticsFeed", () => {
       { length: DATA_APP_DIAGNOSTICS_LIMIT + 25 },
       (_, index) => entry(index + 1),
     );
-    jest.spyOn(globalThis, "fetch").mockResolvedValue(ok(report(overflowing)));
+    const serve = serveBuffer(overflowing);
+    jest
+      .spyOn(globalThis, "fetch")
+      .mockImplementation((url) => Promise.resolve(serve(String(url))));
 
     const { result } = renderHook(() => useDiagnosticsFeed("/feed", 10));
 
@@ -139,5 +157,26 @@ describe("useDiagnosticsFeed", () => {
     expect(result.current.loaded).toBe(false);
 
     await waitFor(() => expect(result.current.loaded).toBe(true));
+  });
+
+  it("recovers when the dev server restarts and its ids begin again", async () => {
+    const before = serveBuffer([entry(500), entry(501)]);
+    const fetchSpy = jest
+      .spyOn(globalThis, "fetch")
+      .mockImplementation((url) => Promise.resolve(before(String(url))));
+
+    const { result } = renderHook(() => useDiagnosticsFeed("/feed", 10));
+    await waitFor(() => expect(result.current.entries).toHaveLength(2));
+
+    // Restarted: the buffer is fresh and ids begin at 1 again. Keeping the old
+    // cursor would filter out every new event forever, leaving a feed that looks
+    // healthy and is permanently empty — and old ids would collide with new ones.
+    const after = serveBuffer([entry(1)]);
+    fetchSpy.mockImplementation((url) => Promise.resolve(after(String(url))));
+
+    await waitFor(() => {
+      expect(result.current.entries).toHaveLength(1);
+      expect(result.current.entries[0].eventId).toBe(1);
+    });
   });
 });

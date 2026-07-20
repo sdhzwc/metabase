@@ -12,6 +12,7 @@
 
 import type { SandboxBlockedEvent } from "metabase-enterprise/data_apps/sandbox/distortions";
 
+import { truncateDiagnosticText } from "../../diagnostics-channel";
 import type { DataAppManifestStatus } from "../../manifest-status";
 
 export type DevDiagnosticEvent =
@@ -71,16 +72,18 @@ const emit = () => {
 };
 
 const formatArg = (arg: unknown): string => {
+  // Capped here, at the one place arbitrary app data becomes a string: a logged
+  // query result would otherwise be retained in full and re-serialized per poll.
   if (typeof arg === "string") {
-    return arg;
+    return truncateDiagnosticText(arg);
   }
   if (arg instanceof Error) {
-    return arg.stack ?? `${arg.name}: ${arg.message}`;
+    return truncateDiagnosticText(arg.stack ?? `${arg.name}: ${arg.message}`);
   }
   try {
-    return JSON.stringify(arg);
+    return truncateDiagnosticText(JSON.stringify(arg));
   } catch {
-    return String(arg);
+    return truncateDiagnosticText(String(arg));
   }
 };
 
@@ -260,10 +263,14 @@ export const splitDevDiagnostic = (
  * Start capturing errors into the diagnostics store: wraps `console.error` and
  * listens for uncaught errors / unhandled rejections. Idempotent. Call it before
  * the sandbox runs so nothing is missed.
+ *
+ * Returns a teardown, like its siblings. Without one, re-evaluating this module
+ * (an HMR reload of the dev entry) resets `installed` and re-wraps the already
+ * wrapped `console.error`, doubling every capture for each cycle.
  */
-export const installDevDiagnostics = (): void => {
+export const installDevDiagnostics = (): (() => void) => {
   if (installed || typeof window === "undefined") {
-    return;
+    return () => undefined;
   }
   installed = true;
 
@@ -277,31 +284,45 @@ export const installDevDiagnostics = (): void => {
     originalError(...args);
   };
 
-  window.addEventListener("error", (event) => {
+  const onError = (event: ErrorEvent) => {
     if (event.error != null || event.message) {
       recordDevDiagnostic({
         kind: "error",
         message: formatArg(event.error ?? event.message),
       });
     }
-  });
+  };
 
-  window.addEventListener("unhandledrejection", (event) => {
+  const onRejection = (event: PromiseRejectionEvent) => {
     recordDevDiagnostic({
       kind: "error",
       message: `Unhandled rejection: ${formatArg(event.reason)}`,
     });
-  });
+  };
+
+  window.addEventListener("error", onError);
+  window.addEventListener("unhandledrejection", onRejection);
 
   // The dev server mirrors Metabase's production CSP, so a violation here means
   // the app would be blocked once sandboxed in Metabase too — e.g. a native
   // `<form action="…">` hitting `form-action 'none'`. These never reach
   // `console.error`, so the toolbar wouldn't see them otherwise.
-  window.addEventListener("securitypolicyviolation", (event) => {
+  const onCspViolation = (event: SecurityPolicyViolationEvent) => {
     recordDevDiagnostic({
       kind: "csp-violation",
       directive: event.effectiveDirective || event.violatedDirective,
       blockedUri: event.blockedURI,
     });
-  });
+  };
+
+  window.addEventListener("securitypolicyviolation", onCspViolation);
+
+  return () => {
+    console.error = originalError;
+    uncapturedConsoleError = null;
+    window.removeEventListener("error", onError);
+    window.removeEventListener("unhandledrejection", onRejection);
+    window.removeEventListener("securitypolicyviolation", onCspViolation);
+    installed = false;
+  };
 };

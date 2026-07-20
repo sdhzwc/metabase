@@ -81,4 +81,27 @@ describe("runDevConnectionCheck", () => {
       "DATA_APP_MB_URL is not set",
     );
   });
+
+  it("keeps credentials out of the feed while still probing with them", async () => {
+    const seen: string[] = [];
+    // Only the (input) call shape is exercised.
+    const fetchFn = jest.fn(async (input: RequestInfo | URL) => {
+      seen.push(String(input));
+      return new Response("nope", { status: 503 });
+    }) as unknown as typeof fetch;
+
+    await runDevConnectionCheck({
+      metabaseUrl: "https://user:secret@mb.example.com",
+      apiKey: "mb_key",
+      sdkVersion: null,
+      fetchFn,
+    });
+
+    const status = getDevConnectionStatus();
+    // The status is served over the diagnostics feed and rendered in the toolbar.
+    expect(status?.metabaseUrl).toBe("https://mb.example.com");
+    expect(JSON.stringify(status)).not.toContain("secret");
+    // ...but the probe itself still carries them.
+    expect(seen[0]).toContain("user:secret@");
+  });
 });

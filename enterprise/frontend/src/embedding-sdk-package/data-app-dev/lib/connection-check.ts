@@ -38,6 +38,25 @@ const readVersionTag = (body: unknown): string | null => {
 const describeFailure = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
 
+/**
+ * The URL without any `user:pass@`. The status is served over the diagnostics
+ * feed and rendered in the toolbar, so credentials in `DATA_APP_MB_URL` must not
+ * ride along — probes still use the original.
+ */
+const withoutCredentials = (url: string): string => {
+  try {
+    const parsed = new URL(url);
+    if (!parsed.username && !parsed.password) {
+      return url;
+    }
+    parsed.username = "";
+    parsed.password = "";
+    return parsed.toString().replace(/\/+$/, "");
+  } catch {
+    return url;
+  }
+};
+
 export async function runDevConnectionCheck({
   metabaseUrl,
   apiKey,
@@ -47,7 +66,7 @@ export async function runDevConnectionCheck({
   const base = (metabaseUrl ?? "").replace(/\/+$/, "");
   const status: DevConnectionStatus = {
     checkedAt: Date.now(),
-    metabaseUrl: base,
+    metabaseUrl: withoutCredentials(base),
     reachable: false,
     apiKeyValid: null,
     metabaseVersion: null,
@@ -68,12 +87,12 @@ export async function runDevConnectionCheck({
       // Stop here rather than fall through to the key check: an unreachable
       // instance rejects every request, so continuing would overwrite this with
       // "the API key was rejected" and send the author to fix a fine .env.local.
-      status.error = `${base}/api/health responded with ${health.status}.`;
+      status.error = `${status.metabaseUrl}/api/health responded with ${health.status}.`;
       setDevConnectionStatus(status);
       return;
     }
   } catch (error) {
-    status.error = `Could not reach ${base}: ${describeFailure(error)}`;
+    status.error = `Could not reach ${status.metabaseUrl}: ${describeFailure(error)}`;
     setDevConnectionStatus(status);
     return;
   }

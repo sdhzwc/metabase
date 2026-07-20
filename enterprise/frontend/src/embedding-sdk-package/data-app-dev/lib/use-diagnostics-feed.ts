@@ -89,6 +89,16 @@ export const useDiagnosticsFeed = (
       setLoaded(true);
       setReport(next);
 
+      // A restarted dev server begins its ids at 1 again. Without this, the
+      // cursor stays above every new id, `eventId >= startEventId` matches
+      // nothing, and the panel shows a healthy but permanently empty feed. The
+      // accumulated entries belong to the previous server — and would collide on
+      // id with the new ones — so they go too.
+      if (next.nextEventId < startEventId.current) {
+        startEventId.current = 0;
+        setEntries(EMPTY);
+      }
+
       if (next.entries.length > 0) {
         startEventId.current = next.nextEventId;
         // Bounded like the server's ring buffer: every SDK call is an event, so
