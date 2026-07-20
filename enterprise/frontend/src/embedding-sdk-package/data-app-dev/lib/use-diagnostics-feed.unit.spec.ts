@@ -20,6 +20,7 @@ const entry = (eventId: number): DataAppDiagnosticPayload => ({
 
 const report = (
   entries: DataAppDiagnosticPayload[],
+  session: string | null = "page-1",
 ): DataAppDiagnosticsReport => ({
   entries,
   connection: null,
@@ -28,6 +29,7 @@ const report = (
   lastReportAt: 1,
   lastRebuildAt: 1,
   nextEventId: (entries.at(-1)?.eventId ?? 0) + 1,
+  session,
 });
 
 const ok = (body: DataAppDiagnosticsReport) =>
@@ -39,14 +41,16 @@ const ok = (body: DataAppDiagnosticsReport) =>
  * poll never re-delivers what the caller already has. Modelling the real
  * contract keeps these tests from passing (or failing) on timing.
  */
-const serveBuffer = (buffer: DataAppDiagnosticPayload[]) => (url: string) => {
-  const startEventId = Number(
-    new URL(url, "http://localhost").searchParams.get("startEventId"),
-  );
-  const entries = buffer.filter((item) => item.eventId >= startEventId);
+const serveBuffer =
+  (buffer: DataAppDiagnosticPayload[], session: string | null = "page-1") =>
+  (url: string) => {
+    const startEventId = Number(
+      new URL(url, "http://localhost").searchParams.get("startEventId"),
+    );
+    const entries = buffer.filter((item) => item.eventId >= startEventId);
 
-  return ok({ ...report(buffer), entries });
-};
+    return ok({ ...report(buffer, session), entries });
+  };
 
 afterEach(() => jest.restoreAllMocks());
 
@@ -177,6 +181,26 @@ describe("useDiagnosticsFeed", () => {
     await waitFor(() => {
       expect(result.current.entries).toHaveLength(1);
       expect(result.current.entries[0].eventId).toBe(1);
+    });
+  });
+
+  it("drops accumulated entries when the page changes under it", async () => {
+    // A fresh toolbar can read the old buffer before the new reporter clears it
+    // server-side; a changed session is the signal to reset.
+    const before = serveBuffer([entry(1)], "page-1");
+    const fetchSpy = jest
+      .spyOn(globalThis, "fetch")
+      .mockImplementation((url) => Promise.resolve(before(String(url))));
+
+    const { result } = renderHook(() => useDiagnosticsFeed("/feed", 10));
+    await waitFor(() => expect(result.current.entries).toHaveLength(1));
+
+    const after = serveBuffer([entry(2)], "page-2");
+    fetchSpy.mockImplementation((url) => Promise.resolve(after(String(url))));
+
+    await waitFor(() => {
+      expect(result.current.entries).toHaveLength(1);
+      expect(result.current.entries[0].eventId).toBe(2);
     });
   });
 });

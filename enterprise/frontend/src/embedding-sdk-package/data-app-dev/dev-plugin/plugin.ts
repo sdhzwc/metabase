@@ -113,6 +113,10 @@ export function dataAppSandboxDevPlugin(
   let manifestStatus: ReturnType<typeof validateDataAppManifest> | null = null;
   let lastReportAt: number | null = null;
   let lastRebuildAt: number | null = null;
+  // The page load whose events the buffer currently holds. When a full reload
+  // starts a new reporter, its session differs and we drop the old page's
+  // events — the toolbar shows the current page, not a graveyard of past ones.
+  let currentSession: string | null = null;
   // Ids are re-stamped server-side: the page's counter restarts at 1 on every
   // reload, so trusting it would make fresh events sort *before* a poller's
   // cursor and silently disappear.
@@ -258,6 +262,15 @@ export function dataAppSandboxDevPlugin(
           // is never taken from the client.
           diagnosticConnection = message?.connection ?? diagnosticConnection;
 
+          if (message?.session && message.session !== currentSession) {
+            // A new page. Drop the previous one's events, but keep `nextEventId`
+            // climbing so any existing poller's cursor stays valid.
+            if (currentSession !== null) {
+              diagnosticEntries = [];
+            }
+            currentSession = message.session;
+          }
+
           if (Array.isArray(message?.entries) && message.entries.length > 0) {
             // Re-capped server-side: the socket is only as trustworthy as any
             // local process, and this buffer is re-serialized on every poll.
@@ -313,6 +326,7 @@ export function dataAppSandboxDevPlugin(
           lastReportAt,
           lastRebuildAt,
           nextEventId: (diagnosticEntries.at(-1)?.eventId ?? 0) + 1,
+          session: currentSession,
         };
 
         res.setHeader("Content-Type", "application/json");

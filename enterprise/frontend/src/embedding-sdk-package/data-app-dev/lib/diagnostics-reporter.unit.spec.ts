@@ -163,6 +163,19 @@ describe("installDiagnosticsReporter", () => {
     expect(sent).toHaveLength(1);
   });
 
+  it("tags every message with a stable per-install session", () => {
+    const { sent, teardown } = setup();
+    recordDevDiagnostic({ kind: "error", message: "one" });
+    jest.runOnlyPendingTimers();
+
+    expect(typeof sent[0].session).toBe("string");
+    expect(sent[0].session).not.toBe("");
+    // Same page load → same session on every message.
+    expect(sent[sent.length - 1].session).toBe(sent[0].session);
+
+    teardown();
+  });
+
   it("uses the agreed channel event name", () => {
     const events: string[] = [];
     const teardown = installDiagnosticsReporter({

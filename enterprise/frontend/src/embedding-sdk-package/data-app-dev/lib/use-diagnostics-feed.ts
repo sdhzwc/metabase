@@ -59,6 +59,10 @@ export const useDiagnosticsFeed = (
   // Bumped by `clear()`, so a response fetched before the clear is discarded
   // rather than resurrecting the entries it carries.
   const generation = useRef(0);
+  // The page load these entries belong to. When it changes — a full browser
+  // reload started a new reporter — drop the previous page's events, so the panel
+  // shows the current page rather than accumulating across reloads.
+  const session = useRef<string | null>(null);
 
   const poll = useCallback(async () => {
     if (inFlight.current) {
@@ -88,6 +92,14 @@ export const useDiagnosticsFeed = (
       setProblem(null);
       setLoaded(true);
       setReport(next);
+
+      if (next.session !== null && next.session !== session.current) {
+        if (session.current !== null) {
+          startEventId.current = 0;
+          setEntries(EMPTY);
+        }
+        session.current = next.session;
+      }
 
       // A restarted dev server begins its ids at 1 again. Without this, the
       // cursor stays above every new id, `eventId >= startEventId` matches

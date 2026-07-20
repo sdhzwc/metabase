@@ -357,11 +357,15 @@ describe("dataAppSandboxDevPlugin", () => {
         };
       };
 
-      const report = (server: FakeServer, entries: unknown[]) => {
+      const report = (
+        server: FakeServer,
+        entries: unknown[],
+        session?: string,
+      ) => {
         const handler = server.ws.on.mock.calls.find(
           ([event]) => event === DATA_APP_DIAGNOSTICS_EVENT,
         )?.[1];
-        handler({ entries, connection: { reachable: true } });
+        handler({ session, entries, connection: { reachable: true } });
       };
 
       it("serves what the page reported, and passes other URLs through", async () => {
@@ -443,6 +447,33 @@ describe("dataAppSandboxDevPlugin", () => {
         expect(body.entries[0].summary.length).toBeLessThan(6_000);
         expect(body.entries[0].detail.length).toBeLessThan(6_000);
         expect(body.entries[0].summary).toContain("truncated");
+      });
+
+      it("drops the previous page's events when a new page loads", async () => {
+        const { server } = await setup();
+
+        report(server, [{ eventId: 1, summary: "before reload" }], "page-1");
+        report(server, [{ eventId: 2, summary: "after reload" }], "page-2");
+
+        const { body } = request(server, DATA_APP_DIAGNOSTICS_URL);
+
+        // Only the current page's event survives, but ids keep climbing so an
+        // existing poller's cursor stays valid.
+        expect(body.entries.map((e: { summary: string }) => e.summary)).toEqual(
+          ["after reload"],
+        );
+        expect(body.session).toBe("page-2");
+      });
+
+      it("keeps events across a soft reload (same session)", async () => {
+        const { server } = await setup();
+
+        report(server, [{ eventId: 1, summary: "first" }], "page-1");
+        report(server, [{ eventId: 2, summary: "second" }], "page-1");
+
+        const { body } = request(server, DATA_APP_DIAGNOSTICS_URL);
+
+        expect(body.entries).toHaveLength(2);
       });
 
       it("returns only events from `startEventId` onward", async () => {

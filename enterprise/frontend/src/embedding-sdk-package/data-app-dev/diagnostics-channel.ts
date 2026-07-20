@@ -56,6 +56,12 @@ export interface DataAppDiagnosticPayload {
  * never reports one back.
  */
 export interface DataAppDiagnosticsMessage {
+  /**
+   * Identifies the page load that sent this. A full browser reload starts a new
+   * reporter (a soft reload doesn't re-run the module), so a changed session
+   * tells the dev server the previous page is gone and its events are stale.
+   */
+  session: string;
   entries: DataAppDiagnosticPayload[];
   connection: unknown | null;
 }
@@ -78,4 +84,6 @@ export interface DataAppDiagnosticsReport extends DataAppDiagnosticsMessage {
    * arrived after this batch. Inclusive, so it is one past the last event here.
    */
   nextEventId: number;
+  /** The page load whose events these are; changes on a full browser reload. */
+  session: string | null;
 }

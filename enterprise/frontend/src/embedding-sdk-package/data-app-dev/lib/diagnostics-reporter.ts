@@ -48,6 +48,12 @@ const toPayload = (entry: DevDiagnosticEntry): DataAppDiagnosticPayload => {
 /** Batching window: a render can record several entries in one tick. */
 const FLUSH_MS = 100;
 
+/** A per-page-load id. Runs once per module load, i.e. once per full page load. */
+const makeSessionId = (): string =>
+  typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
 /**
  * Start mirroring the diagnostics store to the dev server. The manifest is NOT
  * reported: the dev server validates `data_app.yaml` itself and owns that status.
@@ -60,6 +66,7 @@ const FLUSH_MS = 100;
 export const installDiagnosticsReporter = (
   hot: DiagnosticsReporterHot,
 ): (() => void) => {
+  const session = makeSessionId();
   let lastSentId = 0;
   let timer: ReturnType<typeof setTimeout> | null = null;
 
@@ -72,6 +79,7 @@ export const installDiagnosticsReporter = (
     }
 
     hot.send(DATA_APP_DIAGNOSTICS_EVENT, {
+      session,
       entries: fresh.map(toPayload),
       connection: getDevConnectionStatus(),
     });
