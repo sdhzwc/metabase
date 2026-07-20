@@ -162,6 +162,17 @@ export const DatabasePanelEmptyState = () => {
   );
 };
 
+const CSVIllustration = () => <Box component={IconCSV} c="core-brand" h={48} />;
+
+/** Storage is provisioned but only becomes the upload target on redeploy. */
+export const CSVStorageAwaitingRestartEmptyState = () => (
+  <AddDataEmptyState
+    title={t`Upload CSV files`}
+    subtitle={t`Storage is ready. Uploads will turn on the next time your instance restarts.`}
+    illustration={<CSVIllustration />}
+  />
+);
+
 export const CSVPanelEmptyState = ({
   ctaLink,
   contactAdminReason,
@@ -193,7 +204,7 @@ export const CSVPanelEmptyState = ({
     <AddDataEmptyState
       title={t`Upload CSV files`}
       subtitle={subtitle}
-      illustration={<Box component={IconCSV} c="core-brand" h={48} />}
+      illustration={<CSVIllustration />}
       contactAdminReason={contactAdminReason}
       ctaLink={ctaLink}
       secondaryAction={secondaryAction}

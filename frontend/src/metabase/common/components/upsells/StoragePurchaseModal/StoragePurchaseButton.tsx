@@ -1,11 +1,12 @@
 import { useMount } from "react-use";
 import { t } from "ttag";
 
-import { useStoreUrl } from "metabase/common/hooks/use-store-url/use-store-url";
+import { useStoreUrl } from "metabase/common/hooks";
 import { Button } from "metabase/ui";
 
 import { UpsellGem } from "../components/UpsellGem";
 import { trackUpsellClicked, trackUpsellViewed } from "../components/analytics";
+import { useUpsellLink } from "../components/use-upsell-link";
 
 import { useStorageSetup } from "./storage-setup-context";
 
@@ -14,7 +15,13 @@ const CAMPAIGN = "storage";
 export const StoragePurchaseButton = ({ location }: { location: string }) => {
   const { canSetUpStorage, openPurchaseModal, storageAddOn } =
     useStorageSetup();
-  const storeUrl = useStoreUrl("account/storage");
+  // Tagged like every other upsell CTA, so the fallback store link is
+  // attributable to the campaign it came from.
+  const storeUrl = useUpsellLink({
+    url: useStoreUrl("account/storage"),
+    campaign: CAMPAIGN,
+    location,
+  });
 
   useMount(() => {
     if (canSetUpStorage) {

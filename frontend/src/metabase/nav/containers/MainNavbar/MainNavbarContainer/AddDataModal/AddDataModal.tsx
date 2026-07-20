@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { useStorageSetup } from "metabase/common/components/upsells/StoragePurchaseModal";
@@ -13,7 +13,7 @@ import { CSVPanel } from "./Panels/CSVPanel";
 import { DatabasesPanel } from "./Panels/DatabasesPanel";
 import { PanelsHeader } from "./Panels/PanelsHeader";
 import { trackAddDataEvent } from "./analytics";
-import { useAddDataPermissions } from "./use-add-data-permission";
+import { useAddDataState } from "./use-add-data-state";
 import { type AddDataTab, isValidTab } from "./utils";
 
 interface AddDataModalProps {
@@ -26,10 +26,11 @@ interface AddDataModalProps {
 
 interface Tabs {
   name: string;
-  value: "csv" | "db" | "gsheets";
-  isVisible: boolean;
+  value: AddDataTab;
   iconName: IconName;
 }
+
+const DEFAULT_TAB = "db" satisfies AddDataTab;
 
 export const AddDataModal = (props: AddDataModalProps) => (
   // The provider sits outside `Modal.Root` so the storage setup state and its
@@ -47,20 +48,10 @@ const AddDataModalContent = ({
   initialTab,
   fromEmbeddingSetupGuide,
 }: AddDataModalProps) => {
-  const {
-    areUploadsEnabled,
-    canUploadToDatabase,
-    canManageUploads,
-    isAdmin,
-    canPerformMeaningfulActions,
-    hasUploadableDatabases,
-  } = useAddDataPermissions();
-  const { isPurchaseModalOpened, canSetUpStorage } = useStorageSetup();
+  const { areUploadsEnabled, canManageUploads, isAdmin } = useAddDataState();
+  const { isPurchaseModalOpened, hasAttachedDwh } = useStorageSetup();
 
-  const shouldShowUploadsTab =
-    hasUploadableDatabases || canPerformMeaningfulActions || canSetUpStorage;
-
-  const [activeTab, setActiveTab] = useState<Tabs["value"] | null>(null);
+  const [activeTab, setActiveTab] = useState<AddDataTab | null>(null);
   const isHosted = useSetting("is-hosted?");
 
   const handleTabChange = (tabValue: string | null) => {
@@ -78,40 +69,23 @@ const AddDataModalContent = ({
     setActiveTab(tabValue);
   };
 
-  const tabs = useMemo(() => {
-    return [
-      {
-        name: t`Database`,
-        value: "db",
-        isVisible: true,
-        iconName: "database",
-      },
-      {
-        name: t`CSV`,
-        value: "csv",
-        isVisible: shouldShowUploadsTab,
-        iconName: "table2",
-      },
-      {
-        name: t`Google Sheets`,
-        value: "gsheets",
-        isVisible: isHosted,
-        iconName: "document",
-      },
-    ] satisfies Tabs[];
-  }, [shouldShowUploadsTab, isHosted]);
+  // Both CSV and Google Sheets stay visible even when the panel can only tell
+  // the user to contact an admin: the tabs advertise what Metabase can do, and
+  // hiding them made the two follow contradictory rules. Only Google Sheets is
+  // conditional, and only on the instance being hosted.
+  const tabs: Tabs[] = [
+    { name: t`Database`, value: "db", iconName: "database" },
+    { name: t`CSV`, value: "csv", iconName: "table2" },
+    ...(isHosted
+      ? ([
+          { name: t`Google Sheets`, value: "gsheets", iconName: "document" },
+        ] satisfies Tabs[])
+      : []),
+  ];
 
   useEffect(() => {
-    if (initialTab) {
-      setActiveTab(initialTab);
-    } else {
-      const firstVisibleTab = tabs.find((tab) => tab.isVisible);
-
-      if (firstVisibleTab) {
-        setActiveTab(firstVisibleTab.value);
-      }
-    }
-  }, [tabs, initialTab]);
+    setActiveTab(initialTab ?? DEFAULT_TAB);
+  }, [initialTab]);
 
   return (
     // The modal hides itself (stays mounted) while the storage purchase
@@ -141,17 +115,15 @@ const AddDataModalContent = ({
               <Modal.Title fz="lg">{t`Add data`}</Modal.Title>
             </Box>
             <Tabs.List px="md" pb="lg">
-              {tabs
-                .filter((tab) => tab.isVisible)
-                .map((tab) => (
-                  <Tabs.Tab
-                    key={tab.value}
-                    value={tab.value}
-                    leftSection={<Icon name={tab.iconName} />}
-                  >
-                    {tab.name}
-                  </Tabs.Tab>
-                ))}
+              {tabs.map((tab) => (
+                <Tabs.Tab
+                  key={tab.value}
+                  value={tab.value}
+                  leftSection={<Icon name={tab.iconName} />}
+                >
+                  {tab.name}
+                </Tabs.Tab>
+              ))}
             </Tabs.List>
           </Box>
           <Box component="main" w="30rem" className={S.panelContainer}>
@@ -161,7 +133,7 @@ const AddDataModalContent = ({
                 activeTab === "csv" && canManageUploads && areUploadsEnabled
               }
               showManageImports={
-                activeTab === "gsheets" && isAdmin && areUploadsEnabled
+                activeTab === "gsheets" && isAdmin && hasAttachedDwh
               }
               onAddDataModalClose={onClose}
             />
@@ -172,12 +144,7 @@ const AddDataModalContent = ({
               />
             </Tabs.Panel>
             <Tabs.Panel value="csv" className={S.panel}>
-              <CSVPanel
-                onCloseAddDataModal={onClose}
-                uploadsEnabled={areUploadsEnabled}
-                canUpload={canUploadToDatabase}
-                canManageUploads={canManageUploads}
-              />
+              <CSVPanel onCloseAddDataModal={onClose} />
             </Tabs.Panel>
             <Tabs.Panel value="gsheets" className={S.panel}>
               <PLUGIN_UPLOAD_MANAGEMENT.GdriveAddDataPanel

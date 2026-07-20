@@ -1,7 +1,7 @@
-import { useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { useGetSettingsQuery, useListDatabasesQuery } from "metabase/api";
+import { useListDatabasesQuery } from "metabase/api";
 import { useTokenRefreshUntil } from "metabase/api/utils";
 import {
   useHasTokenFeature,
@@ -15,6 +15,14 @@ import { usePurchaseCloudAddOnMutation } from "metabase-enterprise/api";
 import { STORAGE_PRODUCT_TYPE } from "./use-storage-add-on";
 
 const POLL_INTERVAL_MS = 2000;
+
+/**
+ * Provisioning is inferred from server state, so a failed or abandoned setup
+ * would otherwise leave the panels spinning indefinitely. The deadline is
+ * client-side and restarts on a full page reload, which is acceptable: the
+ * provider is mounted for the lifetime of the navbar.
+ */
+export const STORAGE_SETUP_TIMEOUT_MS = 10 * 60 * 1000;
 
 const STORAGE_PURCHASE_CACHE_KEY = "purchase-storage-add-on";
 
@@ -41,7 +49,14 @@ export function usePurchaseStorageAddOn() {
   const attachedDwhDatabase = databasesResponse?.data?.find(
     (db) => db.is_attached_dwh,
   );
-  const hasAttachedDwh = !!attachedDwhDatabase?.can_upload;
+
+  // Presence and readiness are distinct: storage exists as soon as its database
+  // appears, but it only accepts uploads once it is the instance's upload
+  // target, which needs a redeploy. Keying provisioning on readiness would trap
+  // any admin who points uploads at a different database — only one database
+  // can have uploads enabled at a time.
+  const hasAttachedDwh = !!attachedDwhDatabase;
+  const canUploadToAttachedDwh = !!attachedDwhDatabase?.can_upload;
 
   // Keeps us in setting-up from the POST until storage is ready; collapses on
   // its own on error (mutation no longer pending or successful).
@@ -55,20 +70,36 @@ export function usePurchaseStorageAddOn() {
     areDatabasesLoaded &&
     !hasAttachedDwh;
 
-  const isSettingUp = isPurchaseSettingUp || isProvisioning;
+  const isSetupPending = isPurchaseSettingUp || isProvisioning;
+
+  const [hasSetupTimedOut, setHasSetupTimedOut] = useState(false);
+
+  useEffect(() => {
+    if (!isSetupPending) {
+      setHasSetupTimedOut(false);
+      return;
+    }
+
+    const timer = setTimeout(
+      () => setHasSetupTimedOut(true),
+      STORAGE_SETUP_TIMEOUT_MS,
+    );
+    return () => clearTimeout(timer);
+  }, [isSetupPending]);
+
+  const isSettingUp = isSetupPending && !hasSetupTimedOut;
+  const hasSetupFailed = isSetupPending && hasSetupTimedOut;
 
   // Refresh the token (a Store round-trip) until `attached_dwh` shows up.
   useTokenRefreshUntil("attached-dwh", {
     skip: !isSettingUp || hasStorageTokenFeature,
   });
 
-  // While setting up, poll the two sources the surrounding UI reads: session
-  // properties and the databases list.
-  useGetSettingsQuery(undefined, {
-    skip: !isSettingUp,
-    pollingInterval: POLL_INTERVAL_MS,
-    skipPollingIfUnfocused: true,
-  });
+  // The databases list is what the panels key off, so it alone drives the
+  // transition out of setting-up. This is a second *subscription* to the query
+  // above, not a second request — RTK serves both from one cache entry; it
+  // exists only to attach polling, which can't be conditioned on `isSettingUp`
+  // in the first call because that value is derived from the first call's data.
   useListDatabasesQuery(undefined, {
     skip: !isSettingUp,
     pollingInterval: POLL_INTERVAL_MS,
@@ -81,7 +112,7 @@ export function usePurchaseStorageAddOn() {
     } catch {
       sendToast({
         icon: "warning_triangle_filled",
-        iconColor: "warning",
+        iconColor: "feedback-warning",
         message: t`It looks like something went wrong. Please refresh the page and try again.`,
       });
     }
@@ -89,7 +120,9 @@ export function usePurchaseStorageAddOn() {
 
   return {
     isSettingUp,
+    hasSetupFailed,
     hasAttachedDwh,
+    canUploadToAttachedDwh,
     handlePurchase,
     resetPurchase,
     canSetUpStorage,

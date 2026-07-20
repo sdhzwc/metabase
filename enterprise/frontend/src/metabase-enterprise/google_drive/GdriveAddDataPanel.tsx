@@ -6,6 +6,7 @@ import { t } from "ttag";
 import { skipToken } from "metabase/api";
 import {
   StoragePurchaseButton,
+  StorageSetupErrorView,
   StorageSetupView,
   useStorageSetup,
 } from "metabase/common/components/upsells/StoragePurchaseModal";
@@ -38,6 +39,7 @@ import {
 
 import { getDisconnectModalStrings } from "./GdriveConnectionModal.strings";
 import { trackSheetConnectionClick } from "./analytics";
+import { getSheetsPanelState } from "./sheets-panel-state";
 import { getStatus, useDeleteGdriveFolderLink, useShowGdrive } from "./utils";
 
 const PanelWrapper = ({
@@ -140,7 +142,7 @@ export const GdriveAddDataPanel = ({
   });
 
   const isAdmin = useSelector(getUserIsAdmin);
-  const { isSettingUp, hasAttachedDwh } = useStorageSetup();
+  const { isSettingUp, hasSetupFailed, hasAttachedDwh } = useStorageSetup();
   const storeUrl = useStoreUrl("account/storage");
 
   const showGdrive = useShowGdrive();
@@ -149,60 +151,49 @@ export const GdriveAddDataPanel = ({
     { refetchOnMountOrArgChange: 5 },
   );
 
-  if (isSettingUp) {
-    return <StorageSetupView />;
-  }
-
-  const status = getStatus({ status: folder?.status, error });
-
   const folderUrl = folder?.url;
 
   const NO_STORAGE_SUBTITLE = t`To work with spreadsheets, you can add storage to your instance.`;
   // eslint-disable-next-line metabase/no-literal-metabase-strings -- admin only
   const ERROR_MESSAGE = t`Please check that the folder is shared with the Metabase Service Account.`;
 
-  if (!isAdmin) {
-    return (
+  const state = getSheetsPanelState({
+    isSettingUp,
+    hasSetupFailed,
+    isAdmin,
+    hasAttachedDwh,
+    showGdrive,
+    areConnectionDetailsShown,
+    status: getStatus({ status: folder?.status, error }),
+  });
+
+  return match(state)
+    .with("provisioning-storage", () => <StorageSetupView />)
+    .with("storage-setup-failed", () => <StorageSetupErrorView />)
+    .with("ask-admin", () => (
       <PanelWrapper>
         <ContactAdminAlert reason="enable-google-sheets" />
       </PanelWrapper>
-    );
-  }
-
-  if (!hasAttachedDwh) {
-    return (
+    ))
+    .with("needs-storage", () => (
       <PanelWrapper subtitle={NO_STORAGE_SUBTITLE}>
         <StoragePurchaseButton location="add-data-modal-sheets" />
       </PanelWrapper>
-    );
-  }
-
-  // If a user is an admin of a hosted instance with storage but for some reason
-  // any other condition from the `showGdrive` hook is not met, we show the general error
-  if (!showGdrive) {
-    return (
+    ))
+    .with("unavailable", () => (
       <PanelWrapper>
         <ErrorAlert error={ERROR_MESSAGE} />
       </PanelWrapper>
-    );
-  }
-
-  if (areConnectionDetailsShown) {
-    return (
+    ))
+    .with("connection-details", () => (
       <ConnectionDetails
         onClose={closeConnectionDetails}
         isDeleteInProgress={isDeletingFolderLink}
         onDelete={onDelete}
         deleteError={deleteError}
       />
-    );
-  }
-
-  // Finally, all conditions have been met, and all screens below this line depend only
-  // on the status of the attempted connection
-
-  if (status === "active" || status === "syncing") {
-    return (
+    ))
+    .with("connected", () => (
       <PanelWrapper title={t`Import Google Sheets`}>
         <DriveConnectionDisplay />
         <Button
@@ -215,11 +206,8 @@ export const GdriveAddDataPanel = ({
           {t`Add new`}
         </Button>
       </PanelWrapper>
-    );
-  }
-
-  if (status === "paused") {
-    return (
+    ))
+    .with("storage-full", () => (
       <PanelWrapper subtitle={NO_STORAGE_SUBTITLE}>
         <ErrorAlert
           // eslint-disable-next-line metabase/no-literal-metabase-strings -- admin only
@@ -231,11 +219,8 @@ export const GdriveAddDataPanel = ({
           </Group>
         </ErrorAlert>
       </PanelWrapper>
-    );
-  }
-
-  if (status === "not-connected") {
-    return (
+    ))
+    .with("not-connected", () => (
       <>
         <PanelWrapper>
           <Button
@@ -266,31 +251,45 @@ export const GdriveAddDataPanel = ({
           reconnect={false}
         />
       </>
-    );
-  }
-
-  const buttonText = match(status)
-    .with("initializing", () => t`Connecting...`)
-    .with("error", () => t`Something went wrong`)
+    ))
+    .with("connecting", () => (
+      <PanelWrapper>
+        <ConnectionDetailsButton
+          label={t`Connecting...`}
+          onClick={showConnectionDetails}
+        />
+      </PanelWrapper>
+    ))
+    .with("connection-error", () => (
+      <PanelWrapper>
+        <ConnectionDetailsButton
+          label={t`Something went wrong`}
+          onClick={showConnectionDetails}
+        />
+        <ErrorAlert error={ERROR_MESSAGE} />
+      </PanelWrapper>
+    ))
     .exhaustive();
-
-  return (
-    <PanelWrapper>
-      <Button
-        variant="filled"
-        w={INNER_WIDTH}
-        onClick={() => {
-          trackSheetConnectionClick({ from: "add-data-modal" });
-          showConnectionDetails();
-        }}
-      >
-        {buttonText}
-      </Button>
-
-      {status === "error" && <ErrorAlert error={ERROR_MESSAGE} />}
-    </PanelWrapper>
-  );
 };
+
+const ConnectionDetailsButton = ({
+  label,
+  onClick,
+}: {
+  label: string;
+  onClick: () => void;
+}) => (
+  <Button
+    variant="filled"
+    w={INNER_WIDTH}
+    onClick={() => {
+      trackSheetConnectionClick({ from: "add-data-modal" });
+      onClick();
+    }}
+  >
+    {label}
+  </Button>
+);
 
 const ErrorAlert = ({
   error,

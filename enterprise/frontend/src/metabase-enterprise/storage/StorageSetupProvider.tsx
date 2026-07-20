@@ -30,7 +30,9 @@ export const StorageSetupProvider = ({
 }: StorageSetupProviderProps) => {
   const {
     isSettingUp,
+    hasSetupFailed,
     hasAttachedDwh,
+    canUploadToAttachedDwh,
     handlePurchase,
     resetPurchase,
     canSetUpStorage,
@@ -63,20 +65,24 @@ export const StorageSetupProvider = ({
   const value = useMemo<StorageSetupContextValue>(
     () => ({
       isSettingUp,
+      hasSetupFailed,
       storageAddOn,
       isLoadingStorageAddOn,
       isPurchaseModalOpened,
       openPurchaseModal,
       hasAttachedDwh,
+      canUploadToAttachedDwh,
       canSetUpStorage,
     }),
     [
       isSettingUp,
+      hasSetupFailed,
       storageAddOn,
       isLoadingStorageAddOn,
       isPurchaseModalOpened,
       openPurchaseModal,
       hasAttachedDwh,
+      canUploadToAttachedDwh,
       canSetUpStorage,
     ],
   );

@@ -6,7 +6,13 @@ import {
   setupPropertiesEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import {
+  act,
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import { useStorageSetup } from "metabase/common/components/upsells/StoragePurchaseModal";
 import { createMockState } from "metabase/redux/store/mocks";
@@ -21,14 +27,16 @@ import {
 import { mockStorageCloudAddOn } from "metabase-types/api/mocks/add-ons";
 
 import { StorageSetupProvider } from "./StorageSetupProvider";
+import { STORAGE_SETUP_TIMEOUT_MS } from "./use-purchase-storage-add-on";
 
 const TestConsumer = () => {
-  const { isSettingUp, openPurchaseModal } = useStorageSetup();
+  const { isSettingUp, hasSetupFailed, openPurchaseModal } = useStorageSetup();
 
   return (
     <div>
       <button onClick={openPurchaseModal}>Open purchase modal</button>
       {isSettingUp && <span>setting up</span>}
+      {hasSetupFailed && <span>setup failed</span>}
     </div>
   );
 };
@@ -36,6 +44,8 @@ const TestConsumer = () => {
 interface SetupOpts {
   tokenFeatures?: Partial<TokenFeatures>;
   hasAttachedDwhDatabase?: boolean;
+  /** False when the admin pointed uploads at some other database. */
+  dwhCanUpload?: boolean;
   isHosted?: boolean;
   addOns?: ICloudAddOnProduct[];
 }
@@ -43,6 +53,7 @@ interface SetupOpts {
 const setup = ({
   tokenFeatures = {},
   hasAttachedDwhDatabase = false,
+  dwhCanUpload = true,
   isHosted = true,
   addOns = [mockStorageCloudAddOn],
 }: SetupOpts = {}) => {
@@ -64,15 +75,16 @@ const setup = ({
       }),
     }),
   );
-  // Storage is only "ready" once the provisioned Cloud Storage database
-  // (marked `is_attached_dwh`) surfaces in the databases list and accepts
-  // uploads, so seed it when the provisioned state is expected.
+  // Provisioning is finished once the Cloud Storage database (marked
+  // `is_attached_dwh`) surfaces in the databases list. Whether it currently
+  // accepts uploads is a separate question — only one database at a time can be
+  // the upload target — and must not feed back into the setting-up state.
   setupDatabaseListEndpoint(
     hasAttachedDwhDatabase
       ? [
           createMockDatabase({
             id: 1,
-            can_upload: true,
+            can_upload: dwhCanUpload,
             is_attached_dwh: true,
           }),
         ]
@@ -176,6 +188,45 @@ describe("StorageSetupProvider", () => {
     expect(
       await screen.findByText("Metabase Storage is ready"),
     ).toBeInTheDocument();
+  });
+
+  it("gives up on setup once it exceeds its deadline", async () => {
+    jest.useFakeTimers();
+
+    try {
+      setup({ tokenFeatures: { attached_dwh: true } });
+
+      expect(await screen.findByText("setting up")).toBeInTheDocument();
+
+      await act(async () => {
+        jest.advanceTimersByTime(STORAGE_SETUP_TIMEOUT_MS);
+      });
+
+      expect(screen.getByText("setup failed")).toBeInTheDocument();
+      expect(screen.queryByText("setting up")).not.toBeInTheDocument();
+      expect(
+        screen.queryByText("Metabase Storage is ready"),
+      ).not.toBeInTheDocument();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it("leaves the setting-up state when storage exists but uploads point at another database", async () => {
+    // Only one database can be the upload target, so an admin enabling uploads
+    // elsewhere clears `can_upload` on the storage database. That must not read
+    // as "still provisioning" — it used to spin forever.
+    setup({
+      tokenFeatures: { attached_dwh: true },
+      hasAttachedDwhDatabase: true,
+      dwhCanUpload: false,
+    });
+
+    await waitFor(() => {
+      expect(fetchMock.callHistory.called("path:/api/database")).toBe(true);
+    });
+
+    expect(screen.queryByText("setting up")).not.toBeInTheDocument();
   });
 
   it("does not flash the setting-up state or toast on load for an instance that already has storage", async () => {

@@ -5,11 +5,16 @@ import type { ICloudAddOnProduct } from "metabase-types/api";
 
 export interface StorageSetupContextValue {
   isSettingUp: boolean;
+  /** Setup ran past its deadline; the panels offer a way out instead of spinning. */
+  hasSetupFailed: boolean;
   storageAddOn: ICloudAddOnProduct | undefined;
   isLoadingStorageAddOn: boolean;
   isPurchaseModalOpened: boolean;
   openPurchaseModal: () => void;
+  /** Storage exists on this instance. */
   hasAttachedDwh: boolean;
+  /** Storage exists *and* is the instance's upload target. */
+  canUploadToAttachedDwh: boolean;
   canSetUpStorage: boolean;
 }
 
@@ -28,11 +33,13 @@ export interface StorageSetupProviderProps {
 
 const INERT_STORAGE_SETUP_VALUE: StorageSetupContextValue = {
   isSettingUp: false,
+  hasSetupFailed: false,
   storageAddOn: undefined,
   isLoadingStorageAddOn: false,
   isPurchaseModalOpened: false,
   openPurchaseModal: () => {},
   hasAttachedDwh: false,
+  canUploadToAttachedDwh: false,
   canSetUpStorage: false,
 };
 

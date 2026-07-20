@@ -6,7 +6,13 @@ import {
   setupPropertiesEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import {
+  act,
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
 import { CSVPanel } from "metabase/nav/containers/MainNavbar/MainNavbarContainer/AddDataModal/Panels/CSVPanel";
 import { createMockState } from "metabase/redux/store/mocks";
 import type { ICloudAddOnProduct, TokenFeatures } from "metabase-types/api";
@@ -19,35 +25,35 @@ import {
 import { mockStorageCloudAddOn } from "metabase-types/api/mocks/add-ons";
 
 import { StorageSetupProvider } from "./StorageSetupProvider";
+import { STORAGE_SETUP_TIMEOUT_MS } from "./use-purchase-storage-add-on";
 
-interface PanelProps {
-  canUpload: boolean;
-  canManageUploads: boolean;
-  uploadsEnabled: boolean;
-}
-
-const DEFAULT_PANEL_PROPS: PanelProps = {
-  canUpload: false,
-  canManageUploads: true,
-  uploadsEnabled: false,
-};
-
+/**
+ * The panel derives its own state, so these cases cover the whole chain —
+ * databases list and storage context through `useCsvPanelState` to the view —
+ * rather than a hand-built state value.
+ */
 interface SetupOpts {
   addOns?: ICloudAddOnProduct[];
   tokenFeatures?: Partial<TokenFeatures>;
   hasAttachedDwhDatabase?: boolean;
-  panelProps?: Partial<PanelProps>;
+  /** False before the redeploy that makes storage the upload target. */
+  dwhCanUpload?: boolean;
+  /** Adds an ordinary database that is the instance's upload target. */
+  uploadsEnabled?: boolean;
+  /** Whether the current user may upload to that database. */
+  canUpload?: boolean;
 }
 
 const setup = ({
   addOns = [mockStorageCloudAddOn],
   tokenFeatures = {},
   hasAttachedDwhDatabase = false,
-  panelProps,
+  dwhCanUpload = true,
+  uploadsEnabled = false,
+  canUpload = false,
 }: SetupOpts = {}) => {
-  const props = { ...DEFAULT_PANEL_PROPS, ...panelProps };
   const renderPanel = (mounted: boolean) =>
-    mounted ? <CSVPanel {...props} onCloseAddDataModal={jest.fn()} /> : null;
+    mounted ? <CSVPanel onCloseAddDataModal={jest.fn()} /> : null;
 
   const settingValues = {
     "is-hosted?": true,
@@ -56,11 +62,26 @@ const setup = ({
   };
 
   setupPropertiesEndpoints(createMockSettings(settingValues));
-  setupDatabaseListEndpoint(
-    hasAttachedDwhDatabase
-      ? [createMockDatabase({ id: 1, can_upload: true, is_attached_dwh: true })]
-      : [],
-  );
+  setupDatabaseListEndpoint([
+    ...(hasAttachedDwhDatabase
+      ? [
+          createMockDatabase({
+            id: 1,
+            can_upload: dwhCanUpload,
+            is_attached_dwh: true,
+          }),
+        ]
+      : []),
+    ...(uploadsEnabled
+      ? [
+          createMockDatabase({
+            id: 2,
+            uploads_enabled: true,
+            can_upload: canUpload,
+          }),
+        ]
+      : []),
+  ]);
   fetchMock.get("path:/api/ee/cloud-add-ons/addons", addOns);
   fetchMock.post("path:/api/ee/cloud-add-ons/dwh-rent", 200);
   fetchMock.post("path:/api/premium-features/token/refresh", {});
@@ -143,7 +164,8 @@ describe("CSVPanel storage purchase", () => {
     setup({
       tokenFeatures: { attached_dwh: true },
       hasAttachedDwhDatabase: false,
-      panelProps: { uploadsEnabled: true, canUpload: false },
+      uploadsEnabled: true,
+      canUpload: false,
     });
 
     expect(await screen.findByText("Setting up storage")).toBeInTheDocument();
@@ -155,15 +177,79 @@ describe("CSVPanel storage purchase", () => {
   it("shows the obtain-permission prompt when uploads are enabled but the user cannot upload", async () => {
     // Uploads are configured, but this user lacks upload permission and no
     // provisioning is underway, so they get pointed at their administrator.
-    setup({
-      panelProps: { uploadsEnabled: true, canUpload: false },
-    });
+    setup({ uploadsEnabled: true, canUpload: false });
 
     expect(
       await screen.findByText(/You are not permitted to upload CSV files/),
     ).toBeInTheDocument();
     expect(screen.queryByText("Enable uploads")).not.toBeInTheDocument();
     expect(screen.queryByText("Setting up storage")).not.toBeInTheDocument();
+  });
+
+  it("does not offer to buy storage to an admin who already has it", async () => {
+    // Storage is provisioned but uploads are pointed elsewhere, so the enable
+    // uploads CTA still shows — it must not come with an offer to buy a second
+    // copy of something this instance already owns.
+    setup({
+      tokenFeatures: { attached_dwh: true },
+      hasAttachedDwhDatabase: true,
+      dwhCanUpload: false,
+      uploadsEnabled: true,
+      canUpload: false,
+    });
+
+    expect(
+      await screen.findByText(/You are not permitted to upload CSV files/),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Add Metabase Storage/ }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: /Add Metabase Storage/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("explains that the instance must restart before storage accepts uploads", async () => {
+    // Post-provisioning, pre-redeploy: storage exists but is not yet the upload
+    // target. "Enable uploads" would be a dead end — only a redeploy helps.
+    setup({
+      tokenFeatures: { attached_dwh: true },
+      hasAttachedDwhDatabase: true,
+      dwhCanUpload: false,
+      uploadsEnabled: false,
+    });
+
+    expect(
+      await screen.findByText(
+        /Uploads will turn on the next time your instance restarts/,
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Enable uploads")).not.toBeInTheDocument();
+    expect(screen.queryByText("Setting up storage")).not.toBeInTheDocument();
+  });
+
+  it("offers a way out when setup exceeds its deadline", async () => {
+    jest.useFakeTimers();
+
+    try {
+      setup({ tokenFeatures: { attached_dwh: true } });
+
+      expect(await screen.findByText("Setting up storage")).toBeInTheDocument();
+
+      await act(async () => {
+        jest.advanceTimersByTime(STORAGE_SETUP_TIMEOUT_MS);
+      });
+
+      expect(
+        screen.getByText("Storage setup didn't finish"),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("Setting up storage")).not.toBeInTheDocument();
+      expect(
+        screen.getByRole("link", { name: "Go to your account" }),
+      ).toHaveAttribute("href", expect.stringContaining("/account/storage"));
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it("shows the confirmation modal with the pricing terms", async () => {

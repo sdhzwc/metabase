@@ -16,13 +16,18 @@ describe("Add data modal (Starter: hosted instance without the attached DWH)", (
       });
 
       // The upsell is a single button matching the CSV tab, not the old
-      // bulleted banner. With no in-app add-on it links to the store.
+      // bulleted banner. With no in-app add-on it links to the store, UTM
+      // tagged like every other upsell CTA.
       const upsellLink = await screen.findByRole("link", {
         name: /Add Metabase Storage/,
       });
-      expect(upsellLink).toHaveAttribute(
-        "href",
+      const href = new URL(upsellLink.getAttribute("href") ?? "");
+      expect(href.origin + href.pathname).toBe(
         "https://store.metabase.com/account/storage",
+      );
+      expect(href.searchParams.get("utm_campaign")).toBe("storage");
+      expect(href.searchParams.get("utm_content")).toBe(
+        "add-data-modal-sheets",
       );
     });
 
