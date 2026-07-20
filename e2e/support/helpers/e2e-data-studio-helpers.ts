@@ -41,6 +41,7 @@ export const DataStudio = {
     inspectTab: () => DataStudio.Transforms.header().findByText("Inspect"),
     targetTab: () => DataStudio.Transforms.header().findByText("Target"),
     settingsTab: () => DataStudio.Transforms.header().findByText("Settings"),
+    indexesTab: () => DataStudio.Transforms.header().findByText("Indexes"),
     dependenciesTab: () =>
       DataStudio.Transforms.header().findByText("Dependencies"),
     visit: () => {
@@ -55,6 +56,8 @@ export const DataStudio = {
     },
     visitSettingsTab: (transformId: TransformId) =>
       cy.visit(`/data-studio/transforms/${transformId}/settings`),
+    visitIndexes: (transformId: TransformId) =>
+      cy.visit(`/data-studio/transforms/${transformId}/indexes`),
     runButton: () => cy.findAllByTestId("run-button").eq(0),
     pythonResults: () => cy.findByTestId("python-results"),
     enableTransformPage: () => cy.findByTestId("enable-transform-page"),

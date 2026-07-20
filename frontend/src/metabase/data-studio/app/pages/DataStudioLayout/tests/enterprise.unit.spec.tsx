@@ -205,8 +205,17 @@ describe("DataStudioLayout", () => {
   });
 
   describe("transforms tab visibility", () => {
+    const transformsReadySettings = {
+      transformsSetupComplete: true,
+      transformsEnabled: true,
+    };
+
     it("should show Transforms tab for admins", async () => {
-      setup({ ...DEFAULT_EE_SETTINGS, isAdmin: true });
+      setup({
+        ...DEFAULT_EE_SETTINGS,
+        ...transformsReadySettings,
+        isAdmin: true,
+      });
 
       await waitFor(() => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
@@ -218,6 +227,7 @@ describe("DataStudioLayout", () => {
     it("should show Transforms tab for a non-admin with transforms permission", async () => {
       setup({
         ...DEFAULT_EE_SETTINGS,
+        ...transformsReadySettings,
         isAdmin: false,
         canAccessTransforms: true,
       });
@@ -232,6 +242,7 @@ describe("DataStudioLayout", () => {
     it("should hide Transforms tab for a non-admin without transforms permission", async () => {
       setup({
         ...DEFAULT_EE_SETTINGS,
+        ...transformsReadySettings,
         isAdmin: false,
         canAccessTransforms: false,
       });

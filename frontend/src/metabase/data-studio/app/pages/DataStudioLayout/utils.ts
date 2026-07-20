@@ -10,7 +10,8 @@ type TabName =
   | "schema-viewer"
   | "glossary"
   | "git-sync"
-  | "workspaces";
+  | "workspaces"
+  | "settings";
 
 const DATA_STUDIO_ROOT = Urls.dataStudio();
 
@@ -79,6 +80,8 @@ export const getCurrentTab = (pathname: string): TabName => {
       return "transforms";
     case pathname.startsWith(Urls.dataStudioData()):
       return "data";
+    case pathname.startsWith(Urls.dataStudioSettings()):
+      return "settings";
     default:
       return "guide";
   }

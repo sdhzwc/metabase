@@ -50,6 +50,8 @@ describe("getCurrentTab", () => {
     ${"/data-studio/data/database/1"}                     | ${"data"}
     ${"/data-studio/schema-viewer"}                       | ${"schema-viewer"}
     ${"/data-studio"}                                     | ${"guide"}
+    ${"/data-studio/settings"}                            | ${"settings"}
+    ${"/data-studio"}                                     | ${"data"}
   `(
     "should return '$expectedTab' for pathname '$pathname'",
     ({ pathname, expectedTab }) => {
