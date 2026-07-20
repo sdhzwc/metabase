@@ -8,15 +8,23 @@ import * as sdkExports from "@metabase/embedding-sdk-react";
 import * as dataAppExports from "@metabase/embedding-sdk-react/data-app";
 import {
   DataAppDevProvider,
+  type DataAppManifestStatus,
   DevToolbar,
   createDataAppSandbox,
   installDevDiagnostics,
+  installDiagnosticsReporter,
+  installSdkCallCapture,
+  recordSandboxBlockedEvent,
+  runDevConnectionCheck,
+  setDevManifestStatus,
 } from "@metabase/embedding-sdk-react/data-app-dev";
 import {
   allowedHosts,
   appSlug,
   bundleUrl,
+  manifestEvent,
   rebuiltEvent,
+  sdkVersion,
 } from "virtual:metabase-data-app-dev-config";
 import { createRoot } from "react-dom/client";
 
@@ -45,6 +53,17 @@ const authConfig = {
 
 installDevDiagnostics();
 
+// The page's fetch, captured before `installSdkCallCapture` patches it, so the
+// connection check's own probes don't show up in the Queries tab.
+const uncapturedFetch = window.fetch.bind(window);
+installSdkCallCapture(authConfig.metabaseInstanceUrl);
+runDevConnectionCheck({
+  metabaseUrl: authConfig.metabaseInstanceUrl,
+  apiKey: authConfig.apiKey,
+  sdkVersion,
+  fetchFn: uncapturedFetch,
+});
+
 const toolbarRoot = document.createElement("div");
 document.body.appendChild(toolbarRoot);
 createRoot(toolbarRoot).render(<DevToolbar />);
@@ -59,6 +78,7 @@ const sandbox = createDataAppSandbox({
   label: "dev",
   targetWindow: window,
   allowedHosts,
+  onBlocked: recordSandboxBlockedEvent,
   endowments: {
     React,
     reactDom: ReactDOM,
@@ -99,9 +119,19 @@ loadAndRender().catch((error) => {
 });
 
 if (import.meta.hot) {
+  // Mirror the toolbar's data to the dev server, which re-serves it as JSON for
+  // tools that have a shell but no browser (see `diagnostics-channel.ts`).
+  installDiagnosticsReporter(import.meta.hot);
+
   import.meta.hot.on(rebuiltEvent, () => {
     loadAndRender().catch((error) => {
       console.error(error);
     });
+  });
+
+  import.meta.hot.on(manifestEvent, (data) => {
+    // The payload comes from our own dev plugin (`validateDataAppManifest`),
+    // which authored the shape; the HMR channel just erases the type.
+    setDevManifestStatus(data as DataAppManifestStatus);
   });
 }

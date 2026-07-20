@@ -27,6 +27,19 @@ export interface SandboxRealm {
   location: { href: string; origin: string };
 }
 
+/** A network request the sandbox refused, reported to an optional listener. */
+export interface SandboxBlockedNetworkInfo {
+  api: "fetch" | "xhr";
+  /** The request URL as resolved (or the raw input when unparseable). */
+  url: string;
+  /** Human-readable block reason, e.g. `api.foo.com (not in allowed_hosts)`. */
+  reason: string;
+}
+
+export type SandboxBlockedNetworkListener = (
+  info: SandboxBlockedNetworkInfo,
+) => void;
+
 interface AllowedOrigin {
   protocol: string; // "https:" | "http:"
   wildcard: boolean; // entry was "*.host"
@@ -87,6 +100,16 @@ function originMatches(url: URL, origin: AllowedOrigin): boolean {
     : host === origin.host;
 }
 
+/**
+ * Whether an `allowed_hosts` entry is a valid origin-only value. Mirrors the
+ * backend's `allowed-host-re` (`data_apps/config.clj`) — an entry this rejects
+ * would fail remote-sync import, so the dev manifest validator uses it for
+ * sync-parity checks.
+ */
+export function isValidAllowedHostEntry(entry: string): boolean {
+  return parseAllowedOrigin(entry) !== null;
+}
+
 export function isHostAllowed(url: URL, allowedHosts: string[]): boolean {
   return allowedHosts.some((entry) => {
     const origin = parseAllowedOrigin(entry);
@@ -140,6 +163,11 @@ function blockedReason(
   return null;
 }
 
+/** The request URL for a blocked-network report: resolved when parseable. */
+function requestUrlString(input: unknown, base: string): string {
+  return toUrl(input, base)?.href ?? String(input);
+}
+
 /**
  * A `fetch` that only reaches `allowedHosts` (rejecting everything else,
  * including the Metabase origin). Returns `null` when the allowlist is empty so
@@ -149,6 +177,7 @@ export function makeSandboxFetch(
   targetWindow: SandboxRealm,
   allowedHosts: string[],
   label: string,
+  onBlocked?: SandboxBlockedNetworkListener,
 ): typeof fetch | null {
   if (allowedHosts.length === 0) {
     return null;
@@ -159,6 +188,11 @@ export function makeSandboxFetch(
   return function dataAppFetch(input: RequestInfo | URL, init?: RequestInit) {
     const reason = blockedReason(input, base, allowedHosts, metabaseOrigin);
     if (reason) {
+      onBlocked?.({
+        api: "fetch",
+        url: requestUrlString(input, base),
+        reason,
+      });
       return Promise.reject(
         new Error(`[data-app ${label}] blocked fetch to ${reason}`),
       );
@@ -176,6 +210,7 @@ export function makeSandboxXhr(
   targetWindow: SandboxRealm,
   allowedHosts: string[],
   label: string,
+  onBlocked?: SandboxBlockedNetworkListener,
 ): typeof XMLHttpRequest | null {
   if (allowedHosts.length === 0) {
     return null;
@@ -193,6 +228,11 @@ export function makeSandboxXhr(
     ): void {
       const reason = blockedReason(url, base, allowedHosts, metabaseOrigin);
       if (reason) {
+        onBlocked?.({
+          api: "xhr",
+          url: requestUrlString(url, base),
+          reason,
+        });
         throw new Error(
           `[data-app ${label}] blocked XMLHttpRequest to ${reason}`,
         );

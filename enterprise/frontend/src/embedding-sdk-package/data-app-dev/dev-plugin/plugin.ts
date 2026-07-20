@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -13,6 +14,16 @@ import * as dataAppVirtualModules from "build-configs/embedding-sdk/constants/da
 import { DATA_APP_BUNDLE_URL, DATA_APP_REBUILT_EVENT } from "../bundle";
 import { dataAppBuildPlugins, dataAppLibBuild } from "../config/build-config";
 import { getDataAppDefine } from "../config/define";
+import { validateDataAppManifest } from "../config/validate-manifest";
+import {
+  DATA_APP_DIAGNOSTICS_EVENT,
+  DATA_APP_DIAGNOSTICS_LIMIT,
+  DATA_APP_DIAGNOSTICS_URL,
+  type DataAppDiagnosticPayload,
+  type DataAppDiagnosticsMessage,
+  type DataAppDiagnosticsReport,
+} from "../diagnostics-channel";
+import { DATA_APP_MANIFEST_EVENT } from "../manifest-status";
 
 // Virtual modules the dev server provides. The dev server serves a synthetic
 // `index.html` (below) that imports the dev entry; the dev entry imports the
@@ -47,6 +58,28 @@ const INDEX_HTML = `<!doctype html>
 </html>
 `;
 
+/**
+ * The `@metabase/embedding-sdk-react` version installed in the app, resolved
+ * from the app's own dependency tree (the package exports `./package.json`).
+ * `null` when it can't be resolved — the toolbar shows "unknown".
+ */
+function readInstalledSdkVersion(appRoot: string): string | null {
+  try {
+    const requireFromApp = createRequire(path.join(appRoot, "package.json"));
+    const pkg: unknown = requireFromApp(
+      "@metabase/embedding-sdk-react/package.json",
+    );
+    return typeof pkg === "object" &&
+      pkg !== null &&
+      "version" in pkg &&
+      typeof pkg.version === "string"
+      ? pkg.version
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 // Rollup/Vite's virtual-module marker: a leading NUL byte tells Rollup core and
 // other plugins that an id is synthetic, so they don't try to resolve/load it
 // from disk. It's a convention (not a public export), so we spell it out; Vite
@@ -71,6 +104,20 @@ export function dataAppSandboxDevPlugin(
 ): Plugin {
   let bundleCode = "";
 
+  // Mirror of the page's diagnostics, so tools without a browser can read it.
+  let diagnosticEntries: DataAppDiagnosticPayload[] = [];
+  let diagnosticConnection: unknown = null;
+  // Validated here, not reported by the page: the dev server is what reads
+  // `data_app.yaml`, so round-tripping it through the client only added a race
+  // where the feed could report "not validated yet" for a perfectly valid file.
+  let manifestStatus: ReturnType<typeof validateDataAppManifest> | null = null;
+  let lastReportAt: number | null = null;
+  let lastRebuildAt: number | null = null;
+  // Ids are re-stamped server-side: the page's counter restarts at 1 on every
+  // reload, so trusting it would make fresh events sort *before* a poller's
+  // cursor and silently disappear.
+  let nextEventId = 1;
+
   const rebuild = async (root: string, mode: string) => {
     const result = await build({
       root,
@@ -82,6 +129,11 @@ export function dataAppSandboxDevPlugin(
       build: {
         write: false,
         minify: mode === "production",
+        // Inline, not a sibling `.map`: only `chunk.code` is kept below and the
+        // result is handed to the sandbox as a string, so a file reference has
+        // nothing to resolve against. This is what lets DevTools show the
+        // original `src/` files in stacks and breakpoints.
+        sourcemap: "inline",
         ...dataAppLibBuild("data-app-bundle.js"),
       },
     });
@@ -93,6 +145,8 @@ export function dataAppSandboxDevPlugin(
         .flatMap((output) => ("output" in output ? output.output : []))
         .find((chunk): chunk is Rollup.OutputChunk => chunk.type === "chunk")
         ?.code ?? "";
+
+    lastRebuildAt = Date.now();
   };
 
   return {
@@ -119,6 +173,8 @@ export function dataAppSandboxDevPlugin(
           `export const appSlug = ${JSON.stringify(appSlug)};`,
           `export const bundleUrl = ${JSON.stringify(DATA_APP_BUNDLE_URL)};`,
           `export const rebuiltEvent = ${JSON.stringify(DATA_APP_REBUILT_EVENT)};`,
+          `export const manifestEvent = ${JSON.stringify(DATA_APP_MANIFEST_EVENT)};`,
+          `export const sdkVersion = ${JSON.stringify(readInstalledSdkVersion(process.cwd()))};`,
         ].join("\n");
       }
     },
@@ -191,11 +247,103 @@ export function dataAppSandboxDevPlugin(
         res.end(bundleCode);
       });
 
+      // The page mirrors its diagnostics store up the socket; we buffer it and
+      // re-serve it as JSON below, so an agent with only a shell reads exactly
+      // what a human reads in the toolbar.
+      server.ws.on(
+        DATA_APP_DIAGNOSTICS_EVENT,
+        (message: DataAppDiagnosticsMessage) => {
+          lastReportAt = Date.now();
+          // Only the connection status is the page's to report — it's the page
+          // that reaches Metabase. The manifest is validated here (below), so it
+          // is never taken from the client.
+          diagnosticConnection = message?.connection ?? diagnosticConnection;
+
+          if (Array.isArray(message?.entries) && message.entries.length > 0) {
+            const stamped = message.entries.map((entry) => ({
+              ...entry,
+              eventId: nextEventId++,
+            }));
+
+            diagnosticEntries = [...diagnosticEntries, ...stamped].slice(
+              -DATA_APP_DIAGNOSTICS_LIMIT,
+            );
+          }
+        },
+      );
+
+      server.middlewares.use((req, res, next) => {
+        const [pathname, query] = (req.url ?? "").split("?");
+        if (pathname !== DATA_APP_DIAGNOSTICS_URL) {
+          next();
+
+          return;
+        }
+
+        // The toolbar's Clear button. Clears for every reader, since the buffer
+        // is the one source both the panel and any external poller read.
+        if (req.method === "DELETE") {
+          diagnosticEntries = [];
+          res.statusCode = 204;
+          res.end();
+
+          return;
+        }
+
+        const startEventId = Number(
+          new URLSearchParams(query).get("startEventId"),
+        );
+        const entries = Number.isFinite(startEventId)
+          ? diagnosticEntries.filter((entry) => entry.eventId >= startEventId)
+          : diagnosticEntries;
+
+        const report: DataAppDiagnosticsReport = {
+          entries,
+          connection: diagnosticConnection,
+          manifest: manifestStatus,
+          // Zero clients means nothing has run: an empty `entries` then says
+          // nothing about the app's health.
+          clients: server.ws.clients.size,
+          lastReportAt,
+          lastRebuildAt,
+          nextEventId: (diagnosticEntries.at(-1)?.eventId ?? 0) + 1,
+        };
+
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify(report, null, 2));
+      });
+
       const srcDir = `${path.sep}src${path.sep}`;
 
       server.watcher.on("change", async (file) => {
         if (file.includes(srcDir)) {
           await rebuildAndNotify();
+        }
+      });
+
+      // Manifest validation for the toolbar's Manifest tab: push the current
+      // status to each client as it connects, and re-validate + push on every
+      // `data_app.yaml` change (including create/delete — hence "all").
+      // `allowedHosts` stays what the server booted with, so the validator can
+      // flag a drifted allowlist as restart-required.
+      const sendManifestStatus = () => {
+        manifestStatus = validateDataAppManifest(root, allowedHosts);
+        server.ws.send({
+          type: "custom",
+          event: DATA_APP_MANIFEST_EVENT,
+          data: manifestStatus,
+        });
+      };
+
+      // Validate up front so the feed carries a status before any client
+      // connects — an agent polling before the preview is open still gets it.
+      manifestStatus = validateDataAppManifest(root, allowedHosts);
+
+      server.ws.on("connection", sendManifestStatus);
+
+      server.watcher.on("all", (_event, file) => {
+        if (path.basename(file) === "data_app.yaml") {
+          sendManifestStatus();
         }
       });
 

@@ -73,9 +73,139 @@
   font-weight: 600;
 }
 
+/* Chrome-devtools-style bottom dock: full-width, a third of the screen, or
+   half when toggled taller. */
+.Docked {
+  position: fixed;
+  inset: auto 0 0 0;
+  width: 100%;
+  height: 33vh;
+  max-height: none;
+  margin-bottom: 0;
+  border-radius: 0;
+  border-left: none;
+  border-right: none;
+  border-bottom: none;
+}
+
+.DockedTall {
+  height: 50vh;
+}
+
+.Tabs {
+  display: flex;
+  gap: 2px;
+  padding: 0 8px;
+  background: var(--mb-color-background-secondary, #f9fbfc);
+  border-bottom: 1px solid var(--mb-color-border, #eeecec);
+}
+
+.Tab {
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 8px 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--mb-color-text-secondary, #696e7b);
+  border-bottom: 2px solid transparent;
+}
+
+.TabActive {
+  color: var(--mb-color-brand, #509ee3);
+  border-bottom-color: var(--mb-color-brand, #509ee3);
+}
+
 .Body {
   overflow-y: auto;
   padding: 4px;
+}
+
+.Note {
+  margin: 8px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: var(--mb-color-background-secondary, #f9fbfc);
+  color: var(--mb-color-text-secondary, #696e7b);
+  font-size: 12px;
+}
+
+.StatusBody {
+  padding: 8px;
+}
+
+.StatusRow {
+  display: flex;
+  gap: 12px;
+  padding: 6px 4px;
+  border-bottom: 1px solid var(--mb-color-border, #eeecec);
+}
+
+.StatusLabel {
+  flex: 0 0 140px;
+  font-weight: 600;
+  color: var(--mb-color-text-secondary, #696e7b);
+}
+
+.StatusValue {
+  word-break: break-word;
+  font-family: Monaco, ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+}
+
+.Problem {
+  margin: 8px 4px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: var(--mb-color-error-background, #fce8e8);
+  color: var(--mb-color-error, #e35050);
+  font-size: 12px;
+}
+
+.Warning {
+  margin: 8px 4px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: var(--mb-color-warning-background, #fdf4e5);
+  color: var(--mb-color-text-primary, #4c5773);
+  font-size: 12px;
+}
+
+/* Collapsed by default, like a DevTools console entry: the headline is always
+   visible, the stack frames only when asked for. */
+.EntrySummary {
+  cursor: pointer;
+}
+
+.EntryDetail {
+  margin-top: 4px;
+  padding-left: 10px;
+  border-left: 2px solid var(--mb-color-border, #eeecec);
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: Monaco, ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  color: var(--mb-color-text-secondary, #696e7b);
+}
+
+.EntryFailed {
+  border-left: 3px solid var(--mb-color-error, #e35050);
+}
+
+.Filter {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 8px 4px;
+  color: var(--mb-color-text-secondary, #696e7b);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.EntryHint {
+  margin-top: 4px;
+  color: var(--mb-color-text-secondary, #696e7b);
+  font-size: 12px;
 }
 
 .Empty {
