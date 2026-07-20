@@ -13,10 +13,12 @@ import { isTransformsMainRoute } from "./utils";
 
 type TransformsHeaderProps = {
   showMetabotButton?: boolean;
+  showTabs?: boolean;
 };
 
 export const TransformsHeader = memo(function TransformsHeader({
   showMetabotButton,
+  showTabs = true,
 }: TransformsHeaderProps) {
   const tabs: PaneHeaderTab[] = [
     {
@@ -45,7 +47,7 @@ export const TransformsHeader = memo(function TransformsHeader({
       breadcrumbs={
         <DataStudioBreadcrumbs>{t`Data transformation`}</DataStudioBreadcrumbs>
       }
-      tabs={<PaneHeaderTabs tabs={tabs} />}
+      tabs={showTabs ? <PaneHeaderTabs tabs={tabs} /> : undefined}
       py={0}
       mb="md"
       showMetabotButton={showMetabotButton}

@@ -3874,6 +3874,15 @@ describe("scenarios > admin > transforms", () => {
     cy.findByRole("link", { name: "View your database connections" }).should(
       "exist",
     );
+    cy.findByTestId("transforms-section-header")
+      .findByRole("tab", { name: "Transforms" })
+      .should("not.exist");
+    cy.findByTestId("transforms-section-header")
+      .findByRole("tab", { name: "Jobs" })
+      .should("not.exist");
+    cy.findByTestId("transforms-section-header")
+      .findByRole("tab", { name: "Runs" })
+      .should("not.exist");
   });
 });
 
