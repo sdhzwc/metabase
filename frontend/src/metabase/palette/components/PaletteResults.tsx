@@ -51,7 +51,7 @@ const FullSearchCTA = ({
 
   return (
     <Text
-      c="brand"
+      c="core-brand"
       component={Link}
       fw={700}
       id="search-results-metadata"
@@ -207,7 +207,7 @@ function PaletteEmptyState() {
       <Text c="text-secondary" fw={700} mt="xl">
         {t`No recent items`}
       </Text>
-      <Text c="text-tertiary" size="sm" mt="xs" ta="center">
+      <Text c="text-disabled" size="sm" mt="xs" ta="center">
         {t`Items you've recently viewed will appear here.`}
       </Text>
     </Stack>

@@ -9,7 +9,7 @@ import {
   QueryColumnInfoIcon,
 } from "metabase/common/components/MetadataInfo/ColumnInfoIcon";
 import { ColumnBucketPickerPopover } from "metabase/common/components/QueryColumnPicker/ColumnBucketPickerPopover";
-import { useTranslateContent } from "metabase/i18n/hooks";
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import { Box, type BoxProps, Button, Flex, Icon, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
@@ -122,7 +122,7 @@ export function BreakoutColumnListItem({
           query={query}
           stageIndex={stageIndex}
           column={item.column}
-          color="summarize"
+          color="core-summarize"
           isEditing={isSelected}
           hasChevronDown
           hasBinning

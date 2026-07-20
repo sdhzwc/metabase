@@ -1,7 +1,24 @@
+import { isEmbedPreview } from "metabase/embedding/config";
+import { PLUGIN_API, reinitialize } from "metabase/plugins";
+
 import {
   matchUrlPattern,
   overrideRequests,
+  rewriteEmbedPreviewUrl,
+  setupEmbedPreviewRewrite,
 } from "./override-requests-for-embeds";
+
+jest.mock("metabase/embedding/config", () => ({
+  isEmbedPreview: jest.fn(),
+}));
+
+const mockIsEmbedPreview = jest.mocked(isEmbedPreview);
+
+afterEach(() => {
+  mockIsEmbedPreview.mockReset();
+  // Reset any plugin request handlers installed by a test.
+  reinitialize();
+});
 
 describe("matchUrlPattern", () => {
   it("should match URL with single parameter", () => {
@@ -132,5 +149,87 @@ describe("overrideRequests", () => {
 
     expect(result.url).toBe("/api/embed/card/:token/query");
     expect(result.method).toBe("GET");
+  });
+
+  it("drops the real cardId so it isn't leaked as a querystring param", async () => {
+    const result = await overrideRequests({
+      embedType: "public",
+      method: "GET",
+      url: "/api/card/:cardId/params/:paramId/remapping",
+      data: { cardId: 123, paramId: "p1", entityIdentifier: "uuid-1" },
+    });
+
+    expect(result.url).toBe(
+      "/api/public/card/:entityIdentifier/params/:paramId/remapping",
+    );
+    expect(result.data).not.toHaveProperty("cardId");
+    expect(result.data.entityIdentifier).toBe("uuid-1");
+  });
+
+  it("drops the real dashId for dashboard parameter endpoints", async () => {
+    const result = await overrideRequests({
+      embedType: "guest",
+      method: "GET",
+      url: "/api/dashboard/:dashId/params/:paramId/values",
+      data: { dashId: 7, paramId: "p1", entityIdentifier: "uuid-2" },
+    });
+
+    expect(result.url).toBe(
+      "/api/embed/dashboard/:entityIdentifier/params/:paramId/values",
+    );
+    expect(result.data).not.toHaveProperty("dashId");
+    expect(result.data.entityIdentifier).toBe("uuid-2");
+  });
+});
+
+describe("setupEmbedPreviewRewrite", () => {
+  it("installs rewriteEmbedPreviewUrl into the PLUGIN_API slot", () => {
+    expect(PLUGIN_API.onBeforeRequestHandlers.rewriteEmbedPreviewUrl).not.toBe(
+      rewriteEmbedPreviewUrl,
+    );
+
+    setupEmbedPreviewRewrite();
+
+    expect(PLUGIN_API.onBeforeRequestHandlers.rewriteEmbedPreviewUrl).toBe(
+      rewriteEmbedPreviewUrl,
+    );
+  });
+});
+
+describe("rewriteEmbedPreviewUrl", () => {
+  it("rewrites the embed base to the preview base inside an embed preview", async () => {
+    mockIsEmbedPreview.mockReturnValue(true);
+
+    const result = await rewriteEmbedPreviewUrl({
+      method: "GET",
+      url: "/api/embed/card/THE_TOKEN/query",
+      data: {},
+    });
+
+    expect(result).toEqual({ url: "/api/preview_embed/card/THE_TOKEN/query" });
+  });
+
+  it("leaves the url untouched outside an embed preview", async () => {
+    mockIsEmbedPreview.mockReturnValue(false);
+
+    const result = await rewriteEmbedPreviewUrl({
+      method: "GET",
+      url: "/api/embed/card/THE_TOKEN/query",
+      data: {},
+    });
+
+    expect(result).toBeUndefined();
+  });
+
+  it("leaves non-embed urls untouched inside an embed preview", async () => {
+    mockIsEmbedPreview.mockReturnValue(true);
+
+    const result = await rewriteEmbedPreviewUrl({
+      method: "GET",
+      url: "/api/card/1/query",
+      data: {},
+    });
+
+    expect(result).toBeUndefined();
   });
 });

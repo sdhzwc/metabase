@@ -1410,6 +1410,7 @@
   binning
   with-binning]
  [metabase.lib.card
+  ->card-metadata-columns
   card->underlying-query
   model-preserved-keys]
  [lib.column-group
@@ -1482,6 +1483,7 @@
  [lib.metric
   available-metrics]
  [lib.limit
+  aggregated-output?
   current-limit
   disable-default-limit
   limit
@@ -1559,7 +1561,7 @@
   ->query
   can-preview
   can-run
-  can-save
+  can-save?
   check-card-overwrite
   native?
   preview-query

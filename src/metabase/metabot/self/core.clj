@@ -36,7 +36,7 @@
   "Canonical schema for the opts map passed to every LLM provider adapter.
 
   Required:
-    :model       - Model name string (e.g. \"claude-haiku-4-5\", \"gpt-4.1-mini\")
+    :model       - Model name string (e.g. \"claude-haiku-4-5\", \"gpt-5.4\")
 
   Optional:
     :system      - System prompt string
@@ -141,7 +141,13 @@
     :start                 {:type :start
                             :id   (:messageId chunk)}
     :usage                 chunk
-    :error                 chunk
+    ;; Provider adapters emit AI SDK v5 error chunks (`{:type :error :errorText "..."}`). The rest of the
+    ;; pipeline — `format-error-line` and `metabot.persistence`'s turn finalize — keys off an internal
+    ;; `{:error {:message ...}}` part instead, so translate here. Internally-generated error parts (usage
+    ;; limits, agent-loop exceptions) already carry an `:error` map; pass those through unchanged.
+    :error                 (if (:error chunk)
+                             chunk
+                             {:type :error :error {:message (:errorText chunk)}})
     :text-start            {:type :text
                             :id   (:id chunk)
                             :text (->> (map :delta chunks)

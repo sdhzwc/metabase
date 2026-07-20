@@ -5,6 +5,7 @@
    [metabase.activity-feed.api]
    [metabase.agent-api.api]
    [metabase.analytics.api]
+   [metabase.analytics.api.proxy]
    [metabase.api-keys.api]
    [metabase.api.docs]
    [metabase.api.macros :as api.macros]
@@ -42,6 +43,8 @@
    [metabase.model-persistence.api]
    [metabase.native-query-snippets.api]
    [metabase.notification.api]
+   [metabase.oauth-server.api.admin]
+   [metabase.osi.ai-context.api]
    [metabase.permissions-rest.api]
    [metabase.premium-features.api]
    [metabase.product-feedback.api]
@@ -77,6 +80,7 @@
          metabase.activity-feed.api/keep-me
          metabase.agent-api.api/keep-me
          metabase.analytics.api/keep-me
+         metabase.analytics.api.proxy/keep-me
          metabase.api-keys.api/keep-me
          metabase.api.util/keep-me
          metabase.bookmarks.api/keep-me
@@ -97,6 +101,8 @@
          metabase.login-history.api/keep-me
          metabase.mcp.api/keep-me
          metabase.mcp.callback-api/keep-me
+         metabase.oauth-server.api.admin/keep-me
+         metabase.osi.ai-context.api/keep-me
          metabase.measures.api/keep-me
          metabase.metrics.api/keep-me
          metabase.model-persistence.api/keep-me
@@ -162,6 +168,7 @@
    "/ai-entity-analysis"   metabase.metabot.api.entity-analysis/routes
    "/alert"                (+auth metabase.pulse.api/alert-routes)
    "/analytics"            (+auth 'metabase.analytics.api)
+   "/analytics-proxy"      (+public-exceptions 'metabase.analytics.api.proxy)
    "/api-key"              (+auth 'metabase.api-keys.api)
    "/automagic-dashboards" (+auth metabase.xrays.api/automagic-dashboards-routes)
    "/bookmark"             (+auth 'metabase.bookmarks.api)
@@ -205,6 +212,8 @@
    "/native-query-snippet" (+auth 'metabase.native-query-snippets.api)
    "/notification"         metabase.notification.api/notification-routes
    "/notify"               (+static-apikey metabase.sync.api/notify-routes)
+   "/oauth"                (+auth 'metabase.oauth-server.api.admin)
+   "/osi"                  {"/ai-context" (+auth 'metabase.osi.ai-context.api)}
    "/permissions"          (+auth 'metabase.permissions-rest.api)
    "/persist"              (+auth 'metabase.model-persistence.api)
    "/premium-features"     (+auth metabase.premium-features.api/routes)
