@@ -181,9 +181,38 @@ function blockedReason(
   return null;
 }
 
+/**
+ * Report a block without letting the listener affect the block itself. A throwing
+ * listener would otherwise turn `fetch`'s rejection into a synchronous throw,
+ * breaking the promise contract for every `.catch()` caller — and reporting must
+ * never be able to change what is blocked.
+ */
+function reportBlocked(
+  onBlocked: SandboxBlockedNetworkListener | undefined,
+  event: Parameters<SandboxBlockedNetworkListener>[0],
+): void {
+  try {
+    onBlocked?.(event);
+  } catch {
+    // A broken reporter is not the app's problem.
+  }
+}
+
 /** The request URL for a blocked-network report: resolved when parseable. */
 function requestUrlString(input: unknown, base: string): string {
-  return toUrl(input, base)?.href ?? String(input);
+  const resolved = toUrl(input, base)?.href;
+  if (resolved != null) {
+    return resolved;
+  }
+  try {
+    // `input` may be a guest-realm value, so this runs guest code. Were it left
+    // to throw, the request would still be blocked — but `onBlocked` would never
+    // run, so the app could hide its own blocked calls from the Blocked tab, and
+    // `fetch` would throw synchronously instead of rejecting.
+    return String(input);
+  } catch {
+    return "(unreadable request)";
+  }
 }
 
 /**
@@ -206,7 +235,7 @@ export function makeSandboxFetch(
   return function dataAppFetch(input: RequestInfo | URL, init?: RequestInit) {
     const reason = blockedReason(input, base, allowedHosts, metabaseOrigin);
     if (reason) {
-      onBlocked?.({
+      reportBlocked(onBlocked, {
         api: "fetch",
         url: requestUrlString(input, base),
         reason,
@@ -246,7 +275,7 @@ export function makeSandboxXhr(
     ): void {
       const reason = blockedReason(url, base, allowedHosts, metabaseOrigin);
       if (reason) {
-        onBlocked?.({
+        reportBlocked(onBlocked, {
           api: "xhr",
           url: requestUrlString(url, base),
           reason,

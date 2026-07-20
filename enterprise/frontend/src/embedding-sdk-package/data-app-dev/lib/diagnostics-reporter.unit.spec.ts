@@ -56,6 +56,25 @@ describe("installDiagnosticsReporter", () => {
     teardown();
   });
 
+  it("carries the allowed_hosts hint for a blocked request", () => {
+    const { sent, teardown } = setup();
+
+    recordDevDiagnostic({
+      kind: "blocked-network",
+      api: "fetch",
+      url: "https://api.example.com/v1/data",
+      reason: "api.example.com (not in allowed_hosts)",
+    });
+    jest.runOnlyPendingTimers();
+
+    const [entry] = sent[sent.length - 1].entries;
+    expect(entry.hint).toBe(
+      "Add https://api.example.com to allowed_hosts in data_app.yaml (dev server restart required).",
+    );
+
+    teardown();
+  });
+
   it("splits a stack into summary and detail", () => {
     const { sent, teardown } = setup();
 

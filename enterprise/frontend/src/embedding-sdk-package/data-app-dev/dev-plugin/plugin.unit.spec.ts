@@ -13,7 +13,6 @@ import {
   DATA_APP_DIAGNOSTICS_EVENT,
   DATA_APP_DIAGNOSTICS_URL,
 } from "../diagnostics-channel";
-import { DATA_APP_MANIFEST_EVENT } from "../manifest-status";
 
 import { dataAppSandboxDevPlugin } from "./plugin";
 
@@ -223,41 +222,35 @@ describe("dataAppSandboxDevPlugin", () => {
       expect(server.ws.send).not.toHaveBeenCalled();
     });
 
-    describe("manifest validation push", () => {
-      it("sends the manifest status when a client connects", async () => {
+    describe("manifest validation", () => {
+      it("re-validates when data_app.yaml changes, and serves it on the feed", async () => {
         const { server } = await setup();
-
-        const onConnection = server.ws.on.mock.calls.find(
-          ([event]) => event === "connection",
-        )?.[1];
-        expect(onConnection).toBeDefined();
-
-        onConnection();
-
-        expect(server.ws.send).toHaveBeenCalledWith({
-          type: "custom",
-          event: DATA_APP_MANIFEST_EVENT,
-          // node:fs is mocked, so the validator sees no data_app.yaml — the
-          // shape (a status object with errors) is what this test pins down.
-          data: expect.objectContaining({
-            errors: expect.arrayContaining([
-              expect.stringContaining("data_app.yaml"),
-            ]),
-          }),
-        });
-      });
-
-      it("re-validates and pushes when data_app.yaml changes", async () => {
-        const { server } = await setup();
+        mockedFs.existsSync.mockReturnValue(true);
+        mockedFs.readFileSync.mockReturnValue(
+          "name: Renamed\npath: dist/index.js\n",
+        );
 
         const [watchEvent, onAll] = server.watcher.on.mock.calls[1];
         expect(watchEvent).toBe("all");
 
         onAll("change", `/app${path.sep}data_app.yaml`);
 
-        expect(server.ws.send).toHaveBeenCalledWith(
-          expect.objectContaining({ event: DATA_APP_MANIFEST_EVENT }),
-        );
+        // The status is read from the feed, not pushed to the page — the page
+        // used to echo it back, which raced and reported "not validated yet".
+        const middleware = server.middlewares.use.mock.calls
+          .map((call) => call[0])
+          .find((handler) => {
+            const probe = { setHeader: jest.fn(), end: jest.fn() };
+            const next = jest.fn();
+            handler({ url: DATA_APP_DIAGNOSTICS_URL }, probe, next);
+            return !next.mock.calls.length;
+          });
+        const res = { setHeader: jest.fn(), end: jest.fn() };
+        middleware?.({ url: DATA_APP_DIAGNOSTICS_URL }, res, jest.fn());
+
+        expect(JSON.parse(res.end.mock.calls[0][0]).manifest).toMatchObject({
+          name: "Renamed",
+        });
       });
 
       it("ignores other file events", async () => {
@@ -431,6 +424,25 @@ describe("dataAppSandboxDevPlugin", () => {
         const { body } = request(server, DATA_APP_DIAGNOSTICS_URL);
 
         expect(body.manifest).not.toBeNull();
+      });
+
+      it("caps oversized text the socket sends", async () => {
+        const { server } = await setup();
+        // The socket is only as trustworthy as any local process, and this buffer
+        // is re-serialized on every poll.
+        report(server, [
+          {
+            eventId: 1,
+            summary: "x".repeat(50_000),
+            detail: "y".repeat(50_000),
+          },
+        ]);
+
+        const { body } = request(server, DATA_APP_DIAGNOSTICS_URL);
+
+        expect(body.entries[0].summary.length).toBeLessThan(6_000);
+        expect(body.entries[0].detail.length).toBeLessThan(6_000);
+        expect(body.entries[0].summary).toContain("truncated");
       });
 
       it("returns only events from `startEventId` onward", async () => {

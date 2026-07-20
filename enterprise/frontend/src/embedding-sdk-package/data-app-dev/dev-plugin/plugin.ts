@@ -24,7 +24,6 @@ import {
   type DataAppDiagnosticsReport,
   truncateDiagnosticText,
 } from "../diagnostics-channel";
-import { DATA_APP_MANIFEST_EVENT } from "../manifest-status";
 
 // Virtual modules the dev server provides. The dev server serves a synthetic
 // `index.html` (below) that imports the dev entry; the dev entry imports the
@@ -174,7 +173,6 @@ export function dataAppSandboxDevPlugin(
           `export const appSlug = ${JSON.stringify(appSlug)};`,
           `export const bundleUrl = ${JSON.stringify(DATA_APP_BUNDLE_URL)};`,
           `export const rebuiltEvent = ${JSON.stringify(DATA_APP_REBUILT_EVENT)};`,
-          `export const manifestEvent = ${JSON.stringify(DATA_APP_MANIFEST_EVENT)};`,
           `export const sdkVersion = ${JSON.stringify(readInstalledSdkVersion(process.cwd()))};`,
         ].join("\n");
       }
@@ -332,29 +330,22 @@ export function dataAppSandboxDevPlugin(
         }
       });
 
-      // Manifest validation for the toolbar's Manifest tab: push the current
-      // status to each client as it connects, and re-validate + push on every
-      // `data_app.yaml` change (including create/delete — hence "all").
-      // `allowedHosts` stays what the server booted with, so the validator can
-      // flag a drifted allowlist as restart-required.
-      const sendManifestStatus = () => {
+      // Manifest validation for the toolbar's Manifest tab and the feed. Validated
+      // here rather than in the page, and served over the diagnostics feed like
+      // everything else, so there is one source. `allowedHosts` stays what the
+      // server booted with, so the validator can flag a drifted allowlist as
+      // restart-required.
+      const refreshManifestStatus = () => {
         manifestStatus = validateDataAppManifest(root, allowedHosts);
-        server.ws.send({
-          type: "custom",
-          event: DATA_APP_MANIFEST_EVENT,
-          data: manifestStatus,
-        });
       };
 
-      // Validate up front so the feed carries a status before any client
-      // connects — an agent polling before the preview is open still gets it.
-      manifestStatus = validateDataAppManifest(root, allowedHosts);
-
-      server.ws.on("connection", sendManifestStatus);
+      // Up front, so the feed carries a status before any client connects — an
+      // agent polling before the preview is open still gets it.
+      refreshManifestStatus();
 
       server.watcher.on("all", (_event, file) => {
         if (path.basename(file) === "data_app.yaml") {
-          sendManifestStatus();
+          refreshManifestStatus();
         }
       });
 

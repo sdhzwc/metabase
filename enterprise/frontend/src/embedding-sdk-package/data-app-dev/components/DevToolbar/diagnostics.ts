@@ -13,7 +13,6 @@
 import type { SandboxBlockedEvent } from "metabase-enterprise/data_apps/sandbox/distortions";
 
 import { truncateDiagnosticText } from "../../diagnostics-channel";
-import type { DataAppManifestStatus } from "../../manifest-status";
 
 export type DevDiagnosticEvent =
   | { kind: "error"; message: string }
@@ -59,7 +58,6 @@ const MAX_ENTRIES = 200;
 
 let entries: DevDiagnosticEntry[] = [];
 let connectionStatus: DevConnectionStatus | null = null;
-let manifestStatus: DataAppManifestStatus | null = null;
 let nextId = 1;
 let installed = false;
 let uncapturedConsoleError: typeof console.error | null = null;
@@ -88,13 +86,32 @@ const formatArg = (arg: unknown): string => {
 };
 
 /**
+ * Cap every string an event carries. `formatArg` bounds one console argument, but
+ * a call with many args, or a structured event whose `url`/`reason` came from the
+ * guest realm, still lands here unbounded — so the cap belongs at the one point
+ * every capture path goes through.
+ */
+const cappedEvent = (event: DevDiagnosticEvent): DevDiagnosticEvent =>
+  // Rebuilding a discriminated union through entries() loses the tie between
+  // `kind` and its fields; values are only ever mapped string→string.
+  Object.fromEntries(
+    Object.entries(event).map(([key, value]) => [
+      key,
+      typeof value === "string" ? truncateDiagnosticText(value) : value,
+    ]),
+  ) as DevDiagnosticEvent;
+
+/**
  * Record a diagnostic event into the store. This is how the structured
  * capture points (sandbox block hooks, SDK call capture, connection check)
  * feed the toolbar.
  */
 export const recordDevDiagnostic = (event: DevDiagnosticEvent): void => {
   // New array reference each time so `useSyncExternalStore` re-renders.
-  entries = [...entries, { id: nextId++, time: Date.now(), ...event }];
+  entries = [
+    ...entries,
+    { id: nextId++, time: Date.now(), ...cappedEvent(event) },
+  ];
   if (entries.length > MAX_ENTRIES) {
     entries = entries.slice(-MAX_ENTRIES);
   }
@@ -141,14 +158,6 @@ export const getDevConnectionStatus = (): DevConnectionStatus | null =>
 
 export const setDevConnectionStatus = (status: DevConnectionStatus): void => {
   connectionStatus = status;
-  emit();
-};
-
-export const getDevManifestStatus = (): DataAppManifestStatus | null =>
-  manifestStatus;
-
-export const setDevManifestStatus = (status: DataAppManifestStatus): void => {
-  manifestStatus = status;
   emit();
 };
 

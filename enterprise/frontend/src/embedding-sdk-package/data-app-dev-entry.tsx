@@ -8,7 +8,6 @@ import * as sdkExports from "@metabase/embedding-sdk-react";
 import * as dataAppExports from "@metabase/embedding-sdk-react/data-app";
 import {
   DataAppDevProvider,
-  type DataAppManifestStatus,
   DevToolbar,
   createDataAppSandbox,
   installDevDiagnostics,
@@ -16,13 +15,11 @@ import {
   installSdkCallCapture,
   recordSandboxBlockedEvent,
   runDevConnectionCheck,
-  setDevManifestStatus,
 } from "@metabase/embedding-sdk-react/data-app-dev";
 import {
   allowedHosts,
   appSlug,
   bundleUrl,
-  manifestEvent,
   rebuiltEvent,
   sdkVersion,
 } from "virtual:metabase-data-app-dev-config";
@@ -127,11 +124,5 @@ if (import.meta.hot) {
     loadAndRender().catch((error) => {
       console.error(error);
     });
-  });
-
-  import.meta.hot.on(manifestEvent, (data) => {
-    // The payload comes from our own dev plugin (`validateDataAppManifest`),
-    // which authored the shape; the HMR channel just erases the type.
-    setDevManifestStatus(data as DataAppManifestStatus);
   });
 }

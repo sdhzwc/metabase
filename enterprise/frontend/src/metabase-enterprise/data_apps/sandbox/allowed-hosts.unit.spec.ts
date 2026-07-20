@@ -6,6 +6,8 @@ import {
   makeSandboxXhr,
 } from "./allowed-hosts";
 
+const u = (href: string) => new URL(href);
+
 describe("isValidAllowedHostEntry — backend parity", () => {
   // The WHATWG URL parser accepts these; the backend's `allowed-host-re` does
   // not. Accepting them here would green-light a manifest that 400s on sync,
@@ -30,9 +32,19 @@ describe("isValidAllowedHostEntry — backend parity", () => {
   ])("accepts %s", (entry) => {
     expect(isValidAllowedHostEntry(entry)).toBe(true);
   });
-});
 
-const u = (href: string) => new URL(href);
+  it("does not change what the sandbox allows at runtime", () => {
+    // This validator is advisory — it reports what remote-sync would reject. An
+    // app already running with such a host must keep its egress, so tightening
+    // validation must never be "unified" into `isHostAllowed`.
+    const entry = "https://internal_api.acme.com";
+
+    expect(isValidAllowedHostEntry(entry)).toBe(false);
+    expect(
+      isHostAllowed(u("https://internal_api.acme.com/data"), [entry]),
+    ).toBe(true);
+  });
+});
 
 describe("isHostAllowed", () => {
   it("matches an exact host (ignoring path)", () => {
@@ -194,5 +206,91 @@ describe("makeSandboxXhr", () => {
     expect(() => xhr.open("GET", "/api/user/current")).toThrow(
       /Metabase origin/,
     );
+  });
+});
+
+describe("onBlocked reporting", () => {
+  const base = "https://mb.example.com/embed/apps/sales";
+  const origin = "https://mb.example.com";
+  const fakeWindow = (fetch: typeof global.fetch): SandboxRealm => ({
+    fetch,
+    XMLHttpRequest,
+    location: { href: base, origin },
+  });
+
+  it("reports a blocked fetch, and stays silent when no listener is given", async () => {
+    const realFetch = jest.fn(() => Promise.resolve(new Response("ok")));
+    const onBlocked = jest.fn();
+
+    const reporting = makeSandboxFetch(
+      fakeWindow(realFetch),
+      ["https://api.example.com"],
+      "sales",
+      onBlocked,
+    )!;
+    await expect(reporting("https://evil.example.org/x")).rejects.toThrow();
+
+    expect(onBlocked).toHaveBeenCalledWith(
+      // `type: "network"` is added a layer up, in `distortions.ts`.
+      expect.objectContaining({
+        api: "fetch",
+        url: "https://evil.example.org/x",
+        reason: expect.stringContaining("not in allowed_hosts"),
+      }),
+    );
+
+    // Production passes no listener; that path must be unchanged.
+    const silent = makeSandboxFetch(
+      fakeWindow(realFetch),
+      ["https://api.example.com"],
+      "sales",
+    )!;
+    await expect(silent("https://evil.example.org/x")).rejects.toThrow();
+    expect(realFetch).not.toHaveBeenCalled();
+  });
+
+  it("still blocks when the listener throws", async () => {
+    const realFetch = jest.fn(() => Promise.resolve(new Response("ok")));
+    const sandboxFetch = makeSandboxFetch(
+      fakeWindow(realFetch),
+      ["https://api.example.com"],
+      "sales",
+      () => {
+        throw new Error("listener exploded");
+      },
+    )!;
+
+    // A broken reporter must not become a way through the allowlist.
+    await expect(sandboxFetch("https://evil.example.org/")).rejects.toThrow();
+    expect(realFetch).not.toHaveBeenCalled();
+  });
+
+  it("reports a request whose toString throws, rather than losing the block", async () => {
+    const realFetch = jest.fn(() => Promise.resolve(new Response("ok")));
+    const onBlocked = jest.fn();
+    const sandboxFetch = makeSandboxFetch(
+      fakeWindow(realFetch),
+      ["https://api.example.com"],
+      "sales",
+      onBlocked,
+    )!;
+
+    // A guest-realm value: unparseable, and hostile when stringified. The block
+    // must still be recorded, or an app could hide its own blocked calls.
+    const hostile = {
+      toString() {
+        throw new Error("nope");
+      },
+    };
+
+    await expect(
+      // Deliberately not a RequestInfo: the point is a guest value the wrapper
+      // can neither parse nor safely stringify.
+      sandboxFetch(hostile as unknown as RequestInfo),
+    ).rejects.toThrow();
+    expect(onBlocked).toHaveBeenCalledWith(
+      expect.objectContaining({ url: "(unreadable request)" }),
+    );
+    expect(realFetch).not.toHaveBeenCalled();
   });
 });

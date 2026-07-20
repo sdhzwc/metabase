@@ -65,6 +65,32 @@ describe("runDevConnectionCheck", () => {
     expect(status?.error).toContain("API key was rejected (401)");
   });
 
+  it("reports the instance version and a missing key on a healthy instance", async () => {
+    // Only the (input) call shape is exercised.
+    const fetchFn = jest.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/api/health")) {
+        return new Response("ok", { status: 200 });
+      }
+      return json({ version: { tag: "v1.56.0" } });
+    }) as unknown as typeof fetch;
+
+    await runDevConnectionCheck({
+      metabaseUrl: METABASE_URL,
+      apiKey: undefined,
+      sdkVersion: "0.64.0",
+      fetchFn,
+    });
+
+    const status = getDevConnectionStatus();
+    expect(status).toMatchObject({
+      reachable: true,
+      apiKeyValid: false,
+      metabaseVersion: "v1.56.0",
+    });
+    expect(status?.error).toContain("DATA_APP_MB_API_KEY is not set");
+  });
+
   it("reports an unset URL without probing anything", async () => {
     // Never called — the check must bail before probing.
     const fetchFn = jest.fn() as unknown as typeof fetch;

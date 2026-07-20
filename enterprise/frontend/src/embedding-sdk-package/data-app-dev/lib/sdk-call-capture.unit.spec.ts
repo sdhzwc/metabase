@@ -71,6 +71,18 @@ describe("installSdkCallCapture", () => {
     expect(clone).not.toHaveBeenCalled();
   });
 
+  it("records the request method from init or a Request", async () => {
+    install();
+
+    await window.fetch(`${METABASE_URL}/api/card/1`, { method: "post" });
+    expect(calls()[0].method).toBe("POST");
+
+    await window.fetch(
+      new Request(`${METABASE_URL}/api/card/2`, { method: "PUT" }),
+    );
+    expect(calls()[1].method).toBe("PUT");
+  });
+
   it("counts rows for a real query result", async () => {
     install();
     realFetch.mockResolvedValue(jsonResponse({ data: { rows: [1, 2, 3] } }));

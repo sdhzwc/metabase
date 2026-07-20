@@ -6,12 +6,10 @@ import {
   formatDevDiagnostic,
   getDevConnectionStatus,
   getDevDiagnostics,
-  getDevManifestStatus,
   installDevDiagnostics,
   recordDevDiagnostic,
   recordSandboxBlockedEvent,
   setDevConnectionStatus,
-  setDevManifestStatus,
   subscribeDevDiagnostics,
 } from "./diagnostics";
 
@@ -241,7 +239,7 @@ describe("sdk-call entries", () => {
   });
 });
 
-describe("connection and manifest status", () => {
+describe("connection status", () => {
   it("stores the connection status and notifies subscribers", () => {
     const listener = jest.fn();
     const unsubscribe = subscribeDevDiagnostics(listener);
@@ -258,23 +256,6 @@ describe("connection and manifest status", () => {
     expect(getDevConnectionStatus()).toMatchObject({ reachable: true });
     expect(listener).toHaveBeenCalledTimes(1);
     unsubscribe();
-  });
-
-  it("stores the manifest status, surviving a diagnostics clear", () => {
-    setDevManifestStatus({
-      checkedAt: 1,
-      name: "Sales",
-      bundlePath: "dist/index.js",
-      bundlePathExists: false,
-      allowedHosts: [],
-      errors: [],
-      warnings: ["missing bundle"],
-      restartRequired: false,
-    });
-
-    clearDevDiagnostics();
-
-    expect(getDevManifestStatus()).toMatchObject({ name: "Sales" });
   });
 });
 

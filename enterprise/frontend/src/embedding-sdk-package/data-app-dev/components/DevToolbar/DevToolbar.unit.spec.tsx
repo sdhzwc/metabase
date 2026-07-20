@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { act, render, screen, waitFor } from "__support__/ui";
+import { render, screen, waitFor } from "__support__/ui";
 
 import type {
   DataAppDiagnosticPayload,
@@ -281,7 +281,10 @@ describe("DevToolbar expanded (docked) mode", () => {
 });
 
 // Guard the contract this refactor rests on: the panel must not reach into the
-// in-page store, or it would drift from what an external reader sees.
+// in-page store, or it would drift from what an external reader sees. Cursor
+// behaviour is covered in `lib/use-diagnostics-feed.unit.spec.ts`, against a stub
+// that actually filters by `startEventId` — asserting it here, where the stub
+// ignores the query string, only looks like coverage.
 describe("DevToolbar data source", () => {
   it("polls the diagnostics endpoint", async () => {
     await setup();
@@ -289,21 +292,5 @@ describe("DevToolbar data source", () => {
     expect(globalThis.fetch).toHaveBeenCalledWith(
       expect.stringContaining("/__data-app/diagnostics?startEventId="),
     );
-  });
-
-  it("advances its cursor so entries are not re-appended", async () => {
-    serve([entry({ eventId: 1, summary: "once" })]);
-    await setup();
-    await userEvent.click(getToggle());
-
-    expect(await screen.findByText("once")).toBeInTheDocument();
-
-    // The server would return nothing new for the advanced cursor.
-    serve([]);
-    await act(async () => {
-      await Promise.resolve();
-    });
-
-    expect(screen.getAllByText("once")).toHaveLength(1);
   });
 });

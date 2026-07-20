@@ -5,7 +5,6 @@ export { DevToolbar } from "./data-app-dev/components/DevToolbar/DevToolbar";
 export {
   installDevDiagnostics,
   recordSandboxBlockedEvent,
-  setDevManifestStatus,
 } from "./data-app-dev/components/DevToolbar/diagnostics";
 export { runDevConnectionCheck } from "./data-app-dev/lib/connection-check";
 export { installDiagnosticsReporter } from "./data-app-dev/lib/diagnostics-reporter";

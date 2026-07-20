@@ -1,12 +1,8 @@
 /**
- * The manifest-validation payload the dev plugin pushes to the harness page
- * over the Vite WS channel. Shared between the node-side validator
- * (`config/validate-manifest.ts`) and the browser-side diagnostics store, so
- * keep this module free of node imports.
+ * The manifest-validation payload. Produced by the node-side validator
+ * (`config/validate-manifest.ts`), served on the diagnostics feed, and rendered
+ * by the toolbar's Manifest tab — so keep this module free of node imports.
  */
-
-/** Custom HMR event carrying a {@link DataAppManifestStatus} payload. */
-export const DATA_APP_MANIFEST_EVENT = "data-app:manifest";
 
 export interface DataAppManifestStatus {
   checkedAt: number;
