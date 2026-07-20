@@ -12,6 +12,7 @@ import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
+import * as Urls from "metabase/urls";
 import type {
   Collection,
   CurrentWorkspace,
@@ -101,13 +102,8 @@ const setupNavbarEndpoints = (isOpened = true) => {
   });
   setupUserKeyValueEndpoints({
     namespace: "data_studio",
-    key: "hasVisitedDataStudio",
-    value: false,
-  });
-  setupUserKeyValueEndpoints({
-    namespace: "data_studio",
     key: "lastTopLevelRoute",
-    value: null,
+    value: Urls.dataStudioGuide(),
   });
 };
 

@@ -196,8 +196,13 @@ export type UserKeyValue =
     }
   | {
       namespace: "data_studio";
-      key: string;
-      value: boolean | string;
+      key: "isNavbarOpened";
+      value: boolean;
+    }
+  | {
+      namespace: "data_studio";
+      key: "lastTopLevelRoute";
+      value: string;
     }
   | {
       namespace: "dependency_diagnostics";

@@ -1,6 +1,9 @@
 import fetchMock from "fetch-mock";
 
-import { setupUserKeyValueEndpoints } from "__support__/server-mocks";
+import {
+  setupNullGetUserKeyValueEndpoints,
+  setupUserKeyValueEndpoints,
+} from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
@@ -8,17 +11,15 @@ import * as Urls from "metabase/urls";
 import { DataStudioIndexRedirect } from "./DataStudioIndexRedirect";
 
 function setupKeyValues({
-  hasVisited = false,
-  lastTopLevelRoute = null,
+  lastTopLevelRoute,
 }: {
-  hasVisited?: boolean;
-  lastTopLevelRoute?: string | null;
+  lastTopLevelRoute?: string;
 } = {}) {
-  setupUserKeyValueEndpoints({
-    namespace: "data_studio",
-    key: "hasVisitedDataStudio",
-    value: hasVisited,
-  });
+  if (lastTopLevelRoute == null) {
+    setupNullGetUserKeyValueEndpoints();
+    return;
+  }
+
   setupUserKeyValueEndpoints({
     namespace: "data_studio",
     key: "lastTopLevelRoute",
@@ -42,8 +43,8 @@ describe("DataStudioIndexRedirect", () => {
     fetchMock.clearHistory();
   });
 
-  it("redirects first-time visitors to the guide", async () => {
-    setupKeyValues({ hasVisited: false, lastTopLevelRoute: null });
+  it("redirects to the guide when there is no saved route", async () => {
+    setupKeyValues();
     const { history } = setup();
 
     await waitFor(() => {
@@ -54,26 +55,12 @@ describe("DataStudioIndexRedirect", () => {
   });
 
   it("redirects returning visitors to their last top-level route", async () => {
-    setupKeyValues({
-      hasVisited: true,
-      lastTopLevelRoute: Urls.dataStudioData(),
-    });
+    setupKeyValues({ lastTopLevelRoute: Urls.dataStudioData() });
     const { history } = setup();
 
     await waitFor(() => {
       expect(history?.getCurrentLocation().pathname).toBe(
         Urls.dataStudioData(),
-      );
-    });
-  });
-
-  it("falls back to the guide when returning visitors have no saved route", async () => {
-    setupKeyValues({ hasVisited: true, lastTopLevelRoute: null });
-    const { history } = setup();
-
-    await waitFor(() => {
-      expect(history?.getCurrentLocation().pathname).toBe(
-        Urls.dataStudioGuide(),
       );
     });
   });

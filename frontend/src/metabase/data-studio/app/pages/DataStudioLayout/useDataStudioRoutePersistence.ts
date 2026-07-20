@@ -8,11 +8,6 @@ import { getDataStudioTopLevelRoute } from "./utils";
 
 export function useDataStudioRoutePersistence() {
   const { pathname } = useSelector(getLocation);
-  const { setValue: setHasVisited } = useUserKeyValue({
-    namespace: "data_studio",
-    key: "hasVisitedDataStudio",
-    defaultValue: false,
-  });
   const { setValue: setLastTopLevelRoute } = useUserKeyValue({
     namespace: "data_studio",
     key: "lastTopLevelRoute",
@@ -25,6 +20,5 @@ export function useDataStudioRoutePersistence() {
     }
 
     void setLastTopLevelRoute(topLevelRoute);
-    void setHasVisited(true);
-  }, [pathname, setHasVisited, setLastTopLevelRoute]);
+  }, [pathname, setLastTopLevelRoute]);
 }
