@@ -65,10 +65,10 @@ export const Schedule = ({
   const [internalCronString, setInternalCronString] = useState(() =>
     formatCronExpressionForUI(initialCronString),
   );
-  const schedule = useMemo(() => {
+  const schedule = useMemo<ScheduleSettings>(() => {
     return (
       cronToScheduleSettings(initialCronString, isCustomSchedule) ?? {
-        schedule_type: "hourly" as ScheduleType,
+        schedule_type: "hourly",
         schedule_minute: 0,
       }
     );
@@ -88,6 +88,7 @@ export const Schedule = ({
       if (updatedField === "schedule_type") {
         // When a new schedule type is selected, use the default values for that type
         newSchedule = {
+          // Unjustified type cast. FIXME
           schedule_type: newValue as ScheduleType,
           ...defaults,
         };
@@ -211,22 +212,18 @@ export const Schedule = ({
           c(
             "{0} is a verb like 'Check', {1} is an adverb like 'by the minute', {2} is a number of minutes.",
           )
+            // Unjustified type cast. FIXME
             .jt`${verb} ${selectFrequency} every ${selectEveryMinute} ${ngettext(msgid`Minute`, "Minutes", schedule_minute as number).toLocaleLowerCase()}`,
       )
       .with("hourly", () => {
-        return minutesOnHourPicker ? (
-          // For example, "Send hourly at 15 minutes past the hour"
-          c(
-            "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is a number of minutes",
-          )
-            .jt`${verb} ${selectFrequency} at ${selectMinute} minutes past the hour`
-        ) : (
-          // For example, "Send hourly"
-          // NOTE: babel-ttag-plugin prevents us from localizing this JSX because it consists only of placeholders
-          <>
-            {verb} {selectFrequency}
-          </>
-        );
+        return minutesOnHourPicker
+          ? // For example, "Send hourly at 15 minutes past the hour"
+            c(
+              "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is a number of minutes",
+            )
+              .jt`${verb} ${selectFrequency} at ${selectMinute} minutes past the hour`
+          : // For example, "Send hourly"
+            [verb, selectFrequency];
       })
       .with(
         "daily",
