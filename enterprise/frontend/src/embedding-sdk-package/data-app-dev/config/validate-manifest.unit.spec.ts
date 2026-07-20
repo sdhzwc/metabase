@@ -167,4 +167,56 @@ describe("validateDataAppManifest", () => {
     expect(status.errors).toEqual([]);
     expect(status.restartRequired).toBe(true);
   });
+
+  it("does not demand a restart for a padded or reordered allowed_hosts list", () => {
+    // The startup list is the raw YAML; the validated list is normalized. Comparing
+    // them naively reported a restart that restarting could never satisfy.
+    setup({
+      [YAML_PATH]: `
+name: Sales dashboard
+path: dist/index.js
+allowed_hosts:
+  - "  https://B.example.com  "
+  - https://a.example.com
+`,
+    });
+
+    const status = validateDataAppManifest(APP_ROOT, [
+      "https://a.example.com",
+      "  https://B.example.com  ",
+    ]);
+
+    expect(status.restartRequired).toBe(false);
+  });
+
+  it("accepts a non-string scalar the backend would stringify", () => {
+    // `(some-> v str str/trim not-empty)` imports `name: 2024` as "2024".
+    setup({
+      [YAML_PATH]: `
+name: 2024
+path: dist/index.js
+`,
+    });
+
+    const status = validateDataAppManifest(APP_ROOT, []);
+
+    expect(status.name).toBe("2024");
+    expect(status.errors).toEqual([]);
+  });
+
+  it("rejects an allowed_hosts entry remote-sync would reject", () => {
+    setup({
+      [YAML_PATH]: `
+name: Sales dashboard
+path: dist/index.js
+allowed_hosts:
+  - https://internal_api.acme.com
+`,
+    });
+
+    const status = validateDataAppManifest(APP_ROOT, []);
+
+    expect(status.errors).toHaveLength(1);
+    expect(status.errors[0]).toContain("internal_api.acme.com");
+  });
 });

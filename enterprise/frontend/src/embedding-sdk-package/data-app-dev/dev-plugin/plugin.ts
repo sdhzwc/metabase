@@ -310,6 +310,9 @@ export function dataAppSandboxDevPlugin(
         };
 
         res.setHeader("Content-Type", "application/json");
+        // Repeated reads hit the same URL whenever no new events arrive, and a
+        // heuristically cached response would freeze the toolbar on stale data.
+        res.setHeader("Cache-Control", "no-store");
         res.end(JSON.stringify(report, null, 2));
       });
 

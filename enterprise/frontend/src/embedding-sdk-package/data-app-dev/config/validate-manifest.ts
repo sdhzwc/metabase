@@ -11,10 +11,14 @@ import { load as parseYaml } from "js-yaml";
 
 // The sandbox's own origin matcher, so "valid entry" here can't drift from what
 // the sandbox will actually allow; pure code, bundled as a value (cf. plugin.ts).
+// A namespace import stays single-line so the disable covers the reported line.
 // eslint-disable-next-line metabase/no-external-references-for-sdk-package-code
-import { isValidAllowedHostEntry } from "metabase-enterprise/data_apps/sandbox/allowed-hosts";
+import * as sandboxAllowedHosts from "metabase-enterprise/data_apps/sandbox/allowed-hosts";
 
 import type { DataAppManifestStatus } from "../manifest-status";
+
+const { isValidAllowedHostEntry, normalizeAllowedHostEntry } =
+  sandboxAllowedHosts;
 
 const CONFIG_FILE_NAME = "data_app.yaml";
 
@@ -22,11 +26,18 @@ const CONFIG_FILE_NAME = "data_app.yaml";
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const RESERVED_SLUGS = new Set(["repo-status"]);
 
+// The backend does `(some-> v str str/trim not-empty)`, so a YAML scalar like
+// `name: 2024` imports fine as "2024". Coerce the same way rather than reporting
+// an error the sync wouldn't raise.
 const asTrimmedString = (value: unknown): string | null => {
-  if (typeof value !== "string") {
+  if (
+    typeof value !== "string" &&
+    typeof value !== "number" &&
+    typeof value !== "boolean"
+  ) {
     return null;
   }
-  const trimmed = value.trim();
+  const trimmed = String(value).trim();
   return trimmed.length > 0 ? trimmed : null;
 };
 
@@ -35,9 +46,22 @@ const normalizePath = (value: string): string => value.replace(/^\.\//, "");
 const hasPathTraversal = (value: string): boolean =>
   value.split("/").includes("..");
 
-const sameHosts = (left: string[], right: string[]): boolean =>
-  left.length === right.length &&
-  left.every((entry, index) => entry === right[index]);
+// Compared after the backend's normalization and sorted: the startup list is the
+// raw YAML (untrimmed, possibly invalid), while the validated list is normalized,
+// so a padded entry or a reordered list would otherwise report a restart that
+// changes nothing — permanently, since restarting can't make the two match.
+const sameHosts = (left: string[], right: string[]): boolean => {
+  const normalize = (hosts: string[]) =>
+    hosts
+      .filter((entry) => typeof entry === "string")
+      .map(normalizeAllowedHostEntry)
+      .filter(isValidAllowedHostEntry)
+      .sort();
+
+  const [a, b] = [normalize(left), normalize(right)];
+
+  return a.length === b.length && a.every((entry, index) => entry === b[index]);
+};
 
 /**
  * Validate the app's manifest against the same rules remote-sync applies.
@@ -129,7 +153,7 @@ export function validateDataAppManifest(
           `"${String(entry)}" is not a valid allowed_hosts entry — use an origin like https://api.example.com or https://*.example.com.`,
         );
       } else {
-        status.allowedHosts.push(host);
+        status.allowedHosts.push(normalizeAllowedHostEntry(host));
       }
     }
   }

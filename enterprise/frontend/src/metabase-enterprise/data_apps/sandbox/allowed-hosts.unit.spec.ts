@@ -1,9 +1,36 @@
 import {
   type SandboxRealm,
   isHostAllowed,
+  isValidAllowedHostEntry,
   makeSandboxFetch,
   makeSandboxXhr,
 } from "./allowed-hosts";
+
+describe("isValidAllowedHostEntry — backend parity", () => {
+  // The WHATWG URL parser accepts these; the backend's `allowed-host-re` does
+  // not. Accepting them here would green-light a manifest that 400s on sync,
+  // which defeats the point of validating locally.
+  it.each([
+    "https://internal_api.acme.com",
+    "https://[::1]",
+    "https://münchen.de",
+    "https://api.example.com.",
+    "https://api.example.com/v1",
+    "ftp://example.com",
+  ])("rejects %s, which remote-sync would reject", (entry) => {
+    expect(isValidAllowedHostEntry(entry)).toBe(false);
+  });
+
+  it.each([
+    "https://api.example.com",
+    "https://*.internal.acme.com",
+    "http://localhost:3000",
+    // normalized first, as the backend does
+    "  HTTPS://API.EXAMPLE.COM/  ",
+  ])("accepts %s", (entry) => {
+    expect(isValidAllowedHostEntry(entry)).toBe(true);
+  });
+});
 
 const u = (href: string) => new URL(href);
 

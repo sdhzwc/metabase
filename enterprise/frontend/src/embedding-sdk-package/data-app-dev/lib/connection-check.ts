@@ -65,7 +65,12 @@ export async function runDevConnectionCheck({
     const health = await fetchFn(`${base}/api/health`);
     status.reachable = health.ok;
     if (!health.ok) {
+      // Stop here rather than fall through to the key check: an unreachable
+      // instance rejects every request, so continuing would overwrite this with
+      // "the API key was rejected" and send the author to fix a fine .env.local.
       status.error = `${base}/api/health responded with ${health.status}.`;
+      setDevConnectionStatus(status);
+      return;
     }
   } catch (error) {
     status.error = `Could not reach ${base}: ${describeFailure(error)}`;

@@ -211,18 +211,25 @@ export function DevToolbar() {
     queries: entries.filter((entry) => entry.kind === "sdk-call"),
   };
 
-  // The panel reads the dev server's feed, so an unreachable server means "no
-  // data available", not "nothing went wrong" — say which.
-  const banner = feed.unreachable ? (
-    <div className={S.Problem}>
-      Can&apos;t reach the dev server, so this is not up to date. Is `npm run
-      dev` still running?
-    </div>
-  ) : feed.clients === 0 ? (
-    <div className={S.Note}>
-      No preview tab is connected, so nothing has been captured yet.
-    </div>
-  ) : null;
+  // The panel reads the dev server's feed, so no data can mean "the feed is
+  // broken" rather than "nothing went wrong" — say which. `loaded` gates the
+  // no-clients note so it doesn't flash before the first response lands.
+  const banner =
+    feed.problem?.kind === "unreachable" ? (
+      <div className={S.Problem}>
+        Can&apos;t reach the dev server, so this is not up to date. Is `npm run
+        dev` still running?
+      </div>
+    ) : feed.problem?.kind === "http" ? (
+      <div className={S.Problem}>
+        The dev server answered {feed.problem.status} for the diagnostics feed,
+        so this is not up to date.
+      </div>
+    ) : feed.loaded && feed.clients === 0 ? (
+      <div className={S.Note}>
+        No preview tab is connected, so nothing has been captured yet.
+      </div>
+    ) : null;
 
   const header = (
     <div className={S.Header}>

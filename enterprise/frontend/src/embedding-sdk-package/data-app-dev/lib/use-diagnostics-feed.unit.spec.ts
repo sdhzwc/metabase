@@ -1,0 +1,143 @@
+import { act, renderHook, waitFor } from "@testing-library/react";
+
+import {
+  DATA_APP_DIAGNOSTICS_LIMIT,
+  type DataAppDiagnosticPayload,
+  type DataAppDiagnosticsReport,
+} from "../diagnostics-channel";
+
+import { useDiagnosticsFeed } from "./use-diagnostics-feed";
+
+const entry = (eventId: number): DataAppDiagnosticPayload => ({
+  eventId,
+  time: 0,
+  kind: "error",
+  summary: `event ${eventId}`,
+  detail: null,
+  hint: null,
+  alert: true,
+});
+
+const report = (
+  entries: DataAppDiagnosticPayload[],
+): DataAppDiagnosticsReport => ({
+  entries,
+  connection: null,
+  manifest: null,
+  clients: 1,
+  lastReportAt: 1,
+  lastRebuildAt: 1,
+  nextEventId: (entries.at(-1)?.eventId ?? 0) + 1,
+});
+
+const ok = (body: DataAppDiagnosticsReport) =>
+  // Only `ok` and `json` are read.
+  ({ ok: true, json: () => Promise.resolve(body) }) as Response;
+
+afterEach(() => jest.restoreAllMocks());
+
+describe("useDiagnosticsFeed", () => {
+  it("does not append the same batch twice when polls overlap", async () => {
+    // A rebuild blocks the dev server, so a poll can outlive its interval tick.
+    let release: (value: Response) => void = () => undefined;
+    const pending = new Promise<Response>((resolve) => {
+      release = resolve;
+    });
+
+    const fetchSpy = jest
+      .spyOn(globalThis, "fetch")
+      .mockReturnValueOnce(pending)
+      .mockResolvedValue(ok(report([entry(1)])));
+
+    const { result } = renderHook(() => useDiagnosticsFeed("/feed", 10));
+
+    // Let several interval ticks fire while the first read is still in flight.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 60));
+    });
+
+    // The guard means those ticks were dropped, not queued behind the same cursor.
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      release(ok(report([entry(1)])));
+      await pending;
+    });
+
+    await waitFor(() => expect(result.current.entries).toHaveLength(1));
+  });
+
+  it("keeps at most the server's buffer size", async () => {
+    const overflowing = Array.from(
+      { length: DATA_APP_DIAGNOSTICS_LIMIT + 25 },
+      (_, index) => entry(index + 1),
+    );
+    jest.spyOn(globalThis, "fetch").mockResolvedValue(ok(report(overflowing)));
+
+    const { result } = renderHook(() => useDiagnosticsFeed("/feed", 10));
+
+    await waitFor(() =>
+      expect(result.current.entries).toHaveLength(DATA_APP_DIAGNOSTICS_LIMIT),
+    );
+    // The newest survive, the oldest are dropped.
+    expect(result.current.entries.at(-1)?.eventId).toBe(overflowing.length);
+  });
+
+  it("discards a response that was in flight when the feed was cleared", async () => {
+    let release: (value: Response) => void = () => undefined;
+    const pending = new Promise<Response>((resolve) => {
+      release = resolve;
+    });
+
+    jest
+      .spyOn(globalThis, "fetch")
+      .mockReturnValueOnce(pending)
+      .mockResolvedValue(ok(report([])));
+
+    const { result } = renderHook(() => useDiagnosticsFeed("/feed", 10_000));
+
+    act(() => result.current.clear());
+
+    await act(async () => {
+      release(ok(report([entry(1), entry(2)])));
+      await pending;
+    });
+
+    // Those two were fetched before the clear; showing them would resurrect
+    // exactly what the user asked to remove.
+    expect(result.current.entries).toEqual([]);
+  });
+
+  it("distinguishes a refused response from an unreachable server", async () => {
+    const fetchSpy = jest
+      .spyOn(globalThis, "fetch")
+      // Only `ok`/`status` are read.
+      .mockResolvedValue({ ok: false, status: 500 } as Response);
+
+    const { result } = renderHook(() => useDiagnosticsFeed("/feed", 10_000));
+
+    await waitFor(() =>
+      expect(result.current.problem).toEqual({ kind: "http", status: 500 }),
+    );
+
+    fetchSpy.mockRejectedValue(new Error("connection refused"));
+    const { result: offline } = renderHook(() =>
+      useDiagnosticsFeed("/feed", 10_000),
+    );
+
+    await waitFor(() =>
+      expect(offline.current.problem).toEqual({ kind: "unreachable" }),
+    );
+  });
+
+  it("reports `loaded` only once a response has landed", async () => {
+    jest.spyOn(globalThis, "fetch").mockResolvedValue(ok(report([])));
+
+    const { result } = renderHook(() => useDiagnosticsFeed("/feed", 10_000));
+
+    // Before the first response, `clients: 0` is an absence of data, not a fact.
+    expect(result.current.loaded).toBe(false);
+
+    await waitFor(() => expect(result.current.loaded).toBe(true));
+  });
+});

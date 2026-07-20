@@ -6,7 +6,10 @@
 
 import { recordDevDiagnostic } from "../components/DevToolbar/diagnostics";
 
-const QUERY_ENDPOINT_RE = /^\/api\/(dataset($|\/)|card\/\d+\/query)/;
+// Exact paths only. `/api/dataset/csv` and `/api/dataset/xlsx` are exports, and
+// buffering one of those to count rows would clone and download the whole file
+// before the caller ever sees the response.
+const QUERY_ENDPOINT_RE = /^\/api\/(dataset|card\/\d+\/query)$/;
 
 let installed = false;
 
@@ -48,6 +51,11 @@ const captureRowCount = async (
   if (!response.ok || !QUERY_ENDPOINT_RE.test(endpoint)) {
     return undefined;
   }
+  // Belt and braces with the path check above: never buffer a body that isn't
+  // the JSON query result we can actually count.
+  if (!response.headers.get("content-type")?.includes("application/json")) {
+    return undefined;
+  }
   try {
     return readRowCount(await response.clone().json());
   } catch {
@@ -55,33 +63,49 @@ const captureRowCount = async (
   }
 };
 
+/** Aborts are routine — StrictMode remounts, superseded queries — not failures. */
+const isAbort = (error: unknown): boolean =>
+  error instanceof DOMException && error.name === "AbortError";
+
 /**
  * Start capturing SDK→Metabase calls. Call before the SDK issues its first
  * request. Idempotent; a missing `metabaseUrl` (unset `.env.local`) is a no-op —
- * the Connection tab reports that case.
+ * the Connection tab reports that case. Returns a teardown that restores the
+ * original `fetch`, so a re-mounted harness can't wrap an already-wrapped fetch
+ * and record every call twice.
  */
-export function installSdkCallCapture(metabaseUrl: string | undefined): void {
+export function installSdkCallCapture(
+  metabaseUrl: string | undefined,
+): () => void {
   if (installed || typeof window === "undefined" || !metabaseUrl) {
-    return;
+    return () => undefined;
   }
 
   let metabaseOrigin: string;
+  let basePath: string;
   try {
-    metabaseOrigin = new URL(metabaseUrl).origin;
+    const parsed = new URL(metabaseUrl);
+    metabaseOrigin = parsed.origin;
+    // A sub-path deployment (`https://acme.com/metabase`) prefixes every path;
+    // strip it so endpoints are comparable to the paths the SDK documents.
+    basePath = parsed.pathname.replace(/\/+$/, "");
   } catch {
-    return;
+    return () => undefined;
   }
   installed = true;
 
   const realFetch = window.fetch.bind(window);
   window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = resolveUrl(input);
-    if (url?.origin !== metabaseOrigin) {
+    if (
+      url?.origin !== metabaseOrigin ||
+      (basePath && !url.pathname.startsWith(basePath))
+    ) {
       return realFetch(input, init);
     }
 
     const method = resolveMethod(input, init);
-    const endpoint = url.pathname;
+    const endpoint = url.pathname.slice(basePath.length) || "/";
     const startedAt = performance.now();
     const durationMs = () => Math.round(performance.now() - startedAt);
 
@@ -97,15 +121,22 @@ export function installSdkCallCapture(metabaseUrl: string | undefined): void {
       });
       return response;
     } catch (error) {
-      recordDevDiagnostic({
-        kind: "sdk-call",
-        method,
-        endpoint,
-        status: null,
-        durationMs: durationMs(),
-        error: error instanceof Error ? error.message : String(error),
-      });
+      if (!isAbort(error)) {
+        recordDevDiagnostic({
+          kind: "sdk-call",
+          method,
+          endpoint,
+          status: null,
+          durationMs: durationMs(),
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
       throw error;
     }
+  };
+
+  return () => {
+    window.fetch = realFetch;
+    installed = false;
   };
 }
