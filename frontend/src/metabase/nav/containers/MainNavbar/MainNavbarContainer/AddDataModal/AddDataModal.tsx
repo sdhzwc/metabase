@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useStorageSetup } from "metabase/common/components/upsells/StoragePurchaseModal";
@@ -32,11 +32,16 @@ interface Tabs {
 
 const DEFAULT_TAB = "db" satisfies AddDataTab;
 
+const EVENT_MAPPING = {
+  db: "database_tab_clicked",
+  csv: "csv_tab_clicked",
+  gsheets: "sheets_tab_clicked",
+} as const satisfies Record<AddDataTab, string>;
+
 export const AddDataModal = (props: AddDataModalProps) => (
-  // The provider sits outside `Modal.Root` so the storage setup state and its
-  // polling survive the modal being closed and reopened, and so the purchase
-  // confirmation modal it hosts can replace this modal instead of stacking.
-  // `enabled` defers the add-ons fetch until the modal is actually shown.
+  // Outside `Modal.Root` so setup state and its polling survive the modal
+  // closing, and so the purchase modal it hosts replaces this one rather than
+  // stacking. `enabled` defers the add-ons fetch until the modal is shown.
   <PLUGIN_UPLOAD_MANAGEMENT.StorageSetupProvider enabled={props.opened}>
     <AddDataModalContent {...props} />
   </PLUGIN_UPLOAD_MANAGEMENT.StorageSetupProvider>
@@ -48,49 +53,58 @@ const AddDataModalContent = ({
   initialTab,
   fromEmbeddingSetupGuide,
 }: AddDataModalProps) => {
-  const { areUploadsEnabled, canManageUploads, isAdmin } = useAddDataState();
-  const { isPurchaseModalOpened, hasAttachedDwh } = useStorageSetup();
+  const { areUploadsEnabled, canManageUploads, isAdmin, hasAttachedDwh } =
+    useAddDataState();
+  const { isPurchaseModalOpened } = useStorageSetup();
 
   const [activeTab, setActiveTab] = useState<AddDataTab | null>(null);
   const isHosted = useSetting("is-hosted?");
+
+  // Both CSV and Google Sheets stay visible even when the panel can only say
+  // "contact an admin" — the tabs advertise what Metabase can do. Google Sheets
+  // is conditional only on the instance being hosted.
+  const tabs = useMemo(() => {
+    const result: Tabs[] = [
+      {
+        name: t`Database`,
+        value: "db",
+        iconName: "database",
+      },
+      {
+        name: t`CSV`,
+        value: "csv",
+        iconName: "table2",
+      },
+    ] satisfies Tabs[];
+
+    if (isHosted) {
+      result.push({
+        name: t`Google Sheets`,
+        value: "gsheets",
+        iconName: "document",
+      } satisfies Tabs);
+    }
+
+    return result;
+  }, [isHosted]);
 
   const handleTabChange = (tabValue: string | null) => {
     if (tabValue === activeTab || !isValidTab(tabValue)) {
       return;
     }
 
-    const eventMapping = {
-      db: "database_tab_clicked",
-      csv: "csv_tab_clicked",
-      gsheets: "sheets_tab_clicked",
-    } as const satisfies Record<AddDataTab, string>;
+    trackAddDataEvent(EVENT_MAPPING[tabValue]);
 
-    trackAddDataEvent(eventMapping[tabValue]);
     setActiveTab(tabValue);
   };
-
-  // Both CSV and Google Sheets stay visible even when the panel can only tell
-  // the user to contact an admin: the tabs advertise what Metabase can do, and
-  // hiding them made the two follow contradictory rules. Only Google Sheets is
-  // conditional, and only on the instance being hosted.
-  const tabs: Tabs[] = [
-    { name: t`Database`, value: "db", iconName: "database" },
-    { name: t`CSV`, value: "csv", iconName: "table2" },
-    ...(isHosted
-      ? ([
-          { name: t`Google Sheets`, value: "gsheets", iconName: "document" },
-        ] satisfies Tabs[])
-      : []),
-  ];
 
   useEffect(() => {
     setActiveTab(initialTab ?? DEFAULT_TAB);
   }, [initialTab]);
 
   return (
-    // The modal hides itself (stays mounted) while the storage purchase
-    // confirmation is shown, so the confirmation replaces it instead of
-    // stacking on top of it.
+    // Hides itself, but stays mounted, while the purchase confirmation is up,
+    // so the confirmation replaces it instead of stacking on top of it.
     <Modal.Root
       opened={opened && !isPurchaseModalOpened}
       onClose={onClose}

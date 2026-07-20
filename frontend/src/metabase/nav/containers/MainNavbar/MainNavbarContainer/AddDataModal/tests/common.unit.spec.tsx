@@ -251,7 +251,7 @@ describe("AddDataModal", () => {
 
     it("still offers the CSV tab to a regular user who cannot upload to any database", async () => {
       // The tabs advertise what Metabase can do, so CSV stays visible and the
-      // panel explains what is missing — the same rule Google Sheets follows.
+      // panel explains what is missing, the same way Google Sheets does.
       setup({ isAdmin: false, uploadsEnabled: true, canUpload: false });
 
       expect(

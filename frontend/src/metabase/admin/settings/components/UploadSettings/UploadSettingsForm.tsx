@@ -172,8 +172,21 @@ export function UploadSettingsFormView({
       {isH2db && <H2PersistenceWarning isHosted={isHosted} />}
       <Group align="flex-start">
         <Select
-          label={t`Database to use for uploads`}
-          description={t`PostgreSQL, MySQL, Redshift, and ClickHouse databases are supported for file storage.`}
+          label={
+            <Group gap="xs" wrap="nowrap" align="center">
+              {t`Database to use for uploads`}
+              <Tooltip
+                label={t`PostgreSQL, MySQL, Redshift, and ClickHouse databases are supported for file storage.`}
+              >
+                <Icon
+                  name="info"
+                  size={14}
+                  c="text-secondary"
+                  data-testid="uploads-db-info-icon"
+                />
+              </Tooltip>
+            </Group>
+          }
           value={dbId ? String(dbId) : null}
           placeholder={t`Select a database`}
           disabled={!hasValidDatabases}

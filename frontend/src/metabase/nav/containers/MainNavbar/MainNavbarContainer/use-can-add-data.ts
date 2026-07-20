@@ -1,12 +1,13 @@
 import { useAddDataState } from "./AddDataModal/use-add-data-state";
 
 /**
- * Whether to offer the "Add data" entry points in the navbar. Composed from
- * `useAddDataState` so the navbar and the modal it opens cannot disagree about
- * who can upload — the upload facts have a single owner.
+ * Whether to offer the "Add data" entry points in the navbar. Shares
+ * `useAddDataState` with the modal it opens so the two cannot disagree.
  */
 export function useCanAddData() {
-  const { canUploadToDatabase, canManageUploads, isAdmin } = useAddDataState();
+  // No separate admin term: `canManageUploads` is `canAccessSettings`, which
+  // admins always pass.
+  const { canUploadToDatabase, canManageUploads } = useAddDataState();
 
-  return canUploadToDatabase || canManageUploads || isAdmin;
+  return canUploadToDatabase || canManageUploads;
 }

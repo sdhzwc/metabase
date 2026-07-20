@@ -4,8 +4,7 @@ import {
   getCsvPanelState,
 } from "./csv-panel-state";
 
-// A settled OSS instance where the user can upload: list loaded, uploads
-// configured and permitted, and every storage flag off.
+// A settled OSS instance where the user can upload, with no storage flags set.
 const BASE: CsvPanelStateInput = {
   areDatabasesLoading: false,
   areUploadsEnabled: true,
@@ -15,8 +14,8 @@ const BASE: CsvPanelStateInput = {
   hasSetupFailed: false,
   isLoadingStorageAddOn: false,
   hasAttachedDwh: false,
-  canUploadToAttachedDwh: false,
-  canSetUpStorage: false,
+  isAttachedDwhAwaitingActivation: false,
+  canPurchaseStorage: false,
 };
 
 const state = (overrides: Partial<CsvPanelStateInput>): CsvPanelState =>
@@ -56,7 +55,7 @@ describe("getCsvPanelState", () => {
         areUploadsEnabled: false,
         canUploadToDatabase: false,
         canManageUploads: true,
-        canSetUpStorage: true,
+        canPurchaseStorage: true,
       }),
     ).toEqual({ type: "needs-uploads-setup", canOfferStorage: true });
   });
@@ -67,9 +66,8 @@ describe("getCsvPanelState", () => {
         areUploadsEnabled: false,
         canUploadToDatabase: false,
         canManageUploads: true,
-        canSetUpStorage: true,
+        canPurchaseStorage: true,
         hasAttachedDwh: true,
-        canUploadToAttachedDwh: true,
       }),
     ).toEqual({ type: "needs-uploads-setup", canOfferStorage: false });
   });
@@ -89,31 +87,64 @@ describe("getCsvPanelState", () => {
     });
 
     it("explains the pending restart instead of a dead-end CTA", () => {
-      // Storage exists but is not the upload target yet. "Enable uploads"
-      // would not help — only the redeploy does.
+      // Storage isn't the upload target yet, and only the redeploy changes that.
       expect(
         state({
           areUploadsEnabled: false,
           canUploadToDatabase: false,
           canManageUploads: true,
-          canSetUpStorage: true,
+          canPurchaseStorage: true,
           hasAttachedDwh: true,
-          canUploadToAttachedDwh: false,
+          isAttachedDwhAwaitingActivation: true,
         }),
       ).toEqual({ type: "storage-awaiting-restart" });
     });
 
     it("does not claim a restart is pending once uploads point elsewhere", () => {
-      // An admin may deliberately point uploads at another database; only one
-      // database can be the upload target at a time.
+      // Only one database can be the upload target at a time.
       expect(
         state({
           areUploadsEnabled: true,
           canUploadToDatabase: true,
           hasAttachedDwh: true,
-          canUploadToAttachedDwh: false,
         }),
       ).toEqual({ type: "ready" });
+    });
+
+    it("offers the enable-uploads CTA once storage is too old to be awaiting a restart", () => {
+      // Old storage with uploads off means an admin turned them off, so "wait
+      // for a restart" would be a dead end.
+      expect(
+        state({
+          areUploadsEnabled: false,
+          canUploadToDatabase: false,
+          canManageUploads: true,
+          canPurchaseStorage: true,
+          hasAttachedDwh: true,
+          isAttachedDwhAwaitingActivation: false,
+        }),
+      ).toEqual({ type: "needs-uploads-setup", canOfferStorage: false });
+    });
+
+    it("points a user who cannot enable uploads at their admin instead", () => {
+      expect(
+        state({
+          areUploadsEnabled: false,
+          canUploadToDatabase: false,
+          canManageUploads: false,
+          hasAttachedDwh: true,
+          isAttachedDwhAwaitingActivation: false,
+        }),
+      ).toEqual({ type: "ask-admin" });
+    });
+
+    it("keeps a working uploader while storage is still provisioning", () => {
+      // Setup that never lands must not hide an upload target that works.
+      expect(state({ isSettingUp: true })).toEqual({ type: "ready" });
+    });
+
+    it("keeps a working uploader after storage setup gives up", () => {
+      expect(state({ hasSetupFailed: true })).toEqual({ type: "ready" });
     });
 
     it("waits for the add-on before offering to buy storage", () => {
@@ -122,7 +153,7 @@ describe("getCsvPanelState", () => {
           areUploadsEnabled: false,
           canUploadToDatabase: false,
           canManageUploads: true,
-          canSetUpStorage: true,
+          canPurchaseStorage: true,
           isLoadingStorageAddOn: true,
         }),
       ).toEqual({ type: "loading" });

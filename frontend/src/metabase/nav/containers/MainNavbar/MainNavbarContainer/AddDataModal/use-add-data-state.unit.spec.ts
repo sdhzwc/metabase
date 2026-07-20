@@ -28,8 +28,7 @@ function setup({
       collections: [],
     }),
     settings: mockSettings({
-      // Deliberately out of sync with the databases list: the hook must ignore
-      // this setting, which goes stale for the rest of the session.
+      // Deliberately out of sync: the hook must ignore this stale setting.
       "uploads-settings": {
         db_id: staleUploadsSettingDbId,
         schema_name: "uploads",
@@ -47,9 +46,7 @@ function setup({
 
 describe("useAddDataState", () => {
   it("reports the list as loading before it arrives", () => {
-    // Callers must be able to tell "cannot upload anywhere" apart from "not
-    // fetched yet" — guessing is what made a permitted user see a definitive
-    // "not permitted" prompt that then flipped to the uploader.
+    // Callers must tell "cannot upload anywhere" apart from "not fetched yet".
     const { result } = setup({ canUpload: true });
 
     expect(result.current.areDatabasesLoading).toBe(true);

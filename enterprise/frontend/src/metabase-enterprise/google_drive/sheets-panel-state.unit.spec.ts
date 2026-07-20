@@ -4,12 +4,13 @@ import {
   getSheetsPanelState,
 } from "./sheets-panel-state";
 
-// A hosted admin with storage, nothing connected yet — the point where the
-// status alone decides what the panel shows.
+// A hosted admin with storage, nothing connected yet: status alone decides.
 const BASE: SheetsPanelStateInput = {
   isSettingUp: false,
   hasSetupFailed: false,
   isAdmin: true,
+  isLoading: false,
+  isLoadingStorageAddOn: false,
   hasAttachedDwh: true,
   showGdrive: true,
   areConnectionDetailsShown: false,
@@ -22,8 +23,7 @@ const state = (overrides: Partial<SheetsPanelStateInput>): SheetsPanelState =>
 describe("getSheetsPanelState", () => {
   describe("gating, in precedence order", () => {
     it("shows provisioning ahead of every other gate", () => {
-      // Mid-provisioning storage is absent, which on its own reads as
-      // "buy storage" — the wrong thing to show someone already buying it.
+      // Storage is absent mid-provisioning, which alone reads as "buy storage".
       expect(
         state({ isSettingUp: true, hasAttachedDwh: false, isAdmin: false }),
       ).toBe("provisioning-storage");
@@ -36,10 +36,31 @@ describe("getSheetsPanelState", () => {
     });
 
     it("points a non-admin at their admin rather than at the store", () => {
-      // A non-admin cannot buy storage, so the missing-storage case must not
-      // win over the missing-permission one.
       expect(state({ isAdmin: false, hasAttachedDwh: false })).toBe(
         "ask-admin",
+      );
+    });
+
+    it("waits rather than offering storage to an admin whose databases have not arrived", () => {
+      // Owning storage and owning none look identical until the list lands.
+      expect(state({ isLoading: true, hasAttachedDwh: false })).toBe("loading");
+    });
+
+    it("waits rather than blaming Sheets while the service account is still loading", () => {
+      expect(state({ isLoading: true, showGdrive: false })).toBe("loading");
+    });
+
+    it("answers a non-admin without making them wait", () => {
+      // Nothing below the `ask-admin` gate can change their answer.
+      expect(state({ isLoading: true, isAdmin: false })).toBe("ask-admin");
+    });
+
+    it("keeps showing setup ahead of the loading state", () => {
+      expect(state({ isLoading: true, isSettingUp: true })).toBe(
+        "provisioning-storage",
+      );
+      expect(state({ isLoading: true, hasSetupFailed: true })).toBe(
+        "storage-setup-failed",
       );
     });
 
@@ -47,9 +68,19 @@ describe("getSheetsPanelState", () => {
       expect(state({ hasAttachedDwh: false })).toBe("needs-storage");
     });
 
+    it("waits for the add-on before offering storage", () => {
+      // Until it lands the CTA can't tell purchase modal from store link.
+      expect(
+        state({ hasAttachedDwh: false, isLoadingStorageAddOn: true }),
+      ).toBe("loading");
+    });
+
+    it("does not wait on the add-on once storage is there", () => {
+      // The add-ons query is skipped for anyone who cannot buy storage.
+      expect(state({ isLoadingStorageAddOn: true })).toBe("not-connected");
+    });
+
     it("falls back to the generic error when Sheets is unavailable for some other reason", () => {
-      // An admin with storage, but `useShowGdrive` is false — there is nothing
-      // specific we can tell them.
       expect(state({ showGdrive: false })).toBe("unavailable");
     });
 

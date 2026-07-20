@@ -8,6 +8,7 @@ import {
   setupGdrivePostFolderEndpoint,
   setupGdriveServiceAccountEndpoint,
   setupPropertiesEndpoints,
+  setupTokenRefreshEndpoint,
   setupTokenStatusEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
@@ -43,6 +44,18 @@ interface SetupOpts {
   status?: GdrivePayload["status"];
   adminEmail?: string | null;
   addOns?: ICloudAddOnProduct[];
+  /**
+   * Defaults to following the token feature. Set `false` for the window between
+   * purchase and redeploy, or storage that never materialized.
+   */
+  hasAttachedDwhDatabase?: boolean;
+  /** False in the window before the redeploy makes storage the upload target. */
+  dwhCanUpload?: boolean;
+  /**
+   * Only a recently created DWH that isn't the upload target awaits a redeploy;
+   * an older one means an admin pointed uploads elsewhere.
+   */
+  dwhCreatedMsAgo?: number;
 }
 
 export const setup = ({
@@ -58,6 +71,9 @@ export const setup = ({
   status,
   adminEmail = "admin@metabase.test",
   addOns = [],
+  hasAttachedDwhDatabase = !!tokenFeatures.attached_dwh,
+  dwhCanUpload = true,
+  dwhCreatedMsAgo = 0,
 }: SetupOpts = {}) => {
   const user = createMockUser({
     is_superuser: isAdmin,
@@ -81,16 +97,15 @@ export const setup = ({
     can_upload: isAdmin || canUpload,
   });
 
-  // Once Storage is provisioned the attached DWH database surfaces in the
-  // databases list (with `is_attached_dwh` + uploads enabled). This is the
-  // signal the storage UI actually keys off — the `attached_dwh` token feature
-  // flips earlier — so faithful mocks must include it whenever it is set.
-  const attachedDwhDatabase = tokenFeatures.attached_dwh
+  // The storage UI keys off the attached DWH appearing in the databases list,
+  // not the `attached_dwh` token, which flips earlier — hence two controls.
+  const attachedDwhDatabase = hasAttachedDwhDatabase
     ? createMockDatabase({
         id: 2,
         name: "Metabase Storage",
         is_attached_dwh: true,
-        can_upload: true,
+        can_upload: dwhCanUpload,
+        created_at: new Date(Date.now() - dwhCreatedMsAgo).toISOString(),
       })
     : null;
 
@@ -134,6 +149,9 @@ export const setup = ({
   setupCollectionByIdEndpoint({ collections });
   // The storage offer (shown on hosted instances) checks add-on availability.
   fetchMock.get("path:/api/ee/cloud-add-ons/addons", addOns);
+  // A purchase posts and then refreshes the token until the new plan lands.
+  fetchMock.post("path:/api/ee/cloud-add-ons/dwh-rent", 200);
+  setupTokenRefreshEndpoint();
 
   if (enableGoogleSheets) {
     setupGdrivePostFolderEndpoint();
@@ -170,8 +188,7 @@ export const setupHostedInstance = (opts: Partial<SetupOpts>) => {
 
 export const setupProUpload = (opts: Partial<SetupOpts>) =>
   setupHostedInstance({
-    // A provisioned attached DWH enables uploads by default, so the imports
-    // settings link (gated on uploads being enabled) is available to admins.
+    // A provisioned DWH enables uploads, which is what gates the imports link.
     uploadsEnabled: true,
     ...opts,
     tokenFeatures: { attached_dwh: true },

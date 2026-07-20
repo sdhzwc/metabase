@@ -10,11 +10,12 @@ import {
   StorageSetupView,
   useStorageSetup,
 } from "metabase/common/components/upsells/StoragePurchaseModal";
-import { useStoreUrl } from "metabase/common/hooks";
+import { useAttachedDwh, useStoreUrl } from "metabase/common/hooks";
 import {
   CONTENT_MAX_WIDTH,
   ContactAdminAlert,
   INNER_WIDTH,
+  PanelLoadingState,
 } from "metabase/nav/containers/MainNavbar/MainNavbarContainer/AddDataModal/Panels/AddDataModalEmptyStates";
 import { useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
@@ -142,10 +143,12 @@ export const GdriveAddDataPanel = ({
   });
 
   const isAdmin = useSelector(getUserIsAdmin);
-  const { isSettingUp, hasSetupFailed, hasAttachedDwh } = useStorageSetup();
+  const { isSettingUp, hasSetupFailed, isLoadingStorageAddOn } =
+    useStorageSetup();
+  const { hasAttachedDwh, areDatabasesLoading } = useAttachedDwh();
   const storeUrl = useStoreUrl("account/storage");
 
-  const showGdrive = useShowGdrive();
+  const { showGdrive, isLoading: isLoadingServiceAccount } = useShowGdrive();
   const { data: folder, error } = useGetGsheetsFolderQuery(
     !showGdrive ? skipToken : undefined,
     { refetchOnMountOrArgChange: 5 },
@@ -161,6 +164,8 @@ export const GdriveAddDataPanel = ({
     isSettingUp,
     hasSetupFailed,
     isAdmin,
+    isLoading: areDatabasesLoading || isLoadingServiceAccount,
+    isLoadingStorageAddOn,
     hasAttachedDwh,
     showGdrive,
     areConnectionDetailsShown,
@@ -170,6 +175,7 @@ export const GdriveAddDataPanel = ({
   return match(state)
     .with("provisioning-storage", () => <StorageSetupView />)
     .with("storage-setup-failed", () => <StorageSetupErrorView />)
+    .with("loading", () => <PanelLoadingState />)
     .with("ask-admin", () => (
       <PanelWrapper>
         <ContactAdminAlert reason="enable-google-sheets" />

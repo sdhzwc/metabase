@@ -4,6 +4,7 @@ import { createContext, useContext } from "react";
 import type { ICloudAddOnProduct } from "metabase-types/api";
 
 export interface StorageSetupContextValue {
+  /** This admin bought storage in this tab and it has not shown up yet. */
   isSettingUp: boolean;
   /** Setup ran past its deadline; the panels offer a way out instead of spinning. */
   hasSetupFailed: boolean;
@@ -11,12 +12,16 @@ export interface StorageSetupContextValue {
   isLoadingStorageAddOn: boolean;
   isPurchaseModalOpened: boolean;
   openPurchaseModal: () => void;
-  /** Storage exists on this instance. */
-  hasAttachedDwh: boolean;
-  /** Storage exists *and* is the instance's upload target. */
-  canUploadToAttachedDwh: boolean;
-  canSetUpStorage: boolean;
+  /**
+   * A hosted admin without the `attached_dwh` token. The token flips at purchase
+   * time, so a reload mid-setup can't re-offer storage they already bought.
+   */
+  canPurchaseStorage: boolean;
 }
+
+// Whether the instance *has* storage is deliberately absent: consumers read it
+// from `useAttachedDwh`, since this context is inert in OSS and would answer
+// `false` there.
 
 export const StorageSetupContext =
   createContext<StorageSetupContextValue | null>(null);
@@ -24,9 +29,8 @@ export const StorageSetupContext =
 export interface StorageSetupProviderProps {
   children: ReactNode;
   /**
-   * Pass `false` while the hosting UI is hidden to avoid fetching the add-ons
-   * list (a Store API round-trip) eagerly. Purchase/setup state and its
-   * polling keep running regardless.
+   * Pass `false` while the hosting UI is hidden to skip the add-ons Store
+   * round-trip. Purchase state and its polling keep running regardless.
    */
   enabled?: boolean;
 }
@@ -38,9 +42,7 @@ const INERT_STORAGE_SETUP_VALUE: StorageSetupContextValue = {
   isLoadingStorageAddOn: false,
   isPurchaseModalOpened: false,
   openPurchaseModal: () => {},
-  hasAttachedDwh: false,
-  canUploadToAttachedDwh: false,
-  canSetUpStorage: false,
+  canPurchaseStorage: false,
 };
 
 export const StorageSetupProvider = ({

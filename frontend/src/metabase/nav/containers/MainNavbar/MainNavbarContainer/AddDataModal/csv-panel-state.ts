@@ -3,11 +3,9 @@ import { useStorageSetup } from "metabase/common/components/upsells/StoragePurch
 import { useAddDataState } from "./use-add-data-state";
 
 /**
- * Everything the CSV panel can show, as one value. Computing it in a pure
- * function keeps the precedence between these cases in one readable place —
- * they overlap heavily, and expressing them as independent booleans is what
- * let the panel show contradictory things (a dead-end tab, a second storage
- * upsell to someone who already owns storage).
+ * Everything the CSV panel can show, as one value. These cases overlap heavily,
+ * so their precedence lives in one pure function rather than in independent
+ * booleans that can contradict each other.
  */
 export type CsvPanelState =
   | { type: "loading" }
@@ -28,8 +26,8 @@ export interface CsvPanelStateInput {
   hasSetupFailed: boolean;
   isLoadingStorageAddOn: boolean;
   hasAttachedDwh: boolean;
-  canUploadToAttachedDwh: boolean;
-  canSetUpStorage: boolean;
+  isAttachedDwhAwaitingActivation: boolean;
+  canPurchaseStorage: boolean;
 }
 
 export function getCsvPanelState({
@@ -41,13 +39,19 @@ export function getCsvPanelState({
   hasSetupFailed,
   isLoadingStorageAddOn,
   hasAttachedDwh,
-  canUploadToAttachedDwh,
-  canSetUpStorage,
+  isAttachedDwhAwaitingActivation,
+  canPurchaseStorage,
 }: CsvPanelStateInput): CsvPanelState {
-  // Until the list arrives, "cannot upload anywhere" is indistinguishable from
-  // "not fetched yet", and guessing shows a definitive answer that then flips.
+  // Before the list arrives, "cannot upload anywhere" is indistinguishable from
+  // "not fetched yet", and guessing shows an answer that then flips.
   if (areDatabasesLoading) {
     return { type: "loading" };
+  }
+
+  // A working uploader outranks anything storage is doing — an in-flight
+  // purchase must not take the uploader away for the minutes it takes to land.
+  if (areUploadsEnabled && canUploadToDatabase) {
+    return { type: "ready" };
   }
 
   if (isSettingUp) {
@@ -58,9 +62,10 @@ export function getCsvPanelState({
     return { type: "storage-setup-failed" };
   }
 
-  // Storage is provisioned but not yet the upload target. Enabling uploads by
-  // hand won't help — that only happens once the instance is redeployed.
-  if (hasAttachedDwh && !canUploadToAttachedDwh && !areUploadsEnabled) {
+  // Just-provisioned storage isn't the upload target until the instance
+  // redeploys, so enabling uploads by hand won't help. Older storage falls
+  // through to the CTA, since pointing uploads elsewhere was a deliberate choice.
+  if (isAttachedDwhAwaitingActivation && !areUploadsEnabled) {
     return { type: "storage-awaiting-restart" };
   }
 
@@ -75,21 +80,18 @@ export function getCsvPanelState({
 
     return {
       type: "needs-uploads-setup",
-      canOfferStorage: canSetUpStorage && !hasAttachedDwh,
+      canOfferStorage: canPurchaseStorage && !hasAttachedDwh,
     };
   }
 
-  if (!canUploadToDatabase) {
-    return { type: "no-upload-permission" };
-  }
-
-  return { type: "ready" };
+  // Uploads are enabled and the "ready" case above did not fire, so the upload
+  // target exists but this user may not write to it.
+  return { type: "no-upload-permission" };
 }
 
 /**
- * The panel's own state, gathered where the panel is rendered rather than
- * threaded down as a prop — the same shape the Sheets panel uses. The modal
- * stays out of it; it only needs the upload facts for its header links.
+ * Gathered where the panel is rendered rather than threaded down from the
+ * modal, the same way the Sheets panel does it.
  */
 export function useCsvPanelState(): CsvPanelState {
   const {
@@ -97,26 +99,28 @@ export function useCsvPanelState(): CsvPanelState {
     areUploadsEnabled,
     canUploadToDatabase,
     canManageUploads,
+    hasAttachedDwh,
+    isAttachedDwhAwaitingActivation,
   } = useAddDataState();
   const {
     isSettingUp,
     hasSetupFailed,
     isLoadingStorageAddOn,
-    hasAttachedDwh,
-    canUploadToAttachedDwh,
-    canSetUpStorage,
+    canPurchaseStorage,
   } = useStorageSetup();
 
+  // Listed field by field rather than spread: both hooks carry extra keys, and
+  // a spread would let a rename here silently bind to the wrong hook's key.
   return getCsvPanelState({
     areDatabasesLoading,
     areUploadsEnabled,
     canUploadToDatabase,
     canManageUploads,
+    hasAttachedDwh,
+    isAttachedDwhAwaitingActivation,
     isSettingUp,
     hasSetupFailed,
     isLoadingStorageAddOn,
-    hasAttachedDwh,
-    canUploadToAttachedDwh,
-    canSetUpStorage,
+    canPurchaseStorage,
   });
 }
