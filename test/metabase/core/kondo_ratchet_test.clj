@@ -133,9 +133,15 @@
     []                  "(def x {:a 1 :clj-kondo/ignore [:data]})"
     []                  "(let [m {:a 1 :clj-kondo/ignore [:data]}] m)"
     [:macro-attr]       "(defmacro f \"doc\" {:clj-kondo/ignore [:macro-attr]} [args] 1)"
-    ;; the attr map is the slot before the argument vector, so a map after one is a body form
+    ;; the attr map is the slot before the argument vector, so a map after one is a body form -- even
+    ;; when the vector is behind metadata or a reader conditional
     []                  "(defn f [] {:clj-kondo/ignore [:data]} nil)"
+    []                  "(defn f ^:tag [x] {:clj-kondo/ignore [:data]} nil)"
+    []                  "(defn f #?(:clj [x] :cljs [y]) {:clj-kondo/ignore [:data]} nil)"
     [:multi-arity]      "(defn f {:clj-kondo/ignore [:multi-arity]} ([] 1) ([a] a))"
+    [:before-meta-args] "(defn f {:clj-kondo/ignore [:before-meta-args]} ^:tag [a] 1)"
+    ;; defmethod's second argument is a dispatch value, not an attr map
+    []                  "(defmethod f {:clj-kondo/ignore [:data]} [x] x)"
     ;; vector-less forms suppress everything -> :all
     [:all]              "  #_:clj-kondo/ignore"
     [:all]              "  #_ :clj-kondo/ignore (foo)"

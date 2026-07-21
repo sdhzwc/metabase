@@ -254,12 +254,30 @@
             acc
             (recur (skip-blanks s end) acc)))))))
 
+(defn- vector-form?
+  "Does the form at `i` in masked source `s` read as a vector? Metadata is stepped over, so `^:tag [x]`
+  counts, and a reader conditional is taken as one too -- it may well expand to the argument vector, and
+  the only thing that costs us is counting an ignore we could have ruled out."
+  [^String s ^long i]
+  (loop [j i]
+    (let [c (get s j)]
+      (cond
+        (= \[ c)                         true
+        (and (= \# c) (= \? (get s (inc j)))) true
+        (= \^ c)                         (recur (skip-blanks s (form-end s (skip-blanks s (inc j)))))
+        :else                            false))))
+
 (defn- attr-map-context?
   "Is the map opening at `opener` in masked source `s` somewhere an ignore key would suppress anything,
   rather than plain data that happens to contain the marker? A `#_` or `^` prefix settles it. Failing
   that it has to be a real attr map: kondo reads one in `(ns ...)`, and in a `def...` form in the slot
   before the argument vector -- so `(defn f {...} [x] ...)` is one, while `(def x {...})`, where the map
-  is the value, and `(defn f [x] {...} nil)`, where it is a body form, are not."
+  is the value, and `(defn f [x] {...} nil)`, where it is a body form, are not. `defmethod` is the
+  def-form whose second argument is legitimately a map -- the dispatch value -- so it is excluded.
+
+  Deliberately a blocklist rather than a list of known def-forms: the project defines plenty of its own
+  `def...` macros, and failing to recognise one of those would silently stop counting a real ignore,
+  where a data map wrongly counted only costs a budget entry and a justification comment."
   [^String s ^long opener]
   (or (prefixed-form? s opener)
       (when-let [list-open (enclosing-opener s opener)]
@@ -270,8 +288,9 @@
             (or (= "ns" head)
                 (and head
                      (str/starts-with? head "def")
+                     (not= "defmethod" head)
                      ;; the argument vector comes after the attr map, never before it
-                     (not-any? #(= \[ (.charAt s (long (:start %)))) (butlast (rest forms)))
+                     (not-any? #(vector-form? s (:start %)) (butlast (rest forms)))
                      (< after (count s))
                      (not= \) (.charAt s after)))))))))
 
