@@ -260,8 +260,6 @@ describe("scenarios > data-apps > dev diagnostics toolbar", () => {
           checkedAt: 1,
           metabaseUrl: "http://localhost:3000",
           reachable: true,
-          apiKeyValid: false,
-          metabaseVersion: "v1.56.0",
           sdkVersion: "0.64.0",
           error: "The API key was rejected (401).",
         },

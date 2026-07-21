@@ -286,8 +286,6 @@ describe("connection status", () => {
       checkedAt: 1,
       metabaseUrl: "http://localhost:3000",
       reachable: true,
-      apiKeyValid: true,
-      metabaseVersion: "v1.56.0",
       sdkVersion: "0.63.1",
     });
 

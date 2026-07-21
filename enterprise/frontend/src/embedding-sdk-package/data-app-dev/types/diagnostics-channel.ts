@@ -4,8 +4,6 @@ export interface DevConnectionStatus {
   checkedAt: number;
   metabaseUrl: string;
   reachable: boolean;
-  apiKeyValid: boolean | null;
-  metabaseVersion: string | null;
   sdkVersion: string | null;
   error?: string;
 }

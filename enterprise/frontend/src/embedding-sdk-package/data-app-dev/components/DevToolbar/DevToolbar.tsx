@@ -4,6 +4,10 @@ import { useState } from "react";
 
 import { DATA_APP_DIAGNOSTICS_URL } from "../../constants/diagnostics-channel";
 import {
+  DIAGNOSTICS_HEARTBEAT_MS,
+  DIAGNOSTICS_POLL_MS,
+} from "../../constants/timings";
+import {
   type SubscribeToChanges,
   useDiagnosticsFeed,
 } from "../../lib/use-diagnostics-feed";
@@ -19,11 +23,6 @@ import { ResizeHandle } from "./ResizeHandle/ResizeHandle";
 import { TABS, type TabId, isBlocked } from "./entries";
 import { usePanelResize } from "./use-panel-resize";
 
-// With a socket, a poll is only a fallback for a nudge that never arrived;
-// without one it is the only way anything ever updates.
-const HEARTBEAT_MS = 10_000;
-const POLL_MS = 1000;
-
 export interface DevToolbarProps {
   /** Notifies that the dev server's feed changed, so it need not be polled. */
   subscribe?: SubscribeToChanges;
@@ -32,7 +31,7 @@ export interface DevToolbarProps {
 export function DevToolbar({ subscribe }: DevToolbarProps = {}) {
   const feed = useDiagnosticsFeed(
     DATA_APP_DIAGNOSTICS_URL,
-    subscribe ? HEARTBEAT_MS : POLL_MS,
+    subscribe ? DIAGNOSTICS_HEARTBEAT_MS : DIAGNOSTICS_POLL_MS,
     subscribe,
   );
   const [open, setOpen] = useState(false);

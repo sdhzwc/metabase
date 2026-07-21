@@ -1,6 +1,9 @@
 interface ImportMetaEnv {
-  readonly DATA_APP_MB_URL: string;
-  readonly DATA_APP_MB_API_KEY: string;
+  // Optional on purpose: Vite fills these from `.env.local`, so a missing line
+  // leaves them `undefined` at runtime. Declaring them as `string` would hide
+  // the one case the connection check exists to report.
+  readonly DATA_APP_MB_URL: string | undefined;
+  readonly DATA_APP_MB_API_KEY: string | undefined;
 }
 
 interface ImportMeta {

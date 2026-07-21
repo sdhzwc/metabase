@@ -19,16 +19,6 @@ export const ConnectionTab = ({ connection }: Props) => {
       <StatusRow label="Reachable">
         {connection.reachable ? "✓" : "✗"}
       </StatusRow>
-      <StatusRow label="API key">
-        {connection.apiKeyValid == null
-          ? "not checked"
-          : connection.apiKeyValid
-            ? "✓ valid"
-            : "✗ invalid"}
-      </StatusRow>
-      <StatusRow label="Metabase version">
-        {connection.metabaseVersion ?? "unknown"}
-      </StatusRow>
       <StatusRow label="SDK version">
         {connection.sdkVersion ?? "unknown"}
       </StatusRow>

@@ -4,6 +4,7 @@ import {
   DATA_APP_DIAGNOSTICS_URL,
   START_EVENT_ID_PARAM,
 } from "../constants/diagnostics-channel";
+import { DIAGNOSTICS_POLL_MS } from "../constants/timings";
 import type {
   DataAppDiagnosticPayload,
   DataAppDiagnosticsReport,
@@ -12,8 +13,6 @@ import type {
 import type { DataAppManifestStatus } from "../types/manifest-status";
 
 import { capDiagnosticEntries } from "./diagnostics-limits";
-
-const REFETCH_POLL_MS = 1000;
 
 /** Registers a listener for "the feed changed", returning its teardown. */
 export type SubscribeToChanges = (onChange: () => void) => () => void;
@@ -38,7 +37,7 @@ const EMPTY_ENTRIES: DataAppDiagnosticPayload[] = [];
 
 export const useDiagnosticsFeed = (
   url: string = DATA_APP_DIAGNOSTICS_URL,
-  pollMs: number = REFETCH_POLL_MS,
+  pollMs: number = DIAGNOSTICS_POLL_MS,
   subscribe?: SubscribeToChanges,
 ): DiagnosticsFeed => {
   const [entries, setEntries] =

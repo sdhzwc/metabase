@@ -226,10 +226,8 @@ describe("DevToolbar open", () => {
         checkedAt: 1,
         metabaseUrl: "http://localhost:3000",
         reachable: true,
-        apiKeyValid: false,
-        metabaseVersion: "v1.56.0",
         sdkVersion: "0.64.0",
-        error: "The API key was rejected (401).",
+        error: "Could not reach http://localhost:3000.",
       },
     });
     await setup();
@@ -237,9 +235,8 @@ describe("DevToolbar open", () => {
     await userEvent.click(screen.getByRole("tab", { name: "Connection" }));
 
     expect(screen.getByText("http://localhost:3000")).toBeInTheDocument();
-    expect(screen.getByText("✗ invalid")).toBeInTheDocument();
     expect(
-      screen.getByText("The API key was rejected (401)."),
+      screen.getByText("Could not reach http://localhost:3000."),
     ).toBeInTheDocument();
   });
 

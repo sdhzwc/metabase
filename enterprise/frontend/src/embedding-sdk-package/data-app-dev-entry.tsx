@@ -48,7 +48,6 @@ const uncapturedFetch = window.fetch.bind(window);
 installSdkCallCapture(authConfig.metabaseInstanceUrl);
 runDevConnectionCheck({
   metabaseUrl: authConfig.metabaseInstanceUrl,
-  apiKey: authConfig.apiKey,
   sdkVersion,
   fetchFn: uncapturedFetch,
 });

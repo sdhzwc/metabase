@@ -4,6 +4,7 @@ import {
   subscribeDevDiagnostics,
 } from "../components/DevToolbar/diagnostics";
 import { DATA_APP_DIAGNOSTICS_EVENT } from "../constants/diagnostics-channel";
+import { DIAGNOSTICS_FLUSH_MS } from "../constants/timings";
 import type { DataAppDiagnosticsMessage } from "../types/diagnostics-channel";
 
 import { toPayload } from "./diagnostics-payload";
@@ -11,8 +12,6 @@ import { toPayload } from "./diagnostics-payload";
 export interface DiagnosticsReporterHot {
   send: (event: string, data: DataAppDiagnosticsMessage) => void;
 }
-
-const FLUSH_MS = 100;
 
 export const installDiagnosticsReporter = (
   hot: DiagnosticsReporterHot,
@@ -39,7 +38,7 @@ export const installDiagnosticsReporter = (
   };
 
   const schedule = () => {
-    timer ??= setTimeout(flush, FLUSH_MS);
+    timer ??= setTimeout(flush, DIAGNOSTICS_FLUSH_MS);
   };
 
   flush();
