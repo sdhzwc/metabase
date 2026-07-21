@@ -171,13 +171,15 @@ function blockedReason(
   if (!url) {
     return "an unparseable URL";
   }
+
   if (url.origin === metabaseOrigin) {
-    // eslint-disable-next-line metabase/no-literal-metabase-strings -- developer-facing sandbox diagnostic, not localized UI
-    return `${url.origin} (the Metabase origin is reachable only via the SDK)`;
+    return `${url.origin} (the instance origin is reachable only via the SDK)`;
   }
+
   if (!isHostAllowed(url, allowedHosts)) {
     return `${url.host} (not in allowed_hosts)`;
   }
+
   return null;
 }
 
@@ -262,6 +264,7 @@ export function makeSandboxXhr(
   if (allowedHosts.length === 0) {
     return null;
   }
+
   const NativeXhr = targetWindow.XMLHttpRequest;
   const base = targetWindow.location.href;
   const metabaseOrigin = targetWindow.location.origin;
@@ -274,12 +277,14 @@ export function makeSandboxXhr(
       password?: string | null,
     ): void {
       const reason = blockedReason(url, base, allowedHosts, metabaseOrigin);
+
       if (reason) {
         reportBlocked(onBlocked, {
           api: "xhr",
           url: requestUrlString(url, base),
           reason,
         });
+
         throw new Error(
           `[data-app ${label}] blocked XMLHttpRequest to ${reason}`,
         );
@@ -287,6 +292,7 @@ export function makeSandboxXhr(
       super.open(method, url, async, username, password);
     }
   };
+
   // The subclass inherits the static UNSENT/OPENED/… constants at runtime;
   // cast so the type matches the native constructor the membrane expects.
   return SandboxXhr as typeof XMLHttpRequest;
