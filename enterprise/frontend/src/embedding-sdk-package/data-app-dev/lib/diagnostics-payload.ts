@@ -1,5 +1,4 @@
 /* eslint-disable metabase/no-literal-metabase-strings -- dev-only guidance for data-app authors, not whitelabel-able product UI */
-// Projects a captured store entry into the wire payload the reporter sends.
 
 import type { DevDiagnosticEntry } from "../components/DevToolbar/diagnostics";
 import {
@@ -7,13 +6,10 @@ import {
   truncateDiagnosticText,
 } from "../diagnostics-channel";
 
-// Surfaced like errors rather than sitting unseen in the Queries tab: a bad
-// `POST /api/dataset` never reaches `console.error`.
 export const isFailedSdkCall = (entry: DevDiagnosticEntry): boolean =>
   entry.kind === "sdk-call" &&
   (entry.error != null || (entry.status != null && entry.status >= 400));
 
-// The entries the toolbar badges.
 export const isAlert = (entry: DevDiagnosticEntry): boolean =>
   entry.kind === "error" ||
   entry.kind === "blocked-api" ||
@@ -43,8 +39,6 @@ export const formatDevDiagnostic = (entry: DevDiagnosticEntry): string => {
   }
 };
 
-// Written for someone who has never heard of a CSP: say what the app tried to do
-// and which file to edit, not which directive was violated.
 const CSP_DIRECTIVE_HINTS: Record<string, string> = {
   "connect-src":
     "Your app tried to call a URL it isn't allowed to reach. Add that URL's origin to allowed_hosts in data_app.yaml, then restart the dev server.",
@@ -65,7 +59,6 @@ const CSP_DIRECTIVE_HINTS: Record<string, string> = {
 const CSP_FALLBACK_HINT =
   "Metabase restricts what a data app may load or contact, and the dev server applies the same rules. Anything the app needs to reach must be listed under allowed_hosts in data_app.yaml.";
 
-/** Null when we can't compute one. */
 export const devDiagnosticHint = (entry: DevDiagnosticEntry): string | null => {
   if (
     entry.kind === "blocked-network" &&
@@ -77,19 +70,20 @@ export const devDiagnosticHint = (entry: DevDiagnosticEntry): string | null => {
       return null;
     }
   }
+
   if (entry.kind === "csp-violation") {
     return CSP_DIRECTIVE_HINTS[entry.directive] ?? CSP_FALLBACK_HINT;
   }
+
   return null;
 };
 
-// Headline + the rest, so the toolbar can hide a stack behind a disclosure
-// instead of letting it bury every entry under it.
 export const splitDevDiagnostic = (
   entry: DevDiagnosticEntry,
 ): { summary: string; detail: string | null } => {
   const text = formatDevDiagnostic(entry);
   const firstBreak = text.indexOf("\n");
+
   return firstBreak === -1
     ? { summary: text, detail: null }
     : {
@@ -106,6 +100,7 @@ export const toPayload = (
   entry: DevDiagnosticEntry,
 ): DataAppDiagnosticEntry => {
   const { summary, detail } = splitDevDiagnostic(entry);
+
   return {
     time: entry.time,
     kind: entry.kind,

@@ -15,7 +15,6 @@ import { ResizeHandle } from "./ResizeHandle/ResizeHandle";
 import { TABS, type TabId, isBlocked } from "./entries";
 import { usePanelResize } from "./use-panel-resize";
 
-// A pure reader of the dev server's feed — capture lives elsewhere.
 export function DevToolbar() {
   const feed = useDiagnosticsFeed();
   const [open, setOpen] = useState(false);

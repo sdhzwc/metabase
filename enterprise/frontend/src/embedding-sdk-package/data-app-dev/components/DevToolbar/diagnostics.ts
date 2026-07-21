@@ -1,9 +1,3 @@
-// The capture side of dev diagnostics. This is a buffer, not a source anyone
-// renders from: `installDiagnosticsReporter` mirrors it to the dev server, and
-// the toolbar reads the server's feed like any other client.
-//
-// Capture is opt-in — nothing here runs until `installDevDiagnostics()` is called.
-
 import type { SandboxBlockedEvent } from "metabase-enterprise/data_apps/sandbox/distortions";
 
 import {
@@ -65,8 +59,6 @@ const formatArg = (arg: unknown): string => {
   }
 };
 
-// Caps every string an event carries — the one point every capture path goes
-// through, so a logged query result can't be retained in full.
 const cappedEvent = (event: DevDiagnosticEvent): DevDiagnosticEvent =>
   // Rebuilding the union through entries() loses the `kind`→fields tie; values
   // are only ever mapped string→string.
@@ -89,14 +81,10 @@ export const recordDevDiagnostic = (event: DevDiagnosticEvent): void => {
   emit();
 };
 
-// Logs without the capture recording it again, for points that already recorded
-// a structured entry.
 const logDevDiagnosticToConsole = (message: string): void => {
   (uncapturedConsoleError ?? console.error)(message);
 };
 
-// Still logs to the console at the block point, where the stack points at the
-// data-app code that made the blocked call.
 export const recordSandboxBlockedEvent = (event: SandboxBlockedEvent): void => {
   if (event.type === "api") {
     recordDevDiagnostic({ kind: "blocked-api", message: event.message });
@@ -131,7 +119,6 @@ export const subscribeDevDiagnostics = (listener: () => void): (() => void) => {
   };
 };
 
-/** Exported for tests; production clears through the dev server's DELETE. */
 export const clearDevDiagnostics = (): void => {
   entries = [];
   emit();
@@ -177,8 +164,6 @@ export const installDevDiagnostics = (): (() => void) => {
   window.addEventListener("error", onError);
   window.addEventListener("unhandledrejection", onRejection);
 
-  // A violation here means the app would be blocked in Metabase too. These never
-  // reach `console.error`, so the toolbar wouldn't see them otherwise.
   const onCspViolation = (event: SecurityPolicyViolationEvent) => {
     recordDevDiagnostic({
       kind: "csp-violation",

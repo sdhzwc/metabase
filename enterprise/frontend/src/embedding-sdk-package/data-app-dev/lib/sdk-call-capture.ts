@@ -1,6 +1,3 @@
-// Patches the page's `fetch` to record SDK→Metabase calls for the Queries tab.
-// The sandboxed app can't reach the Metabase origin, so everything here is the SDK.
-
 import { recordDevDiagnostic } from "../components/DevToolbar/diagnostics";
 
 // Exact paths only: `/api/dataset/csv` etc. are exports, and buffering one to
@@ -14,6 +11,7 @@ const resolveUrl = (input: RequestInfo | URL): URL | null => {
     if (typeof input === "string" || input instanceof URL) {
       return new URL(String(input), window.location.href);
     }
+
     return new URL(input.url, window.location.href);
   } catch {
     return null;
@@ -26,6 +24,7 @@ const resolveMethod = (
 ): string => {
   const method =
     init?.method ?? (input instanceof Request ? input.method : "GET");
+
   return method.toUpperCase();
 };
 
@@ -33,10 +32,13 @@ const readRowCount = (body: unknown): number | undefined => {
   if (typeof body !== "object" || body === null || !("data" in body)) {
     return undefined;
   }
+
   const { data } = body;
+
   if (typeof data !== "object" || data === null || !("rows" in data)) {
     return undefined;
   }
+
   return Array.isArray(data.rows) ? data.rows.length : undefined;
 };
 
@@ -47,10 +49,11 @@ const captureRowCount = async (
   if (!response.ok || !QUERY_ENDPOINT_RE.test(endpoint)) {
     return undefined;
   }
-  // Belt and braces with the path check above.
+
   if (!response.headers.get("content-type")?.includes("application/json")) {
     return undefined;
   }
+
   try {
     return readRowCount(await response.clone().json());
   } catch {
@@ -62,11 +65,6 @@ const captureRowCount = async (
 const isAbort = (error: unknown): boolean =>
   error instanceof DOMException && error.name === "AbortError";
 
-/**
- * Call before the SDK issues its first request. Idempotent; a missing
- * `metabaseUrl` is a no-op. The teardown restores the original `fetch`, so a
- * re-mounted harness can't wrap an already-wrapped fetch and double-record.
- */
 export function installSdkCallCapture(
   metabaseUrl: string | undefined,
 ): () => void {
@@ -84,6 +82,7 @@ export function installSdkCallCapture(
   } catch {
     return () => undefined;
   }
+
   installed = true;
 
   const realFetch = window.fetch.bind(window);

@@ -6,12 +6,6 @@ const toOrigin = (url: string | undefined): string | undefined => {
   }
 };
 
-/**
- * Dev-server CSP mirroring what Metabase emits in production, so a request a
- * production data app couldn't make is blocked in `npm run dev` too instead of
- * silently working locally. With no `allowed_hosts`, `form-action` is `'none'`
- * (client-side `onSubmit` still works — it preventDefaults).
- */
 export const buildDevCsp = (
   allowedHosts: string[],
   metabaseUrl: string | undefined,

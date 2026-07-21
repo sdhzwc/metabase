@@ -33,8 +33,7 @@ const report = (
 });
 
 const ok = (body: DataAppDiagnosticsReport) =>
-  // Only `ok` and `json` are read.
-  ({ ok: true, json: () => Promise.resolve(body) }) as Response;
+  new Response(JSON.stringify(body), { status: 200 });
 
 /**
  * A stub that filters by `startEventId` exactly as the dev server does, so a
@@ -133,8 +132,7 @@ describe("useDiagnosticsFeed", () => {
   it("distinguishes a refused response from an unreachable server", async () => {
     const fetchSpy = jest
       .spyOn(globalThis, "fetch")
-      // Only `ok`/`status` are read.
-      .mockResolvedValue({ ok: false, status: 500 } as Response);
+      .mockResolvedValue(new Response("nope", { status: 500 }));
 
     const { result } = renderHook(() => useDiagnosticsFeed("/feed", 10_000));
 

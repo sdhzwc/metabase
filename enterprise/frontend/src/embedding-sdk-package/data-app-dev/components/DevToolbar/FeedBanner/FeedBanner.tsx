@@ -8,8 +8,6 @@ interface Props {
   clients: number;
 }
 
-// An empty panel can mean "the feed is broken" rather than "nothing went wrong".
-// `loaded` gates the no-clients note so it doesn't flash before the first response.
 export const FeedBanner = ({ problem, loaded, clients }: Props) => {
   if (problem?.kind === "unreachable") {
     return (

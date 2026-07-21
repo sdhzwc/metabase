@@ -1,6 +1,3 @@
-// Constants shared by the dev server preset and its plugin. The sandbox globals
-// contract lives with the sandbox; re-exported so the preset has one import site.
-
 export {
   DATA_APP_EXTERNALS,
   DATA_APP_FACTORY_GLOBAL,

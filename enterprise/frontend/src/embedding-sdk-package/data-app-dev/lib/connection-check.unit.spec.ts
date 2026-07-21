@@ -17,15 +17,11 @@ beforeEach(() => clearDevDiagnostics());
 
 describe("runDevConnectionCheck", () => {
   it("reports a down instance without blaming the API key", async () => {
-    // Regression: the health failure used to fall through to the key check,
-    // which overwrote the error — sending the author to fix a fine .env.local
-    // while the real problem (the instance is down) was discarded.
-    // The stub only needs the (input) call shape.
     const fetchFn = jest.fn(async (input: RequestInfo | URL) =>
       String(input).endsWith("/api/health")
         ? new Response("bad gateway", { status: 502 })
         : json({}),
-    ) as unknown as typeof fetch;
+    );
 
     await runDevConnectionCheck({
       metabaseUrl: METABASE_URL,
@@ -41,17 +37,19 @@ describe("runDevConnectionCheck", () => {
   });
 
   it("reports a rejected key when the instance is up", async () => {
-    // Only the (input) call shape is exercised.
     const fetchFn = jest.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
+
       if (url.endsWith("/api/health")) {
         return new Response("ok", { status: 200 });
       }
+
       if (url.endsWith("/api/user/current")) {
         return new Response("nope", { status: 401 });
       }
+
       return json({ version: { tag: "v1.56.0" } });
-    }) as unknown as typeof fetch;
+    });
 
     await runDevConnectionCheck({
       metabaseUrl: METABASE_URL,
@@ -66,14 +64,15 @@ describe("runDevConnectionCheck", () => {
   });
 
   it("reports the instance version and a missing key on a healthy instance", async () => {
-    // Only the (input) call shape is exercised.
     const fetchFn = jest.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
+
       if (url.endsWith("/api/health")) {
         return new Response("ok", { status: 200 });
       }
+
       return json({ version: { tag: "v1.56.0" } });
-    }) as unknown as typeof fetch;
+    });
 
     await runDevConnectionCheck({
       metabaseUrl: METABASE_URL,
@@ -92,8 +91,7 @@ describe("runDevConnectionCheck", () => {
   });
 
   it("reports an unset URL without probing anything", async () => {
-    // Never called — the check must bail before probing.
-    const fetchFn = jest.fn() as unknown as typeof fetch;
+    const fetchFn = jest.fn();
 
     await runDevConnectionCheck({
       metabaseUrl: undefined,
@@ -110,11 +108,11 @@ describe("runDevConnectionCheck", () => {
 
   it("keeps credentials out of the feed while still probing with them", async () => {
     const seen: string[] = [];
-    // Only the (input) call shape is exercised.
     const fetchFn = jest.fn(async (input: RequestInfo | URL) => {
       seen.push(String(input));
+
       return new Response("nope", { status: 503 });
-    }) as unknown as typeof fetch;
+    });
 
     await runDevConnectionCheck({
       metabaseUrl: "https://user:secret@mb.example.com",

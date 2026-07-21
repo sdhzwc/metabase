@@ -42,11 +42,6 @@ export interface DataAppDiagnosticPayload extends DataAppDiagnosticEntry {
 }
 
 export interface DataAppDiagnosticsMessage {
-  /**
-   * The page load that sent this. A full reload starts a new reporter (a soft
-   * reload doesn't), so a changed session means the previous page's events are
-   * stale.
-   */
   session: string;
   entries: DataAppDiagnosticEntry[];
   connection: DevConnectionStatus | null;
@@ -59,7 +54,7 @@ export interface DataAppDiagnosticsReport {
   clients: number;
   lastReportAt: number | null;
   lastRebuildAt: number | null;
-  /** Pass as `?startEventId=` next time. Inclusive: one past the last event here. */
+  /** Cursor for the next poll (`?startEventId=`): the last event's id + 1. */
   nextEventId: number;
   session: string | null;
 }

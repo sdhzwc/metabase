@@ -67,13 +67,6 @@ function readInstalledSdkVersion(appRoot: string): string | null {
 // Rollup's virtual-module marker: a leading NUL tells plugins the id is synthetic.
 const RESOLVED_PREFIX = "\0";
 
-/**
- * Runs `npm run dev` through the real Near-Membrane sandbox so dev behaves like
- * production. The membrane evaluates a code string, not Vite's module graph, so
- * the app is rebuilt in-memory as the production IIFE and served at
- * `DATA_APP_BUNDLE_URL`; instead of a page reload it emits
- * `DATA_APP_REBUILT_EVENT` and the dev entry re-evaluates in the live sandbox.
- */
 export function dataAppSandboxDevPlugin(
   appSlug: string,
   allowedHosts: string[],
@@ -167,7 +160,6 @@ export function dataAppSandboxDevPlugin(
         }
       };
 
-      // Coalesce rebuilds: changes arriving mid-build collapse into one follow-up.
       let building = false;
       let pending = false;
       const rebuildAndNotify = async () => {
@@ -274,8 +266,6 @@ export function dataAppSandboxDevPlugin(
           entries,
           connection: diagnosticConnection,
           manifest: manifestStatus,
-          // Zero clients means nothing has run, so an empty `entries` says
-          // nothing about the app's health.
           clients: server.ws.clients.size,
           lastReportAt,
           lastRebuildAt,
@@ -298,13 +288,10 @@ export function dataAppSandboxDevPlugin(
         }
       });
 
-      // `allowedHosts` stays what the server booted with, so the validator can
-      // flag a drifted allowlist as restart-required.
       const refreshManifestStatus = () => {
         manifestStatus = validateDataAppManifest(root, allowedHosts);
       };
 
-      // Up front, so the feed carries a status before any client connects.
       refreshManifestStatus();
 
       server.watcher.on("all", (_event, file) => {

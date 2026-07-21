@@ -1,6 +1,3 @@
-// Ambient types for `dev-entry.tsx`: the dev env vars, Vite's `import.meta`, and
-// the dev plugin's config virtual module. Sole global `ImportMeta` declaration.
-
 interface ImportMetaEnv {
   readonly DATA_APP_MB_URL: string;
   readonly DATA_APP_MB_API_KEY: string;

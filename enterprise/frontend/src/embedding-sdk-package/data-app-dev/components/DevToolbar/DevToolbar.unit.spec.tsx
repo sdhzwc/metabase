@@ -53,14 +53,11 @@ beforeEach(() => {
   jest.spyOn(globalThis, "fetch").mockImplementation((_url, init) => {
     if (init?.method === "DELETE") {
       deleted += 1;
-      // The hook reads only `ok`, so a full Response stub would be noise.
-      return Promise.resolve({ ok: true, status: 204 } as Response);
+      return Promise.resolve(new Response(null, { status: 204 }));
     }
-    // Likewise: only `ok` and `json` are read.
-    return Promise.resolve({
-      ok: true,
-      json: () => Promise.resolve(served),
-    } as Response);
+    return Promise.resolve(
+      new Response(JSON.stringify(served), { status: 200 }),
+    );
   });
 });
 

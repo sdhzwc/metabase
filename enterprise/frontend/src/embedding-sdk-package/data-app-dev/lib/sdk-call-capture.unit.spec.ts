@@ -13,14 +13,12 @@ const jsonResponse = (body: unknown) =>
     headers: { "Content-Type": "application/json" },
   });
 
-let realFetch: jest.Mock;
+let realFetch: jest.Mock<Promise<Response>, []>;
 let teardown: () => void;
 
 const install = (metabaseUrl: string = METABASE_URL) => {
-  realFetch = jest.fn().mockResolvedValue(jsonResponse({}));
-  // A jest.fn() can't satisfy fetch's full overloaded signature; the code under
-  // test only ever calls it as (input, init).
-  window.fetch = realFetch as unknown as typeof fetch;
+  realFetch = jest.fn(async () => jsonResponse({}));
+  window.fetch = realFetch;
   teardown = installSdkCallCapture(metabaseUrl);
 };
 

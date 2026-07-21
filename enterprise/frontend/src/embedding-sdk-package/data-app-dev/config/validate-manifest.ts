@@ -1,13 +1,8 @@
-// Mirrors the backend's `parse-app-config` (`data_apps/config.clj`): every
-// `errors` entry here is a manifest remote-sync would reject with a 400, so the
-// developer finds out while editing rather than after pushing.
-
 import fs from "node:fs";
 import path from "node:path";
 
 import { load as parseYaml } from "js-yaml";
 
-// The sandbox's own matcher, so "valid entry" can't drift from what it allows.
 // A namespace import stays single-line so the disable covers the reported line.
 // eslint-disable-next-line metabase/no-external-references-for-sdk-package-code
 import * as sandboxAllowedHosts from "metabase-enterprise/data_apps/sandbox/allowed-hosts";
@@ -58,11 +53,6 @@ const sameHosts = (left: string[], right: string[]): boolean => {
   return a.length === b.length && a.every((entry, index) => entry === b[index]);
 };
 
-/**
- * `startupAllowedHosts` is what the dev server booted with — when the manifest
- * drifts from it the sandbox allowlist and CSP are stale until restart, which the
- * status flags via `restartRequired`.
- */
 export function validateDataAppManifest(
   appRoot: string,
   startupAllowedHosts: string[],

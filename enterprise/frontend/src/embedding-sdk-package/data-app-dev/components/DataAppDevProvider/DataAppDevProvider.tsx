@@ -14,10 +14,6 @@ export type DataAppDevProviderProps = MetabaseProviderProps & {
   appSlug: string;
 };
 
-/**
- * Wraps `MetabaseProvider` for the local dev preview, reporting the page's
- * traffic as the data app so queries are attributed to it, not the React SDK.
- */
 export const DataAppDevProvider = ({
   appSlug,
   children,

@@ -1,9 +1,3 @@
-// Boot-time connection check for the data-app dev harness: is the configured
-// Metabase reachable, is the API key valid, and which versions are talking.
-// Results land in the diagnostics store (the toolbar's Connection tab) — the
-// failure modes here (unset env vars, dead URL, revoked key) are otherwise
-// silent and just make every SDK call fail.
-
 import { setDevConnectionStatus } from "../components/DevToolbar/diagnostics";
 import type { DevConnectionStatus } from "../diagnostics-channel";
 
@@ -31,12 +25,9 @@ const readVersionTag = (body: unknown): string | null => {
 const describeFailure = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
 
-// The `.env.local` vars this checks. Kept as constants so the several error
-// messages that name them can't drift from each other or from the actual vars.
 const MB_URL_ENV = "DATA_APP_MB_URL";
 const MB_API_KEY_ENV = "DATA_APP_MB_API_KEY";
 
-/** "<VAR> is not set — …", the shared shape of both unset-env messages. */
 const notSetMessage = (envVar: string): string =>
   `${envVar} is not set — fill it in the repo-root .env.local and restart the dev server.`;
 
@@ -90,9 +81,6 @@ export async function runDevConnectionCheck({
     status.reachable = health.ok;
 
     if (!health.ok) {
-      // Stop here rather than fall through to the key check: an unreachable
-      // instance rejects every request, so continuing would overwrite this with
-      // "the API key was rejected" and send the author to fix a fine .env.local.
       status.error = `${status.metabaseUrl}/api/health responded with ${health.status}.`;
       setDevConnectionStatus(status);
 

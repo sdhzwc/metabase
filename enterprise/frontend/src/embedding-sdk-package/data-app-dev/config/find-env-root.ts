@@ -4,7 +4,6 @@ import path from "node:path";
 // Covers the deepest layout, `<repo>/data_apps/<app>`. `.git` is a hard stop.
 const MAX_ENV_SEARCH_DEPTH = 2;
 
-/** Walks up to the dir holding `.env.local`, or the git root. */
 export function findEnvRoot(start: string): string {
   let dir = start;
 

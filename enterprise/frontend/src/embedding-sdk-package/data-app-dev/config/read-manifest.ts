@@ -3,7 +3,6 @@ import path from "node:path";
 
 import { load as parseYaml } from "js-yaml";
 
-/** Normalized: `allowed_hosts` is guaranteed to be a list of strings. */
 export type DataAppManifest = {
   allowed_hosts?: string[];
 };
@@ -35,7 +34,6 @@ const parseAllowedHosts = (
   return value;
 };
 
-/** Null when the app has no manifest. */
 export const readManifest = (
   appRoot: string,
 ): { manifestPath: string; manifest: DataAppManifest } | null => {

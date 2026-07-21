@@ -9,11 +9,6 @@ import {
   DATA_APP_GLOBALS,
 } from "../bundle";
 
-/**
- * The bundle contract, shared by `vite build` and the dev server's in-memory
- * build so both emit the same shape. `assetsInlineLimit` base64-inlines every
- * asset: the backend serves one file, so the build must be self-contained.
- */
 export function dataAppLibBuild(fileName: string) {
   return {
     assetsInlineLimit: () => true,
@@ -30,7 +25,6 @@ export function dataAppLibBuild(fileName: string) {
   };
 }
 
-// CSS is inlined into the JS — the IIFE has no HTML to link a stylesheet.
 export function dataAppBuildPlugins() {
   return [cssInjectedByJsPlugin(), svgr()];
 }
