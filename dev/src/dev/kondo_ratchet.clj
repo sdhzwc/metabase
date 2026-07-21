@@ -104,25 +104,37 @@
                           :linters (if bare? [:all] (vec (linter-keywords (.group m 1))))}))
         acc))))
 
-;; A justifying comment has words in it; a bare `;;` section divider does not.
+;; A justifying comment has a letter somewhere in it; a bare `;;` or a `;; ----` section divider does not.
+;; Deliberately does not require the letter in the *first* token: `;; -- why this is needed` and
+;; `;; 0.57.0 deprecation, no replacement yet` are perfectly good justifications.
 (def ^:private substantive-comment-re
-  #";+\s*\S*[A-Za-z].*")
+  #";+.*[A-Za-z].*")
 
 (defn- justified?
   "Does the ignore starting at `start`/ending at `end` in `content` have an explanatory comment?
   Counts a substantive trailing comment on the same line, or one on the nearest preceding non-blank line.
-  The trailing comment is located in `masked`, where a `;` inside a string literal is blanked out."
+  Comments are located via `masked`, where the `;` opening a real comment survives but any `;` inside a
+  string literal is blanked out; the comment *text* is then read from `content`, since masking blanks a
+  comment's interior. A `;;`-looking line inside a multi-line string therefore cannot pose as a
+  justification."
   [content masked start end]
-  (let [line-num   (offset->line content start)
-        lines      (str/split-lines content)
-        line-end   (or (str/index-of content "\n" end) (count content))
-        prev-lines (->> (take (dec line-num) lines)
-                        reverse
-                        (drop-while str/blank?))]
+  (let [line-num    (offset->line content start)
+        line-end    (or (str/index-of content "\n" end) (count content))
+        raw-lines   (vec (str/split-lines content))
+        mask-lines  (vec (str/split-lines masked))
+        comment-at  (fn [i]
+                      ;; a genuine comment: `masked` still has the `;` where `content` does
+                      (when-let [raw (get raw-lines i)]
+                        (when-let [c (str/index-of raw ";")]
+                          (when (= \; (get (get mask-lines i "") c))
+                            (subs raw c)))))
+        prev-idx    (->> (range (- line-num 2) -1 -1)
+                         (drop-while #(str/blank? (get raw-lines % "")))
+                         first)]
     (boolean (or (when-let [i (str/index-of masked ";" end)]
                    (when (< i line-end)
                      (re-matches substantive-comment-re (str/trim (subs content i line-end)))))
-                 (when-let [prev (first prev-lines)]
+                 (when-let [prev (some-> prev-idx comment-at)]
                    (re-matches substantive-comment-re (str/trim prev)))))))
 
 (defn ignore-matches
