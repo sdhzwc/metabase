@@ -10,6 +10,7 @@ interface ImportMeta {
   readonly env: ImportMetaEnv;
   readonly hot?: {
     on(event: string, cb: (...args: unknown[]) => void): void;
+    send(event: string, data?: unknown): void;
   };
 }
 
