@@ -39,13 +39,17 @@ describe("scenarios > data-apps > dev diagnostics toolbar", () => {
 
   describe("open", () => {
     it("opens the full panel with tabs on a single click", () => {
-      serveDiagnosticsFeed([diagnosticEntry({ eventId: 1, kind: "error", summary: "boom" })]);
+      serveDiagnosticsFeed([
+        diagnosticEntry({ eventId: 1, kind: "error", summary: "boom" }),
+      ]);
 
       mountDevToolbar();
       openDevToolbar();
 
       // No intermediate popover: tabs are there at once and the toggle is gone.
-      devToolbarRoot().findByRole("tab", { name: "Errors" }).should("be.visible");
+      devToolbarRoot()
+        .findByRole("tab", { name: "Errors" })
+        .should("be.visible");
       devToolbarRoot()
         .findByRole("button", { name: /Diagnostics/ })
         .should("not.exist");
@@ -89,7 +93,9 @@ describe("scenarios > data-apps > dev diagnostics toolbar", () => {
         "Manifest",
         "Connection",
       ]) {
-        devToolbarRoot().findByRole("tab", { name: label }).should("be.visible");
+        devToolbarRoot()
+          .findByRole("tab", { name: label })
+          .should("be.visible");
       }
       devToolbarRoot()
         .findByRole("tab", { name: "Errors" })
@@ -100,7 +106,9 @@ describe("scenarios > data-apps > dev diagnostics toolbar", () => {
       devToolbarRoot().findByText("Nothing blocked.").should("be.visible");
 
       devToolbarRoot().findByRole("tab", { name: "Queries" }).click();
-      devToolbarRoot().findByText("No Metabase calls captured.").should("be.visible");
+      devToolbarRoot()
+        .findByText("No Metabase calls captured.")
+        .should("be.visible");
 
       devToolbarRoot().findByRole("tab", { name: "Manifest" }).click();
       devToolbarRoot()
@@ -266,7 +274,9 @@ describe("scenarios > data-apps > dev diagnostics toolbar", () => {
       devToolbarRoot().findByText("http://localhost:3000").should("be.visible");
       devToolbarRoot().findByText("✗ invalid").should("exist");
       devToolbarRoot().findByText("v1.56.0").should("exist");
-      devToolbarRoot().findByText("The API key was rejected (401).").should("exist");
+      devToolbarRoot()
+        .findByText("The API key was rejected (401).")
+        .should("exist");
     });
 
     it("says so, instead of looking healthy, when the dev server is unreachable", () => {
@@ -328,7 +338,9 @@ describe("scenarios > data-apps > dev diagnostics toolbar", () => {
 
       // Close dismisses the whole panel back to just the toggle button.
       devToolbarRoot().findByRole("button", { name: "Close" }).click();
-      devToolbarRoot().findByRole("tab", { name: "Errors" }).should("not.exist");
+      devToolbarRoot()
+        .findByRole("tab", { name: "Errors" })
+        .should("not.exist");
       devToolbarToggle().should("be.visible");
     });
   });
