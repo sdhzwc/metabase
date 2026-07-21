@@ -70,6 +70,7 @@ import SegmentQuestionsContainer from "metabase/reference/segments/SegmentQuesti
 import SegmentRevisionsContainer from "metabase/reference/segments/SegmentRevisionsContainer";
 import { Route, redirect, withRouteProps } from "metabase/router";
 import {
+  CanAccessAiAuditing,
   CanAccessAlertsManagement,
   CanAccessDataModel,
   CanAccessDataStudio,
@@ -400,6 +401,7 @@ export const getRoutes = (store: AppStore) => {
             CanAccessMonitorDiagnostics,
             CanAccessMonitoringTools,
             CanAccessAlertsManagement,
+            CanAccessAiAuditing,
           )}
         </Route>
       </Route>
