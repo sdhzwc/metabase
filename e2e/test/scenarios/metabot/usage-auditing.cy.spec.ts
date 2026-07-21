@@ -97,7 +97,7 @@ const MAIN_PROFILE_LABELS: string[] = [
   "Transforms codegen",
 ];
 
-function visitUsageStatsPage(path = "/admin/metabot/usage-auditing"): void {
+function visitUsageStatsPage(path = "/monitor/ai-auditing"): void {
   cy.intercept("GET", "/api/database/13371337/metadata*").as("auditMetadata");
   cy.intercept("POST", "/api/dataset").as("dataset");
 
@@ -166,7 +166,7 @@ function setupUsageAuditingTenants(): Cypress.Chainable<UsageAuditingTenants> {
 }
 
 function visitConversationsPage(
-  path = "/admin/metabot/usage-auditing/conversations",
+  path = "/monitor/ai-auditing/conversations",
 ): void {
   interceptConversationsApi();
   cy.visit(path);
@@ -425,6 +425,18 @@ describe("scenarios > metabot > usage auditing", () => {
     assertMetricChartsRendered("conversations");
   });
 
+  it("redirects the legacy /admin/metabot/usage-auditing URL to /monitor/ai-auditing", () => {
+    cy.intercept("GET", "/api/database/13371337/metadata*").as("auditMetadata");
+
+    cy.visit("/admin/metabot/usage-auditing");
+    cy.wait("@auditMetadata");
+
+    cy.location("pathname").should("eq", "/monitor/ai-auditing");
+    H.main()
+      .findByRole("heading", { name: "Usage stats" })
+      .should("be.visible");
+  });
+
   it("renders usage stats charts for selected date shortcuts on conversations", () => {
     visitUsageStatsPage();
 
@@ -514,7 +526,7 @@ describe("scenarios > metabot > usage auditing", () => {
   it("filters the conversations list by tenant", () => {
     setupUsageAuditingTenants().then(({ bobbyTenant, robertTenant }) => {
       visitConversationsPage(
-        "/admin/metabot/usage-auditing/conversations?date=past7days~",
+        "/monitor/ai-auditing/conversations?date=past7days~",
       );
 
       H.main().findByDisplayValue("All tenants").should("be.visible");
@@ -561,7 +573,7 @@ describe("scenarios > metabot > usage auditing", () => {
 
   it("drills through from the tenants chart to the conversations list", () => {
     setupUsageAuditingTenants().then(({ bobbyTenant, robertTenant }) => {
-      visitUsageStatsPage("/admin/metabot/usage-auditing?date=past7days~");
+      visitUsageStatsPage("/monitor/ai-auditing?date=past7days~");
       interceptConversationsApi();
 
       assertMetricChartsRendered("conversations");
@@ -574,7 +586,7 @@ describe("scenarios > metabot > usage auditing", () => {
       waitForConversations();
       cy.location("pathname").should(
         "eq",
-        "/admin/metabot/usage-auditing/conversations",
+        "/monitor/ai-auditing/conversations",
       );
       cy.location("search").should("include", `tenant=${bobbyTenant.id}`);
       H.main().findByDisplayValue(bobbyTenant.name).should("be.visible");
@@ -600,7 +612,7 @@ describe("scenarios > metabot > usage auditing", () => {
   });
 
   it("drills through from the groups chart to the conversations list", () => {
-    visitUsageStatsPage("/admin/metabot/usage-auditing?date=past7days~");
+    visitUsageStatsPage("/monitor/ai-auditing?date=past7days~");
     interceptConversationsApi();
 
     assertMetricChartsRendered("conversations");
@@ -611,10 +623,7 @@ describe("scenarios > metabot > usage auditing", () => {
     );
 
     waitForConversations();
-    cy.location("pathname").should(
-      "eq",
-      "/admin/metabot/usage-auditing/conversations",
-    );
+    cy.location("pathname").should("eq", "/monitor/ai-auditing/conversations");
     cy.location("search").should("include", `group=${ADMINISTRATORS_GROUP_ID}`);
     H.main().findByDisplayValue("Administrators").should("be.visible");
     assertConversationTableContains([
@@ -642,10 +651,7 @@ describe("scenarios > metabot > usage auditing", () => {
     clickRowChartBarForLabel("Users with most conversations", "Bobby Tables");
 
     waitForConversations();
-    cy.location("pathname").should(
-      "eq",
-      "/admin/metabot/usage-auditing/conversations",
-    );
+    cy.location("pathname").should("eq", "/monitor/ai-auditing/conversations");
     cy.location("search").should("include", `user=${ADMIN_USER_ID}`);
     H.main().findByDisplayValue("Bobby Tables").should("be.visible");
     assertConversationTableContains([
@@ -690,7 +696,7 @@ describe("scenarios > metabot > usage auditing", () => {
 
   it("drills through from the conversations by day chart to the conversations list", () => {
     getUsageAuditingSeed().then(({ body }) => {
-      visitUsageStatsPage("/admin/metabot/usage-auditing?date=past7days~");
+      visitUsageStatsPage("/monitor/ai-auditing?date=past7days~");
       interceptConversationsApi();
 
       clickLastTimeseriesChartDot("Conversations by day");
@@ -698,7 +704,7 @@ describe("scenarios > metabot > usage auditing", () => {
       waitForConversations();
       cy.location("pathname").should(
         "eq",
-        "/admin/metabot/usage-auditing/conversations",
+        "/monitor/ai-auditing/conversations",
       );
       cy.location("search").should("include", `date=${body.date}`);
       assertTodayConversationTable();
@@ -707,7 +713,7 @@ describe("scenarios > metabot > usage auditing", () => {
 
   it("drills through from the conversations by hour chart to the conversations list", () => {
     getUsageAuditingSeed().then(({ body }) => {
-      visitUsageStatsPage(`/admin/metabot/usage-auditing?date=${body.date}`);
+      visitUsageStatsPage(`/monitor/ai-auditing?date=${body.date}`);
       interceptConversationsApi();
 
       clickLastTimeseriesChartDot("Conversations by hour");
@@ -715,7 +721,7 @@ describe("scenarios > metabot > usage auditing", () => {
       waitForConversations();
       cy.location("pathname").should(
         "eq",
-        "/admin/metabot/usage-auditing/conversations",
+        "/monitor/ai-auditing/conversations",
       );
       assertHourDateFilterInUrl();
       assertLatestHourConversationTable();
@@ -724,7 +730,7 @@ describe("scenarios > metabot > usage auditing", () => {
 
   it("opens conversation details from the list for each main profile", () => {
     visitConversationsPage(
-      "/admin/metabot/usage-auditing/conversations?date=past7days~",
+      "/monitor/ai-auditing/conversations?date=past7days~",
     );
 
     MAIN_PROFILE_LABELS.forEach((profileLabel, index) => {
@@ -740,7 +746,7 @@ describe("scenarios > metabot > usage auditing", () => {
         cy.go("back");
         cy.location("pathname").should(
           "eq",
-          "/admin/metabot/usage-auditing/conversations",
+          "/monitor/ai-auditing/conversations",
         );
       }
     });
@@ -794,7 +800,7 @@ describe("scenarios > metabot > usage auditing", () => {
 
   it("uses hourly stats for a single-day date filter", () => {
     getUsageAuditingSeed().then(({ body }) => {
-      visitUsageStatsPage(`/admin/metabot/usage-auditing?date=${body.date}`);
+      visitUsageStatsPage(`/monitor/ai-auditing?date=${body.date}`);
 
       H.main().within(() => {
         cy.findByRole("heading", { name: "Usage stats" }).should("be.visible");
