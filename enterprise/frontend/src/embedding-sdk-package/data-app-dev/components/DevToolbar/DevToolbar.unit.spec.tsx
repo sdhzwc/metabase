@@ -322,4 +322,24 @@ describe("DevToolbar data source", () => {
       expect.stringContaining("/__data-app/diagnostics?startEventId="),
     );
   });
+
+  it("reads on a nudge rather than on a timer when the dev server can push", async () => {
+    const listeners = new Set<() => void>();
+    const subscribe = (onChange: () => void) => {
+      listeners.add(onChange);
+
+      return () => listeners.delete(onChange);
+    };
+
+    render(<DevToolbar subscribe={subscribe} />);
+    await waitFor(() => expect(globalThis.fetch).toHaveBeenCalledTimes(1));
+
+    // Left alone it must stay quiet: the heartbeat is ten seconds out, so a
+    // second read inside this window would mean it is still polling.
+    await new Promise((resolve) => setTimeout(resolve, 1200));
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+
+    listeners.forEach((listener) => listener());
+    await waitFor(() => expect(globalThis.fetch).toHaveBeenCalledTimes(2));
+  });
 });

@@ -10,7 +10,8 @@ import type {
 } from "../types/diagnostics-channel";
 
 export interface DiagnosticsStore {
-  ingest: (message: DataAppDiagnosticsMessage) => void;
+  /** Returns whether a reader would now see something different. */
+  ingest: (message: DataAppDiagnosticsMessage) => boolean;
   clear: () => void;
   /** Entries from `startEventId` onward; all of them if the cursor is absent. */
   read: (startEventId: number) => DataAppDiagnosticPayload[];
@@ -41,7 +42,12 @@ export function createDiagnosticsStore(): DiagnosticsStore {
   return {
     ingest(message) {
       lastReportAt = Date.now();
-      connection = message?.connection ?? connection;
+
+      const nextConnection = message?.connection ?? connection;
+      // By `checkedAt`, not by reference: every message arrives off the socket
+      // as a fresh object, so a reference check would call each one a change.
+      let changed = nextConnection?.checkedAt !== connection?.checkedAt;
+      connection = nextConnection;
 
       // A new page: drop the previous one's events, but keep `nextEventId`
       // climbing so an existing poller's cursor stays valid.
@@ -51,6 +57,7 @@ export function createDiagnosticsStore(): DiagnosticsStore {
         }
 
         sessionId = message.sessionId;
+        changed = true;
       }
 
       if (Array.isArray(message?.entries) && message.entries.length > 0) {
@@ -58,7 +65,12 @@ export function createDiagnosticsStore(): DiagnosticsStore {
           ...entries,
           ...message.entries.map(toStoredEntry),
         ]);
+        changed = true;
       }
+
+      // The reporter flushes on a timer and often has nothing new; broadcasting
+      // those would put the poll loop back, just triggered from the other side.
+      return changed;
     },
 
     clear() {

@@ -201,4 +201,63 @@ describe("useDiagnosticsFeed", () => {
       expect(result.current.entries[0].eventId).toBe(2);
     });
   });
+
+  describe("when the dev server can nudge it", () => {
+    const makeSubscribe = () => {
+      const listeners = new Set<() => void>();
+
+      return {
+        subscribe: (onChange: () => void) => {
+          listeners.add(onChange);
+
+          return () => listeners.delete(onChange);
+        },
+        nudge: () => listeners.forEach((listener) => listener()),
+        get listenerCount() {
+          return listeners.size;
+        },
+      };
+    };
+
+    it("re-reads on a nudge instead of waiting for the next heartbeat", async () => {
+      const { subscribe, nudge } = makeSubscribe();
+      const buffer = [entry(1)];
+      const serve = serveBuffer(buffer);
+      jest
+        .spyOn(globalThis, "fetch")
+        .mockImplementation((url) => Promise.resolve(serve(String(url))));
+
+      const { result } = renderHook(() =>
+        useDiagnosticsFeed("/feed", 60_000, subscribe),
+      );
+      await waitFor(() => expect(result.current.entries).toHaveLength(1));
+
+      buffer.push(entry(2));
+      await act(async () => {
+        nudge();
+      });
+
+      // The heartbeat is a minute out; without the nudge this would still show
+      // one entry, which is the whole reason for pushing rather than polling.
+      await waitFor(() => expect(result.current.entries).toHaveLength(2));
+    });
+
+    it("stops listening when unmounted", () => {
+      const socket = makeSubscribe();
+      jest
+        .spyOn(globalThis, "fetch")
+        .mockImplementation(() => Promise.resolve(ok(report([]))));
+
+      const { unmount } = renderHook(() =>
+        useDiagnosticsFeed("/feed", 60_000, socket.subscribe),
+      );
+      expect(socket.listenerCount).toBe(1);
+
+      unmount();
+
+      // A toolbar that unmounts without unsubscribing keeps re-reading the feed
+      // for the rest of the session, once per nudge, forever.
+      expect(socket.listenerCount).toBe(0);
+    });
+  });
 });

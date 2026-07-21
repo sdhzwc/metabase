@@ -28,7 +28,9 @@ const asTrimmedString = (value: unknown): string | null => {
   ) {
     return null;
   }
+
   const trimmed = String(value).trim();
+
   return trimmed.length > 0 ? trimmed : null;
 };
 
@@ -69,6 +71,7 @@ export function validateDataAppManifest(
   };
 
   const slug = path.basename(appRoot);
+
   if (!SLUG_PATTERN.test(slug)) {
     status.errors.push(
       `The app directory's name ("${slug}") is its slug, so it must be lowercase letters, numbers, and dashes.`,
@@ -103,21 +106,25 @@ export function validateDataAppManifest(
       : undefined;
 
   status.name = asTrimmedString(manifestValue("name"));
+
   if (status.name == null) {
     status.errors.push(`${CONFIG_FILE_NAME}: "name" is required.`);
   }
 
   const bundlePath = asTrimmedString(manifestValue("path"));
+
   if (bundlePath == null) {
     status.errors.push(`${CONFIG_FILE_NAME}: "path" is required.`);
   } else {
     status.bundlePath = normalizePath(bundlePath);
+
     if (hasPathTraversal(status.bundlePath)) {
       status.errors.push(`${CONFIG_FILE_NAME}: "path" must not contain "..".`);
     } else {
       status.bundlePathExists = fs.existsSync(
         path.join(appRoot, status.bundlePath),
       );
+
       if (!status.bundlePathExists) {
         status.warnings.push(
           `"${status.bundlePath}" does not exist — run \`npm run build\` before committing, or sync will fail.`,
@@ -132,6 +139,7 @@ export function validateDataAppManifest(
   } else if (Array.isArray(rawHosts)) {
     for (const entry of rawHosts) {
       const host = asTrimmedString(entry);
+
       if (host == null || !isValidAllowedHostEntry(host)) {
         status.errors.push(
           `"${String(entry)}" is not a valid allowed_hosts entry — use an origin like https://api.example.com or https://*.example.com.`,

@@ -15,6 +15,9 @@ import { capDiagnosticEntries } from "./diagnostics-limits";
 
 const REFETCH_POLL_MS = 1000;
 
+/** Registers a listener for "the feed changed", returning its teardown. */
+export type SubscribeToChanges = (onChange: () => void) => () => void;
+
 export type DiagnosticsFeedProblem =
   | { kind: "unreachable" }
   | { kind: "http"; status: number };
@@ -36,6 +39,7 @@ const EMPTY_ENTRIES: DataAppDiagnosticPayload[] = [];
 export const useDiagnosticsFeed = (
   url: string = DATA_APP_DIAGNOSTICS_URL,
   pollMs: number = REFETCH_POLL_MS,
+  subscribe?: SubscribeToChanges,
 ): DiagnosticsFeed => {
   const [entries, setEntries] =
     useState<DataAppDiagnosticPayload[]>(EMPTY_ENTRIES);
@@ -113,9 +117,13 @@ export const useDiagnosticsFeed = (
   useEffect(() => {
     void poll();
     const timer = setInterval(() => void poll(), pollMs);
+    const unsubscribe = subscribe?.(() => void poll());
 
-    return () => clearInterval(timer);
-  }, [poll, pollMs]);
+    return () => {
+      clearInterval(timer);
+      unsubscribe?.();
+    };
+  }, [poll, pollMs, subscribe]);
 
   const clear = useCallback(() => {
     generation.current += 1;

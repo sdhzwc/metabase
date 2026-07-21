@@ -1,5 +1,10 @@
 export const DATA_APP_DIAGNOSTICS_EVENT = "data-app:diagnostics";
 
+// Server → page nudge. Carries no data: readers re-read the endpoint, so the
+// toolbar and a shell agent never diverge on where the truth came from.
+export const DATA_APP_DIAGNOSTICS_CHANGED_EVENT =
+  "data-app:diagnostics-changed";
+
 export const DATA_APP_DIAGNOSTICS_URL = "/__data-app/diagnostics";
 
 export const START_EVENT_ID_PARAM = "startEventId";

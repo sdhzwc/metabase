@@ -242,6 +242,7 @@ export function makeSandboxFetch(
         url: requestUrlString(input, base),
         reason,
       });
+
       return Promise.reject(
         new Error(`[data-app ${label}] blocked fetch to ${reason}`),
       );

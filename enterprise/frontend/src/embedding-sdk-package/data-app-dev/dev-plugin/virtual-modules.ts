@@ -11,6 +11,7 @@ import {
   DATA_APP_BUNDLE_URL,
   DATA_APP_REBUILT_EVENT,
 } from "../constants/bundle";
+import { DATA_APP_DIAGNOSTICS_CHANGED_EVENT } from "../constants/diagnostics-channel";
 import {
   DATA_APP_DEV_ENTRY_FILE_NAME,
   PACKAGE_JSON_FILE_NAME,
@@ -71,6 +72,7 @@ export const loadDataAppVirtualModule = (
       `export const appSlug = ${JSON.stringify(appSlug)};`,
       `export const bundleUrl = ${JSON.stringify(DATA_APP_BUNDLE_URL)};`,
       `export const rebuiltEvent = ${JSON.stringify(DATA_APP_REBUILT_EVENT)};`,
+      `export const diagnosticsChangedEvent = ${JSON.stringify(DATA_APP_DIAGNOSTICS_CHANGED_EVENT)};`,
       `export const sdkVersion = ${JSON.stringify(readInstalledSdkVersion(process.cwd()))};`,
     ].join("\n");
   }

@@ -2,7 +2,11 @@
 import cx from "classnames";
 import { useState } from "react";
 
-import { useDiagnosticsFeed } from "../../lib/use-diagnostics-feed";
+import { DATA_APP_DIAGNOSTICS_URL } from "../../constants/diagnostics-channel";
+import {
+  type SubscribeToChanges,
+  useDiagnosticsFeed,
+} from "../../lib/use-diagnostics-feed";
 
 import { ConnectionTab } from "./ConnectionTab/ConnectionTab";
 import S from "./DevToolbar.module.css";
@@ -15,8 +19,22 @@ import { ResizeHandle } from "./ResizeHandle/ResizeHandle";
 import { TABS, type TabId, isBlocked } from "./entries";
 import { usePanelResize } from "./use-panel-resize";
 
-export function DevToolbar() {
-  const feed = useDiagnosticsFeed();
+// With a socket, a poll is only a fallback for a nudge that never arrived;
+// without one it is the only way anything ever updates.
+const HEARTBEAT_MS = 10_000;
+const POLL_MS = 1000;
+
+export interface DevToolbarProps {
+  /** Notifies that the dev server's feed changed, so it need not be polled. */
+  subscribe?: SubscribeToChanges;
+}
+
+export function DevToolbar({ subscribe }: DevToolbarProps = {}) {
+  const feed = useDiagnosticsFeed(
+    DATA_APP_DIAGNOSTICS_URL,
+    subscribe ? HEARTBEAT_MS : POLL_MS,
+    subscribe,
+  );
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<TabId>("errors");
   const { height, startResize } = usePanelResize();

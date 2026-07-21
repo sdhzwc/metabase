@@ -4,7 +4,10 @@ import type { Plugin } from "vite";
 
 import { validateDataAppManifest } from "../config/validate-manifest";
 import { DATA_APP_REBUILT_EVENT } from "../constants/bundle";
-import { DATA_APP_DIAGNOSTICS_EVENT } from "../constants/diagnostics-channel";
+import {
+  DATA_APP_DIAGNOSTICS_CHANGED_EVENT,
+  DATA_APP_DIAGNOSTICS_EVENT,
+} from "../constants/diagnostics-channel";
 import { DATA_APP_MANIFEST_FILE_NAME } from "../constants/paths";
 import type { DataAppManifestStatus } from "../types/manifest-status";
 
@@ -45,7 +48,14 @@ export function dataAppSandboxDevPlugin(
 
       server.middlewares.use(serveAppBundle(bundle));
 
-      server.ws.on(DATA_APP_DIAGNOSTICS_EVENT, diagnostics.ingest);
+      server.ws.on(DATA_APP_DIAGNOSTICS_EVENT, (message) => {
+        if (diagnostics.ingest(message)) {
+          server.ws.send({
+            type: "custom",
+            event: DATA_APP_DIAGNOSTICS_CHANGED_EVENT,
+          });
+        }
+      });
 
       server.middlewares.use(
         serveDiagnostics({

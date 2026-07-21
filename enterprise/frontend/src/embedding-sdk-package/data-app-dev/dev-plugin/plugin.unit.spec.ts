@@ -13,6 +13,7 @@ import {
   DATA_APP_REBUILT_EVENT,
 } from "../constants/bundle";
 import {
+  DATA_APP_DIAGNOSTICS_CHANGED_EVENT,
   DATA_APP_DIAGNOSTICS_EVENT,
   DATA_APP_DIAGNOSTICS_URL,
 } from "../constants/diagnostics-channel";
@@ -510,6 +511,37 @@ describe("dataAppSandboxDevPlugin", () => {
         const { body } = request(server, DATA_APP_DIAGNOSTICS_URL);
         expect(body.clients).toBe(1);
         expect(body.lastReportAt).toEqual(expect.any(Number));
+      });
+
+      const changeNudges = (server: FakeServer) =>
+        server.ws.send.mock.calls.filter(
+          ([message]) => message?.event === DATA_APP_DIAGNOSTICS_CHANGED_EVENT,
+        ).length;
+
+      it("nudges readers when a report brings something new", async () => {
+        const { server } = await setup();
+
+        report(server, [{ summary: "boom" }], "page-1");
+
+        // The nudge carries no payload: readers re-read the endpoint, so the
+        // toolbar and a shell agent still see the same bytes.
+        expect(changeNudges(server)).toBe(1);
+        expect(server.ws.send).toHaveBeenCalledWith({
+          type: "custom",
+          event: DATA_APP_DIAGNOSTICS_CHANGED_EVENT,
+        });
+      });
+
+      it("stays quiet when a report brings nothing new", async () => {
+        const { server } = await setup();
+
+        report(server, [{ summary: "boom" }], "page-1");
+        report(server, [], "page-1");
+        report(server, [], "page-1");
+
+        // The reporter flushes on a timer whether or not anything happened.
+        // Nudging on those would rebuild the poll loop from the other side.
+        expect(changeNudges(server)).toBe(1);
       });
     });
   });

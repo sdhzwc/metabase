@@ -167,6 +167,60 @@ describe("createDiagnosticsStore", () => {
     );
   });
 
+  describe("reporting whether anything changed", () => {
+    const connection = {
+      checkedAt: 1,
+      metabaseUrl: "http://localhost:3000",
+      reachable: true,
+      apiKeyValid: true,
+      metabaseVersion: "v1.56.0",
+      sdkVersion: "0.63.1",
+    };
+
+    it("is true for new entries", () => {
+      const store = createDiagnosticsStore();
+
+      expect(store.ingest(message([entry()]))).toBe(true);
+    });
+
+    it("is true for a new session", () => {
+      const store = createDiagnosticsStore();
+      store.ingest(message([entry()], "page-1"));
+
+      expect(store.ingest(message([], "page-2"))).toBe(true);
+    });
+
+    it("is true when the connection check has re-run", () => {
+      const store = createDiagnosticsStore();
+      store.ingest({ sessionId: "page-1", entries: [], connection });
+
+      expect(
+        store.ingest({
+          sessionId: "page-1",
+          entries: [],
+          connection: { ...connection, checkedAt: 2 },
+        }),
+      ).toBe(true);
+    });
+
+    it("is false for a flush that carries nothing new", () => {
+      const store = createDiagnosticsStore();
+      store.ingest({ sessionId: "page-1", entries: [entry()], connection });
+
+      // The reporter flushes on a timer whether or not anything happened, and
+      // the connection arrives as a fresh object every time — comparing it by
+      // reference would call every flush a change and undo the whole point of
+      // pushing instead of polling.
+      expect(
+        store.ingest({
+          sessionId: "page-1",
+          entries: [],
+          connection: { ...connection },
+        }),
+      ).toBe(false);
+    });
+  });
+
   it("starts empty rather than pretending a page has reported", () => {
     const store = createDiagnosticsStore();
 

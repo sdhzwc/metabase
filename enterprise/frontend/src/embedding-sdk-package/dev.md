@@ -98,7 +98,6 @@ On our CI, test failures do not block the merging of a pull request (PR). Howeve
 - **Test Run Failure**:
 
   The failure occurs during the actual test execution. In this case, the PR may have introduced a change that either:
-
   - Breaks the entire Metabase or Embedding SDK, or
   - Breaks the compatibility between the Embedding SDK and the Sample Apps.
 
