@@ -1,18 +1,5 @@
 import type { Location } from "history";
 
-import type { RouterState } from "metabase/router";
-
-export const createMockRoutingState = (
-  opts?: Partial<RouterState>,
-): RouterState => {
-  const location = opts?.locationBeforeTransitions;
-  return {
-    ...opts,
-    locationBeforeTransitions:
-      location === null ? null : createMockLocation(location),
-  };
-};
-
 export const createMockLocation = (opts?: Partial<Location>): Location => {
   return {
     pathname: "/",

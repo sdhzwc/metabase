@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import {
   Outlet,
   Route,
@@ -9,7 +9,6 @@ import {
   useParams,
   useRouter,
 } from "metabase/router";
-import { getLocation } from "metabase/selectors/routing";
 
 import type { RouterEngine } from "../engine";
 
@@ -141,20 +140,3 @@ describe.each<RouterEngine>(["v3", "v7"])(
     });
   },
 );
-
-// v3 tests never wired `syncHistoryWithStore`, so `state.routing` only tracks the
-// location on v7, through the redux bridge. This pins that the bridge feeds it.
-describe("v7 redux bridge", () => {
-  it("mirrors the location into state.routing", async () => {
-    const { store } = setup("v7", "/page/7");
-    await waitFor(() => {
-      expect(getLocation(store.getState())?.pathname).toBe("/page/7");
-    });
-
-    store.dispatch(push("/other"));
-
-    await waitFor(() => {
-      expect(getLocation(store.getState())?.pathname).toBe("/other");
-    });
-  });
-});

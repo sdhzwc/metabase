@@ -6,23 +6,21 @@ import {
   push,
   replace,
   routerMiddleware,
-  routing,
   syncHistoryWithStore,
 } from "metabase/router";
-import { getLocation } from "metabase/selectors/routing";
 
 // Keystone characterization test for the navigation TRANSPORT seam.
 //
-// `metabase/router` owns the `push`/`replace`/`goBack`
-// action creators + `routerMiddleware` + `routing` reducer +
-// `syncHistoryWithStore`. This test pins the observable contract that the
-// replacement preserves byte-for-byte:
+// `metabase/router` owns the `push`/`replace`/`goBack` action creators +
+// `routerMiddleware` + `syncHistoryWithStore`. This test pins the observable
+// contract that survives retiring the `routing` slice:
 //
-//   dispatch(push/replace/goBack)  ->  state.routing  +  @@router/LOCATION_CHANGE
+//   dispatch(push/replace/goBack)  ->  history navigation  +  @@router/LOCATION_CHANGE
 //
 // It wires up the SAME transport `store.js` / `app.js` use (the router
-// middleware + the routing reducer + a memory history + syncHistoryWithStore),
-// isolated from the rest of the app graph.
+// middleware + a memory history + syncHistoryWithStore), isolated from the rest
+// of the app graph. The location is now read straight off history, since it is
+// no longer mirrored into redux.
 
 const LOCATION_CHANGE = "@@router/LOCATION_CHANGE";
 
@@ -35,25 +33,28 @@ const setup = () => {
 
   const history = createMemoryHistory();
   const store = configureStore({
-    reducer: { routing },
+    reducer: (state = null) => state,
     middleware: (getDefaultMiddleware) =>
       getDefaultMiddleware({
         serializableCheck: false,
         immutableCheck: false,
       }).concat(routerMiddleware(history), recorder),
   });
-  const syncedHistory = syncHistoryWithStore(history, store);
+  syncHistoryWithStore(history, store);
 
   const locationChanges = () =>
     actions.filter((a) => a.type === LOCATION_CHANGE);
-  // Unjustified type cast. FIXME
-  const location = () => getLocation(store.getState() as any);
+  // Read the location the transport delivers, not `history.getCurrentLocation()`:
+  // history@3 reports `action: "POP"` on the current location and only carries the
+  // real PUSH/REPLACE action on the value handed to `listen` (the LOCATION_CHANGE
+  // payload), which is what the app consumes.
+  const location = () => locationChanges().at(-1)?.payload;
 
-  return { store, history: syncedHistory, location, locationChanges };
+  return { store, history, location, locationChanges };
 };
 
 describe("routing transport contract", () => {
-  it("mirrors the initial location into state.routing on sync", () => {
+  it("starts at the initial history location", () => {
     const { location } = setup();
     expect(location().pathname).toBe("/");
   });
@@ -70,7 +71,7 @@ describe("routing transport contract", () => {
 
   it("push(descriptor) round-trips location.state (the QB card-state case)", () => {
     // query_builder/actions/url.ts dispatches push() with the serialized card on
-    // `state`; the migration's history proxy must forward state across engines.
+    // `state`; the transport must forward state through to history.
     const { store, location } = setup();
     const cardState = {
       card: { id: 7, name: "Q" },

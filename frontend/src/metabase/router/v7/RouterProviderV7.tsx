@@ -15,8 +15,8 @@ import { mapToV7 } from "./map-to-v7";
 
 /**
  * The v7 route tree: the facade tree mapped to real v7 routes and rendered by
- * `<Routes>`, plus the redux bridge that mirrors location into `state.routing`
- * and lets `dispatch(push(...))` drive the router. Kept separate from the history
+ * `<Routes>`, plus the redux bridge that emits LOCATION_CHANGE on navigation and
+ * lets `dispatch(push(...))` drive the router. Kept separate from the history
  * provider below so tests can host the same tree under a `<MemoryRouter>`.
  */
 export function V7RouterTree({ children }: PropsWithChildren): JSX.Element {

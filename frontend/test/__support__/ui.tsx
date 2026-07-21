@@ -33,7 +33,6 @@ import {
   type RouterEngine,
   RouterProvider,
   routerMiddleware,
-  routing as routingReducer,
   useRouterHistory,
 } from "metabase/router";
 import { RouterProviderV7Memory } from "metabase/router/v7/RouterProviderV7";
@@ -181,8 +180,7 @@ export function getTestStoreAndWrapper({
   theme,
 }: GetTestStoreAndWrapperOptions) {
   const isV7Router = withRouter && routerEngine === "v7";
-  let { routing, ...initialState }: Partial<State> =
-    createMockState(storeInitialState);
+  let initialState: Partial<State> = createMockState(storeInitialState);
 
   if (mode === "public") {
     const publicReducerNames = Object.keys(publicReducers);
@@ -206,10 +204,6 @@ export function getTestStoreAndWrapper({
     reducers = makeMainReducers();
   }
 
-  if (withRouter) {
-    Object.assign(reducers, { routing: routingReducer });
-    Object.assign(initialState, { routing });
-  }
   if (customReducers) {
     reducers = { ...reducers, ...customReducers };
   }

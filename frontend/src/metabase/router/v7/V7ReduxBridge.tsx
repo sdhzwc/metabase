@@ -7,7 +7,7 @@ import {
 
 import { useDispatch } from "metabase/redux";
 
-import { LOCATION_CHANGE } from "../routing-reducer";
+import { LOCATION_CHANGE } from "../location-change";
 
 import { toV3Location } from "./location";
 import { setV7Navigate } from "./navigator";
@@ -18,8 +18,8 @@ import { setV7Navigate } from "./navigator";
  *
  * - registers the live `navigate` so the redux navigator adapter (and thus
  *   `dispatch(push(...))`) can drive the v7 router;
- * - mirrors every location into `state.routing` via LOCATION_CHANGE, so
- *   `getLocation` / `isNavbarOpen` / `errorPage` keep working.
+ * - emits LOCATION_CHANGE on every navigation so `isNavbarOpen` / `errorPage`
+ *   (and trace-id rotation) keep reacting to route changes.
  *
  * Rendered inside the router but outside `<Routes>`, so it tracks the location
  * regardless of which route matches. Deleted with the v3 engine in Phase 4.
