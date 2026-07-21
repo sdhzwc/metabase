@@ -403,7 +403,7 @@ function assertConversationDetailProfile(profileLabel: string): void {
   });
 }
 
-describe("scenarios > metabot > usage auditing", () => {
+describe("scenarios > monitor > ai auditing > usage auditing", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
