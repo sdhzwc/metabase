@@ -19,7 +19,7 @@ import type {
 import type { Route } from "../route";
 import type { Location as HistoryLocation, LocationDescriptor } from "../types";
 
-import { registerLeaveHook } from "./blocking-history";
+import { getCurrentHistory, registerLeaveHook } from "./blocking-history";
 import { toV3Location } from "./location";
 import { toNavigateArgs } from "./navigator";
 
@@ -109,7 +109,7 @@ function makeRouterShim(navigate: V7NavigateFunction): InjectedRouter {
       ? location
       : `${location.pathname ?? ""}${location.search ?? ""}${location.hash ?? ""}`;
 
-  return {
+  const shim: InjectedRouter = {
     push: (location) => navigate(...toNavigateArgs(location)),
     replace: (location) =>
       navigate(...toNavigateArgs(location, { replace: true })),
@@ -126,4 +126,19 @@ function makeRouterShim(navigate: V7NavigateFunction): InjectedRouter {
     createHref: href,
     isActive: () => false,
   };
+
+  // v3's router also exposes `listen`, which its typings omit (call sites reach
+  // it through a ts-expect-error). Reimplement it over the mounted history so
+  // subscribers like the dashboard tab sync keep working on v7.
+  return Object.assign(shim, {
+    listen: (listener: (location: HistoryLocation) => void) => {
+      const history = getCurrentHistory();
+      if (!history) {
+        return () => undefined;
+      }
+      return history.listen(({ location, action }) =>
+        listener(toV3Location(location, action)),
+      );
+    },
+  });
 }

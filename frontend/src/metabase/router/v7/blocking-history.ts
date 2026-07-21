@@ -31,6 +31,17 @@ interface Registration {
 const registrations = new Set<Registration>();
 
 /**
+ * The history the app is currently mounted on. v3's `InjectedRouter` exposes a
+ * `listen`, which the router shim reimplements over this, so call sites that
+ * subscribe to location changes keep working on v7.
+ */
+let currentHistory: History | null = null;
+
+export function getCurrentHistory(): History | null {
+  return currentHistory;
+}
+
+/**
  * Register a leave hook. The v7 `setRouteLeaveHook` shim calls this, so the
  * leave-confirm modals block navigation on v7 the same way they do on v3.
  * `basePath` scopes the hook to a route: it fires only when the destination
@@ -143,7 +154,7 @@ export function withBlocking(history: History): History {
 
   const overrides = { push, replace, listen };
 
-  return new Proxy(history, {
+  const blocking = new Proxy(history, {
     get(target, prop) {
       if (prop === "push" || prop === "replace" || prop === "listen") {
         return overrides[prop];
@@ -152,4 +163,7 @@ export function withBlocking(history: History): History {
       return typeof value === "function" ? value.bind(target) : value;
     },
   });
+
+  currentHistory = blocking;
+  return blocking;
 }
