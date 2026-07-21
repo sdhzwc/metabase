@@ -744,6 +744,18 @@
         (embedder [{:id 1 :name "orders" :kind :table}])
         (is (false? (:record-tokens? @captured)))))))
 
+(deftest embeddings-client-translates-neutral-dimension-key-test
+  (let [captured (atom nil)]
+    (mt/with-dynamic-fn-redefs
+      [semantic-search/get-embeddings-batch
+       (fn [embedding-model _texts & _opts]
+         (reset! captured embedding-model)
+         [])]
+      (embeddings/get-embeddings-batch
+       {:provider "ai-service", :model-name "fake", :model-dimensions 384}
+       ["orders"]))
+    (is (= 384 (:vector-dimensions @captured)))))
+
 (deftest ^:sequential provider-embedder-splits-names-before-calling-provider-test
   (testing "provider-embedder splits names on _, -, ., and camelCase before sending to get-embeddings-batch"
     (let [captured (atom nil)
