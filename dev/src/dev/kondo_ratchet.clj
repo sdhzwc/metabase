@@ -112,30 +112,32 @@
 
 (defn- justified?
   "Does the ignore starting at `start`/ending at `end` in `content` have an explanatory comment?
-  Counts a substantive trailing comment on the same line, or one on the nearest preceding non-blank line.
-  Comments are located via `masked`, where the `;` opening a real comment survives but any `;` inside a
-  string literal is blanked out; the comment *text* is then read from `content`, since masking blanks a
-  comment's interior. A `;;`-looking line inside a multi-line string therefore cannot pose as a
-  justification."
+  Counts a substantive trailing comment on the same line, or a comment *line* directly above -- the
+  nearest preceding non-blank line, with nothing but the comment on it. A trailing comment belongs to
+  the code it sits after, so `(f) ; note about f` above an ignore is not a justification for it.
+  Comment openers are located in `masked`, where the `;` starting a real comment survives but any `;`
+  inside a string literal is blanked out; the comment *text* is then read from `content`, since masking
+  blanks a comment's interior. So neither a `;;`-looking line inside a multi-line string nor a literal
+  `;` earlier on the line can pose as -- or hide -- a justification."
   [content masked start end]
   (let [line-num    (offset->line content start)
         line-end    (or (str/index-of content "\n" end) (count content))
         raw-lines   (vec (str/split-lines content))
         mask-lines  (vec (str/split-lines masked))
         comment-at  (fn [i]
-                      ;; a genuine comment: `masked` still has the `;` where `content` does
+                      ;; find the opener in the masked line, then read the text from the raw one
                       (when-let [raw (get raw-lines i)]
-                        (when-let [c (str/index-of raw ";")]
-                          (when (= \; (get (get mask-lines i "") c))
-                            (subs raw c)))))
+                        (when-let [c (str/index-of (get mask-lines i "") ";")]
+                          {:code (subs raw 0 c), :comment (subs raw c)})))
         prev-idx    (->> (range (- line-num 2) -1 -1)
                          (drop-while #(str/blank? (get raw-lines % "")))
                          first)]
     (boolean (or (when-let [i (str/index-of masked ";" end)]
                    (when (< i line-end)
                      (re-matches substantive-comment-re (str/trim (subs content i line-end)))))
-                 (when-let [prev (some-> prev-idx comment-at)]
-                   (re-matches substantive-comment-re (str/trim prev)))))))
+                 (when-let [{:keys [code comment]} (some-> prev-idx comment-at)]
+                   (and (str/blank? code)
+                        (re-matches substantive-comment-re (str/trim comment))))))))
 
 (defn- enclosing-opener
   "Index of the delimiter directly enclosing `i` in `s`, or nil if `i` is at top level. Walks backwards
@@ -149,24 +151,69 @@
           (or (= c \() (= c \[) (= c \{)) (if (zero? depth) j (recur (dec j) (dec depth)))
           :else                              (recur (dec j) depth))))))
 
+(defn- form-end
+  "Index just past the form starting at `i` in masked source `s`. Bracketed forms are skipped whole, a
+  string runs to its closing quote (masking leaves both quotes in place), and anything else is a token
+  running to the next delimiter or space."
+  ^long [^String s ^long i]
+  (let [n (count s)]
+    (case (.charAt s i)
+      (\( \[ \{) (loop [j (inc i), depth 1]
+                   (if (>= j n)
+                     j
+                     (case (.charAt s j)
+                       (\( \[ \{) (recur (inc j) (inc depth))
+                       (\) \] \}) (if (= depth 1) (inc j) (recur (inc j) (dec depth)))
+                       (recur (inc j) depth))))
+      \"         (if-let [k (str/index-of s "\"" (inc i))] (inc (long k)) n)
+      (loop [j i]
+        (if (or (>= j n)
+                (Character/isWhitespace (.charAt s j))
+                (contains? #{\( \) \[ \] \{ \} \" \, \;} (.charAt s j)))
+          j
+          (recur (inc j)))))))
+
+(defn- key-position?
+  "Is the form at `i` in masked source `s` a key of the map opening at `opener`? Counts the forms in
+  between: an even count means `i` is a key, an odd one a value. Reader prefixes (`^meta`, `#`, quotes)
+  attach to the form they precede instead of counting on their own, and a `#_` discards the next one.
+  This is what tells the suppression `{:a 1 :clj-kondo/ignore [:x]}` from the data
+  `{:label :clj-kondo/ignore [:x]}`, where the marker is a value."
+  [^String s ^long opener ^long i]
+  (loop [j (inc opener), forms 0, discard? false]
+    (let [c (when (< j (count s)) (.charAt s j))]
+      (cond
+        (>= j i)                                (and (= j i) (even? forms))
+        (or (Character/isWhitespace ^char c)
+            (= \, c))                           (recur (inc j) forms discard?)
+        (and (= \# c) (= \_ (.charAt s (inc j)))) (recur (+ j 2) forms true)
+        (contains? #{\^ \# \' \@ \~ \`} c)      (recur (inc j) forms discard?)
+        :else                                   (recur (form-end s j)
+                                                       (if discard? forms (inc forms))
+                                                       false)))))
+
 (defn- embedded-matches
   "Ignore keys sitting behind other keys in a metadata/attr map, e.g. `^{:added \"x\" :clj-kondo/ignore
   [:y]}`. These count and need justification like any ignore, but removal tooling must skip them --
-  excising one would take the map's other keys along.
+  excising one would take the map's other keys along. `:form-start` is the enclosing map's `{`: the
+  ignore is part of that form, so that is the line it belongs to and the line a justification sits above.
 
-  Delimiter-aware on purpose: the key only counts when a `{` directly encloses it, so
-  `^{:doc [:clj-kondo/ignore [:x]]}` is data rather than a suppression, and
-  `^{:opts {:a 1} :clj-kondo/ignore [:x]}` still counts despite the nested map in front of it. A regex
-  bounded by `[^{}]` gets both of those backwards."
+  Structural on purpose, not regex-bounded: the key counts only when a `{` directly encloses it and it
+  sits in key position, so `^{:doc [:clj-kondo/ignore [:x]]}` and `{:label :clj-kondo/ignore [:x]}` are
+  data rather than suppressions, while `^{:opts {:a 1} :clj-kondo/ignore [:x]}` still counts despite the
+  nested map in front of it. A regex bounded by `[^{}]` gets all of those backwards."
   [^String masked]
   (let [m (re-matcher ignore-key-re masked)]
     (loop [acc []]
       (if (.find m)
         (let [opener (enclosing-opener masked (.start m))]
-          (recur (if (and opener (= \{ (.charAt masked (long opener))))
-                   (conj acc {:start   (.start m)
-                              :end     (.end m)
-                              :linters (vec (linter-keywords (.group m 1)))})
+          (recur (if (and opener
+                          (= \{ (.charAt masked (long opener)))
+                          (key-position? masked opener (.start m)))
+                   (conj acc {:start      (.start m)
+                              :end        (.end m)
+                              :form-start opener
+                              :linters    (vec (linter-keywords (.group m 1)))})
                    acc)))
         acc))))
 
@@ -175,7 +222,11 @@
   `{:start _, :end _, :line _, :linters [...], :justified? _}` with character offsets and a 1-based line.
   An ignore key buried behind other attr-map keys is included too, tagged `:embedded? true` -- it
   counts and needs justification, but removal tooling must skip it (excising it would take the map's
-  other keys along). Matches inside string literals or line comments are excluded."
+  other keys along). Matches inside string literals or line comments are excluded.
+
+  The line and the justification are those of the *form*, which for an embedded key is the attr map it
+  sits in rather than the key itself. In a multi-line attr map those differ, and the comment a reader
+  writes above the form is the one that justifies it."
   [content]
   (let [masked   (mask-strings-and-comments content)
         primary  (concat (matches-with-offsets vector-form-re masked false)
@@ -187,9 +238,12 @@
                       (map #(assoc % :embedded? true)))]
     (->> (concat primary embedded)
          (sort-by :start)
-         (map #(assoc %
-                      :line       (offset->line masked (:start %))
-                      :justified? (justified? content masked (:start %) (:end %)))))))
+         (map (fn [{:keys [start end form-start] :as match}]
+                (let [anchor (or form-start start)]
+                  (-> match
+                      (dissoc :form-start)
+                      (assoc :line       (offset->line masked anchor)
+                             :justified? (justified? content masked anchor end)))))))))
 
 (defn line-linters
   "Linter keywords suppressed by inline ignore forms on `line`.

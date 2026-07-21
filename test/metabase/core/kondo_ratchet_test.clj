@@ -110,6 +110,12 @@
     [:after-vec]        "(def ^{:tags [:a :b] :clj-kondo/ignore [:after-vec]} x 1)"
     []                  "(def ^{:doc [:clj-kondo/ignore [:nested-data]]} x 1)"
     []                  "(def ^{:doc {:k [:clj-kondo/ignore [:deeper]]}} x 1)"
+    ;; the marker in value position is data, not a suppression -- an odd number of forms precedes it
+    []                  "(def x {:label :clj-kondo/ignore [:not-a-suppression] :other 1})"
+    []                  "(def x {:a 1 :b :clj-kondo/ignore [:also-a-value]})"
+    [:key-again]        "(def x ^{:label :a :clj-kondo/ignore [:key-again]} y)"
+    ;; a discarded form doesn't shift the key/value parity
+    [:after-discard]    "(def x ^{:a 1 #_:skipped #_2 :clj-kondo/ignore [:after-discard]} y)"
     ;; vector-less forms suppress everything -> :all
     [:all]              "  #_:clj-kondo/ignore"
     [:all]              "  #_ :clj-kondo/ignore (foo)"
@@ -120,6 +126,36 @@
     ;; ignore forms inside strings and comments don't count either
     []                  "(def s \"#_{:clj-kondo/ignore [:in-a-string]}\")"
     []                  ";; #_{:clj-kondo/ignore [:commented-out]}"))
+
+(deftest ^:parallel justified?-test
+  (are [expected content] (= [expected] (map :justified? (kondo-ratchet/ignore-matches content)))
+    ;; a comment line directly above justifies; so does one trailing the ignore's own line
+    true  ";; f can't be resolved until runtime\n#_{:clj-kondo/ignore [:x]}\n(f)"
+    true  "#_{:clj-kondo/ignore [:x]} (f) ; can't be resolved until runtime"
+    ;; ... but a comment trailing the *preceding* line belongs to that line's code, not to the ignore
+    false "(g) ; g is the fast path\n#_{:clj-kondo/ignore [:x]}\n(f)"
+    ;; a comment needs to say something: dividers and bare punctuation don't
+    false ";; ----------------------------------------\n#_{:clj-kondo/ignore [:x]}\n(f)"
+    false ";; 0.57.0\n#_{:clj-kondo/ignore [:x]}\n(f)"
+    ;; ... though a letter anywhere in it is enough, wherever the comment starts
+    true  ";; -- 0.57.0 deprecation, no replacement yet\n#_{:clj-kondo/ignore [:x]}\n(f)"
+    ;; a `;;` inside a multi-line string is not a comment and cannot pose as one
+    false "(def s \"\n;; looks like a justification\")\n#_{:clj-kondo/ignore [:x]}\n(f)"
+    ;; nor does a literal `;` in a string hide the real comment that follows it
+    true  "#_{:clj-kondo/ignore [:x]} (def s \"a;b\") ; the ; above is data"
+    false "#_{:clj-kondo/ignore [:x]} (def s \"a ; not a comment\")"
+    ;; blank lines between the comment and the ignore are fine
+    true  ";; f can't be resolved until runtime\n\n\n#_{:clj-kondo/ignore [:x]}\n(f)"
+    false "#_{:clj-kondo/ignore [:x]}\n(f)")
+  (testing "an embedded ignore belongs to the attr map's line, so the comment above the form justifies it"
+    (let [content (str ";; :added is stale but the ignore still bites\n"
+                       "(def ^{:added \"0.1\"\n"
+                       "       :clj-kondo/ignore [:x]}\n"
+                       "  y 1)")]
+      (is (= [{:line 2, :linters [:x], :justified? true, :embedded? true}]
+             (map #(select-keys % [:line :linters :justified? :embedded?])
+                  (kondo-ratchet/ignore-matches content)))
+          "the match is reported on the `^{` line, not the line the key happens to sit on"))))
 
 (deftest ^:parallel scan-test
   (let [dir (.toFile (java.nio.file.Files/createTempDirectory
