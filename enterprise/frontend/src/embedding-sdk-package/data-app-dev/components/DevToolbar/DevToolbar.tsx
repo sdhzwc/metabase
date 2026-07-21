@@ -1,7 +1,11 @@
 /* eslint-disable i18next/no-literal-string */
 /* eslint-disable metabase/no-literal-metabase-strings -- dev-only toolbar for data-app authors, not whitelabel-able product UI */
 import cx from "classnames";
-import { type ReactNode, useState } from "react";
+import {
+  type MouseEvent as ReactMouseEvent,
+  type ReactNode,
+  useState,
+} from "react";
 
 import type { DataAppDiagnosticPayload } from "../../diagnostics-channel";
 import { useDiagnosticsFeed } from "../../lib/use-diagnostics-feed";
@@ -191,16 +195,21 @@ const ManifestTab = ({ manifest }: { manifest: unknown }) => {
   );
 };
 
+/** Smallest the docked panel can be dragged; below this it's not usefully readable. */
+const MIN_PANEL_HEIGHT = 140;
+
+/** Default docked height, and the fallback when there's no window (tests/SSR). */
+const defaultPanelHeight = () =>
+  typeof window !== "undefined" ? Math.round(window.innerHeight / 3) : 320;
+
 export function DevToolbar() {
   const feed = useDiagnosticsFeed();
   const [open, setOpen] = useState(false);
-  const [docked, setDocked] = useState(false);
-  const [tall, setTall] = useState(false);
   const [tab, setTab] = useState<TabId>("errors");
+  const [height, setHeight] = useState(defaultPanelHeight);
 
   const { entries } = feed;
-  const alerts = entries.filter((entry) => entry.alert);
-  const count = alerts.length;
+  const count = entries.filter((entry) => entry.alert).length;
 
   const tabEntries: Record<
     Exclude<TabId, "manifest" | "connection">,
@@ -231,106 +240,105 @@ export function DevToolbar() {
       </div>
     ) : null;
 
-  const header = (
-    <div className={S.Header}>
-      <span className={S.Title}>Data app diagnostics</span>
-      <span className={S.Spacer} />
-      {docked && (
-        <button
-          type="button"
-          className={S.Action}
-          onClick={() => setTall((value) => !value)}
-        >
-          {tall ? "Third" : "Half"}
-        </button>
-      )}
-      <button type="button" className={S.Action} onClick={feed.clear}>
-        Clear
-      </button>
-      <button
-        type="button"
-        className={S.Action}
-        onClick={() => setDocked((value) => !value)}
-      >
-        {docked ? "Collapse" : "Expand"}
-      </button>
-      <button
-        type="button"
-        className={S.Action}
-        onClick={() => {
-          setOpen(false);
-          setDocked(false);
-        }}
-      >
-        Close
-      </button>
-    </div>
-  );
+  // Drag the top edge to resize. The panel is docked to the bottom, so dragging
+  // up (a smaller clientY) grows it. Listeners live on the window for the drag's
+  // duration so the pointer can leave the thin handle without dropping the drag.
+  const startResize = (event: ReactMouseEvent) => {
+    event.preventDefault();
+    const startY = event.clientY;
+    const startHeight = height;
 
-  if (docked) {
+    const onMove = (moveEvent: MouseEvent) => {
+      const next = startHeight + (startY - moveEvent.clientY);
+      const max = window.innerHeight - 20;
+      setHeight(Math.min(Math.max(next, MIN_PANEL_HEIGHT), max));
+    };
+    const onUp = () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  };
+
+  if (!open) {
     return (
       <div className={S.DevToolbar}>
-        <div className={cx(S.Panel, S.Docked, { [S.DockedTall]: tall })}>
-          {header}
-          <div className={S.Tabs} role="tablist">
-            {TABS.map(({ id, label }) => (
-              <button
-                key={id}
-                type="button"
-                role="tab"
-                aria-selected={tab === id}
-                className={cx(S.Tab, { [S.TabActive]: tab === id })}
-                onClick={() => setTab(id)}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-          <div className={S.Body}>
-            {banner}
-            {tab === "errors" && (
-              <EntryList
-                entries={tabEntries.errors}
-                emptyMessage="No errors captured."
-              />
-            )}
-            {tab === "blocked" && (
-              <EntryList
-                entries={tabEntries.blocked}
-                emptyMessage="Nothing blocked."
-              />
-            )}
-            {tab === "queries" && <QueriesTab entries={tabEntries.queries} />}
-            {tab === "manifest" && <ManifestTab manifest={feed.manifest} />}
-            {tab === "connection" && (
-              <ConnectionTab connection={feed.connection} />
-            )}
-          </div>
-        </div>
+        <button
+          type="button"
+          className={cx(S.Toggle, { [S.ToggleHasErrors]: count > 0 })}
+          onClick={() => setOpen(true)}
+          title="Data app diagnostics"
+        >
+          ⚠ Diagnostics{count > 0 ? ` (${count})` : ""}
+        </button>
       </div>
     );
   }
 
   return (
     <div className={S.DevToolbar}>
-      {open && (
-        <div className={S.Panel}>
-          {header}
-          <div className={S.Body}>
-            {banner}
-            <EntryList entries={alerts} emptyMessage="No errors captured." />
-          </div>
-        </div>
-      )}
-
-      <button
-        type="button"
-        className={cx(S.Toggle, { [S.ToggleHasErrors]: count > 0 })}
-        onClick={() => setOpen((value) => !value)}
-        title="Data app diagnostics"
+      <div
+        className={cx(S.Panel, S.Docked)}
+        style={{ height }}
+        data-testid="dev-toolbar-panel"
       >
-        ⚠ Diagnostics{count > 0 ? ` (${count})` : ""}
-      </button>
+        <div
+          className={S.ResizeHandle}
+          role="separator"
+          aria-orientation="horizontal"
+          aria-label="Resize diagnostics panel"
+          onMouseDown={startResize}
+        />
+        <div className={S.Header}>
+          <span className={S.Title}>Data app diagnostics</span>
+          <span className={S.Spacer} />
+          <button type="button" className={S.Action} onClick={feed.clear}>
+            Clear
+          </button>
+          <button
+            type="button"
+            className={S.Action}
+            onClick={() => setOpen(false)}
+          >
+            Close
+          </button>
+        </div>
+        <div className={S.Tabs} role="tablist">
+          {TABS.map(({ id, label }) => (
+            <button
+              key={id}
+              type="button"
+              role="tab"
+              aria-selected={tab === id}
+              className={cx(S.Tab, { [S.TabActive]: tab === id })}
+              onClick={() => setTab(id)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <div className={S.Body}>
+          {banner}
+          {tab === "errors" && (
+            <EntryList
+              entries={tabEntries.errors}
+              emptyMessage="No errors captured."
+            />
+          )}
+          {tab === "blocked" && (
+            <EntryList
+              entries={tabEntries.blocked}
+              emptyMessage="Nothing blocked."
+            />
+          )}
+          {tab === "queries" && <QueriesTab entries={tabEntries.queries} />}
+          {tab === "manifest" && <ManifestTab manifest={feed.manifest} />}
+          {tab === "connection" && (
+            <ConnectionTab connection={feed.connection} />
+          )}
+        </div>
+      </div>
     </div>
   );
 }

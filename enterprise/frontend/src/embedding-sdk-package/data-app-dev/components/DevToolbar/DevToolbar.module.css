@@ -73,13 +73,12 @@
   font-weight: 600;
 }
 
-/* Chrome-devtools-style bottom dock: full-width, a third of the screen, or
-   half when toggled taller. */
+/* Chrome-devtools-style bottom dock: full-width, drag the top edge to resize.
+   Height is set inline from component state (see `startResize`). */
 .Docked {
   position: fixed;
   inset: auto 0 0 0;
   width: 100%;
-  height: 33vh;
   max-height: none;
   margin-bottom: 0;
   border-radius: 0;
@@ -88,8 +87,16 @@
   border-bottom: none;
 }
 
-.DockedTall {
-  height: 50vh;
+/* The drag handle along the panel's top edge. */
+.ResizeHandle {
+  flex: 0 0 auto;
+  height: 6px;
+  cursor: ns-resize;
+  background: var(--mb-color-border, #eeecec);
+}
+
+.ResizeHandle:hover {
+  background: var(--mb-color-brand, #509ee3);
 }
 
 .Tabs {
@@ -117,6 +124,8 @@
 }
 
 .Body {
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   padding: 4px;
 }

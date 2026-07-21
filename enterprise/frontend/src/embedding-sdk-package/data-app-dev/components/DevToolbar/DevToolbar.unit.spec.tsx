@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { render, screen, waitFor } from "__support__/ui";
+import { fireEvent, render, screen, waitFor } from "__support__/ui";
 
 import type {
   DataAppDiagnosticPayload,
@@ -41,6 +41,7 @@ const serve = (
     lastReportAt: 1,
     lastRebuildAt: 1,
     nextEventId: (entries.at(-1)?.eventId ?? 0) + 1,
+    session: "session-1",
     ...overrides,
   };
 };
@@ -73,13 +74,13 @@ const setup = async () => {
   await waitFor(() => expect(globalThis.fetch).toHaveBeenCalled());
 };
 
-const expand = async () => {
+/** Open the full panel — a single click, no intermediate popover. */
+const open = async () => {
   await userEvent.click(getToggle());
-  await userEvent.click(screen.getByRole("button", { name: "Expand" }));
 };
 
-describe("DevToolbar", () => {
-  it("reads the feed and badges entries the server marked as alerts", async () => {
+describe("DevToolbar closed", () => {
+  it("badges the count of entries the server marked as alerts", async () => {
     serve([
       entry({ eventId: 1, summary: "boom", alert: true }),
       entry({
@@ -96,12 +97,23 @@ describe("DevToolbar", () => {
     );
   });
 
-  it("shows nothing captured when the feed is empty", async () => {
+  it("shows no count when there are no alerts", async () => {
     await setup();
-
     expect(getToggle()).toHaveTextContent(/^⚠ Diagnostics$/);
+  });
+});
 
-    await userEvent.click(getToggle());
+describe("DevToolbar open", () => {
+  it("opens the full panel with tabs on a single click", async () => {
+    await setup();
+    await open();
+
+    // No intermediate popover: the tabs are there immediately, and the toggle
+    // button is replaced by the panel.
+    expect(screen.getByRole("tab", { name: "Errors" })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Diagnostics/ }),
+    ).not.toBeInTheDocument();
     expect(screen.getByText("No errors captured.")).toBeInTheDocument();
   });
 
@@ -115,7 +127,7 @@ describe("DevToolbar", () => {
       }),
     ]);
     await setup();
-    await userEvent.click(getToggle());
+    await open();
 
     expect(screen.getByText("TypeError: nope")).toBeInTheDocument();
     expect(screen.getByRole("group")).not.toHaveAttribute("open");
@@ -125,51 +137,6 @@ describe("DevToolbar", () => {
     expect(screen.getByText("Fix the thing.")).toBeInTheDocument();
   });
 
-  it("says so when the dev server is unreachable, rather than looking healthy", async () => {
-    jest
-      .spyOn(globalThis, "fetch")
-      .mockRejectedValue(new Error("connection refused"));
-
-    render(<DevToolbar />);
-    await userEvent.click(getToggle());
-
-    expect(
-      await screen.findByText(/Can't reach the dev server/),
-    ).toBeInTheDocument();
-  });
-
-  it("says so when no preview tab is connected", async () => {
-    serve([], { clients: 0 });
-    await setup();
-    await userEvent.click(getToggle());
-
-    expect(screen.getByText(/No preview tab is connected/)).toBeInTheDocument();
-  });
-
-  it("clears through the endpoint so every reader is cleared", async () => {
-    serve([entry({ eventId: 1, summary: "boom" })]);
-    await setup();
-    await userEvent.click(getToggle());
-    expect(await screen.findByText("boom")).toBeInTheDocument();
-
-    serve([]);
-    await userEvent.click(screen.getByRole("button", { name: "Clear" }));
-
-    await waitFor(() => expect(deleted).toBe(1));
-    expect(screen.queryByText("boom")).not.toBeInTheDocument();
-  });
-
-  it("closes the panel when Close is clicked", async () => {
-    await setup();
-    await userEvent.click(getToggle());
-
-    await userEvent.click(screen.getByRole("button", { name: "Close" }));
-
-    expect(screen.queryByText("Data app diagnostics")).not.toBeInTheDocument();
-  });
-});
-
-describe("DevToolbar expanded (docked) mode", () => {
   it("splits entries across their tabs by kind", async () => {
     serve([
       entry({ eventId: 1, kind: "error", summary: "plain error" }),
@@ -186,7 +153,7 @@ describe("DevToolbar expanded (docked) mode", () => {
       }),
     ]);
     await setup();
-    await expand();
+    await open();
 
     expect(screen.getByText("plain error")).toBeInTheDocument();
     expect(
@@ -220,7 +187,7 @@ describe("DevToolbar expanded (docked) mode", () => {
       }),
     ]);
     await setup();
-    await expand();
+    await open();
     await userEvent.click(screen.getByRole("tab", { name: "Queries" }));
 
     expect(screen.getByText(/api\/card\/1\/query/)).toBeInTheDocument();
@@ -248,7 +215,7 @@ describe("DevToolbar expanded (docked) mode", () => {
       },
     });
     await setup();
-    await expand();
+    await open();
     await userEvent.click(screen.getByRole("tab", { name: "Manifest" }));
 
     expect(screen.getByText("path is required")).toBeInTheDocument();
@@ -269,7 +236,7 @@ describe("DevToolbar expanded (docked) mode", () => {
       },
     });
     await setup();
-    await expand();
+    await open();
     await userEvent.click(screen.getByRole("tab", { name: "Connection" }));
 
     expect(screen.getByText("http://localhost:3000")).toBeInTheDocument();
@@ -277,6 +244,71 @@ describe("DevToolbar expanded (docked) mode", () => {
     expect(
       screen.getByText("The API key was rejected (401)."),
     ).toBeInTheDocument();
+  });
+
+  it("says so when the dev server is unreachable, rather than looking healthy", async () => {
+    jest
+      .spyOn(globalThis, "fetch")
+      .mockRejectedValue(new Error("connection refused"));
+
+    render(<DevToolbar />);
+    await open();
+
+    expect(
+      await screen.findByText(/Can't reach the dev server/),
+    ).toBeInTheDocument();
+  });
+
+  it("says so when no preview tab is connected", async () => {
+    serve([], { clients: 0 });
+    await setup();
+    await open();
+
+    expect(screen.getByText(/No preview tab is connected/)).toBeInTheDocument();
+  });
+
+  it("clears through the endpoint so every reader is cleared", async () => {
+    serve([entry({ eventId: 1, summary: "boom" })]);
+    await setup();
+    await open();
+    expect(await screen.findByText("boom")).toBeInTheDocument();
+
+    serve([]);
+    await userEvent.click(screen.getByRole("button", { name: "Clear" }));
+
+    await waitFor(() => expect(deleted).toBe(1));
+    expect(screen.queryByText("boom")).not.toBeInTheDocument();
+  });
+
+  it("closes back to the toggle when Close is clicked", async () => {
+    await setup();
+    await open();
+    expect(screen.getByRole("tab", { name: "Errors" })).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Close" }));
+
+    expect(
+      screen.queryByRole("tab", { name: "Errors" }),
+    ).not.toBeInTheDocument();
+    expect(getToggle()).toBeInTheDocument();
+  });
+
+  it("resizes the panel by dragging its top edge", async () => {
+    await setup();
+    await open();
+
+    const handle = screen.getByRole("separator", {
+      name: /Resize diagnostics panel/,
+    });
+    const panel = screen.getByTestId("dev-toolbar-panel");
+    const before = parseInt(panel.style.height, 10);
+
+    // Drag the top edge up by 120px — the bottom-docked panel grows.
+    fireEvent.mouseDown(handle, { clientY: 400 });
+    fireEvent.mouseMove(window, { clientY: 280 });
+    fireEvent.mouseUp(window);
+
+    expect(parseInt(panel.style.height, 10)).toBe(before + 120);
   });
 });
 
