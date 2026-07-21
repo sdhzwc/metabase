@@ -46,9 +46,10 @@ export function LookbackField({ readOnly }: { readOnly?: boolean }) {
   const isDateOnly = isTemporal && !isa(baseType, TYPE.DateTime);
 
   // Keep the unit in step with the checkpoint column's type: temporal columns need one
-  // (day-or-coarser for date-only columns), numeric ones must not have one.
+  // (day-or-coarser for date-only columns), numeric ones must not have one. Only sync when a
+  // lookback is actually set — a write here counts as a form change and triggers an inline save.
   useEffect(() => {
-    if (baseType == null) {
+    if (baseType == null || values.lookbackValue == null) {
       return;
     }
     if (!isTemporal && values.lookbackUnit != null) {
@@ -60,7 +61,14 @@ export function LookbackField({ readOnly }: { readOnly?: boolean }) {
     ) {
       setFieldValue("lookbackUnit", "day");
     }
-  }, [baseType, isTemporal, isDateOnly, values.lookbackUnit, setFieldValue]);
+  }, [
+    baseType,
+    isTemporal,
+    isDateOnly,
+    values.lookbackValue,
+    values.lookbackUnit,
+    setFieldValue,
+  ]);
 
   if (fieldId == null) {
     return null;
