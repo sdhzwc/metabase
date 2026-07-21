@@ -2,6 +2,7 @@
   "Middleware that adds `:join-alias` info to `:field` clauses where needed."
   (:refer-clojure :exclude [get-in])
   (:require
+   [clojure.string :as str]
    [metabase.lib.core :as lib]
    [metabase.lib.field.resolution :as lib.field.resolution]
    [metabase.lib.metadata :as lib.metadata]
@@ -10,6 +11,21 @@
    [metabase.util.malli :as mu]
    [metabase.util.match :as match]
    [metabase.util.performance :refer [get-in]]))
+
+(defn- middleware-options
+  "Qualified options added to a ref by QP middleware to track its work -- e.g. the remap markers added
+  by [[metabase.query-processor.middleware.add-remaps]]. These get propagated into result-column metadata
+  by [[metabase.lib.field.resolution/opts-fn-options]] (which uses the same predicate as this function), so they need
+  to survive when we rewrite a ref -- dropping them breaks things like FK remapping for questions whose source table
+  was swapped out for a sandbox subquery (#78187)."
+  [opts]
+  (not-empty
+   (into {}
+         (filter (fn [[k _v]]
+                   (and (qualified-keyword? k)
+                        (not= (namespace k) "lib")
+                        (not (str/starts-with? (namespace k) "metabase.lib")))))
+         opts)))
 
 (mu/defn- fix-bad-field-id-refs-in-stage :- [:maybe ::lib.schema/stage]
   [query :- ::lib.schema/query
@@ -29,9 +45,13 @@
                                      (when-let [resolved (lib.walk/apply-f-for-stage-at-path
                                                           lib.field.resolution/resolve-field-ref
                                                           query path &match)]
-                                       (cond-> (lib/ref resolved)
-                                         (:lib/expression-name opts)
-                                         (lib/update-options assoc :lib/expression-name (:lib/expression-name opts))))))
+                                       (let [mw-opts (middleware-options opts)]
+                                         (cond-> (lib/ref resolved)
+                                           (:lib/expression-name opts)
+                                           (lib/update-options assoc :lib/expression-name (:lib/expression-name opts))
+
+                                           mw-opts
+                                           (lib/update-options merge mw-opts))))))
                                  &match)))
         stage' (update-fields stage)]
     (when-not (= stage' stage)

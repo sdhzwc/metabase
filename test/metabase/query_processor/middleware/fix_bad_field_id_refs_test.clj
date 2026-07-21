@@ -7,6 +7,7 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
+   [metabase.query-processor.middleware.add-remaps :as qp.add-remaps]
    [metabase.query-processor.middleware.fix-bad-field-id-refs :as fix-bad-field-id-refs]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
@@ -372,4 +373,33 @@
                                                 [:field {:join-alias "B"} 4] ; join alias should get added here
                                                 [:field {:join-alias "C"}
                                                  5]]]}]}]}
+              (fix-bad-field-id-refs/fix-bad-field-id-refs query))))))
+
+(deftest ^:parallel preserve-middleware-namespaced-options-test
+  (testing "rewriting an ID ref should preserve namespaced middleware options, e.g. the add-remaps markers (#78187)"
+    ;; When sandboxing swaps a source table out for a native subquery, ID refs in the following stage get rewritten to
+    ;; name-based refs by this middleware. Namespaced options that other middleware use to track their work (like the
+    ;; remap markers added by [[metabase.query-processor.middleware.add-remaps]]) must survive the rewrite; they are
+    ;; propagated to result metadata by [[metabase.lib.field.resolution/opts-fn-options]] and post-processing relies
+    ;; on them.
+    (let [mp    (lib.tu/mock-metadata-provider
+                 {:database {:id 1, :engine :h2}
+                  :tables   [{:id 10, :db-id 1, :name "MY_TABLE", :schema "PUBLIC"}]
+                  :fields   [{:id 100, :table-id 10, :name "FK_COL", :base-type :type/Integer}]})
+          query (-> (lib/query mp {:database 1
+                                   :type     :query
+                                   :query    {:source-query {:native "SELECT FK_COL FROM MY_TABLE"}
+                                              :fields       [[:field 100 {:base-type "type/Integer"
+                                                                          ::qp.add-remaps/original-field-dimension-id 1000}]]}})
+                    (assoc-in [:stages 0 :lib/stage-metadata]
+                              {:lib/type :metadata/results
+                               :columns  [{:lib/type  :metadata/column
+                                           :name      "FK_COL"
+                                           :base-type :type/Integer
+                                           :id        100
+                                           :table-id  10}]}))]
+      (is (=? {:stages [{}
+                        {:fields [[:field
+                                   {::qp.add-remaps/original-field-dimension-id 1000}
+                                   "FK_COL"]]}]}
               (fix-bad-field-id-refs/fix-bad-field-id-refs query))))))

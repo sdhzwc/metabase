@@ -861,3 +861,40 @@
                 :results_metadata
                 :columns
                 (mapv #(select-keys % [:name :remapped_to :remapped_from])))))))
+
+(deftest ^:parallel add-fk-remaps-native-source-id-refs-test
+  (testing "FK remaps should be added when :fields use ID refs against a native source stage (#78187)"
+    ;; This is the shape a saved question's query ends up in after sandboxing swaps its source table out for a native
+    ;; sandbox subquery: the stage's `:fields` still reference columns by ID, but the columns are now exported by a
+    ;; previous (native) stage, so refs generated from them are name-based. The remap markers must be attached to the
+    ;; existing ID refs anyway.
+    (let [query (-> (lib/query
+                     category-id-remap-metadata-provider
+                     {:database (meta/id)
+                      :type     :query
+                      :query    {:source-query {:native "SELECT * FROM VENUES"}
+                                 :fields       [[:field (meta/id :venues :price) nil]
+                                                [:field (meta/id :venues :category-id) nil]]}})
+                    (assoc-in [:stages 0 :lib/stage-metadata]
+                              {:lib/type :metadata/results
+                               :columns  [{:lib/type  :metadata/column
+                                           :name      "PRICE"
+                                           :base-type :type/Integer
+                                           :id        (meta/id :venues :price)
+                                           :table-id  (meta/id :venues)}
+                                          {:lib/type  :metadata/column
+                                           :name      "CATEGORY_ID"
+                                           :base-type :type/Integer
+                                           :id        (meta/id :venues :category-id)
+                                           :table-id  (meta/id :venues)}]}))
+          {:keys [remaps query]} (#'qp.add-remaps/add-fk-remaps query)]
+      (is (=? [remapped-field]
+              remaps))
+      (is (=? {:stages [{:lib/type :mbql.stage/native}
+                        {:fields [[:field {} (meta/id :venues :price)]
+                                  [:field {::qp.add-remaps/original-field-dimension-id pos-int?}
+                                   (meta/id :venues :category-id)]
+                                  [:field {:source-field                          (meta/id :venues :category-id)
+                                           ::qp.add-remaps/new-field-dimension-id pos-int?}
+                                   (meta/id :categories :name)]]}]}
+              query)))))

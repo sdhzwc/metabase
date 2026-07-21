@@ -1181,6 +1181,71 @@
                   (is (= [[1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2 "Awesome Concrete Shoes"]]
                          (mt/rows (mt/run-mbql-query orders {:limit 1})))))))))))))
 
+(deftest cherry-picked-fields-fk-remapping-test
+  (testing "FK remapping should work for questions against sandboxed tables that cherry-pick :fields (#78187)"
+    ;; Repro from #78187: Orders and People are sandboxed with native SQL questions driven by a `state` user
+    ;; attribute; `orders.user_id` and `orders.product_id` have FK ('external') remappings; the question explicitly
+    ;; joins People and Products but only selects a few of the columns. The remapped-from columns must still come back
+    ;; with `:remapped_to` metadata matching the `:remapped_from` of the remapping target columns, otherwise the FE
+    ;; errors with \"Invalid remapped_from\".
+    (mt/dataset test-data
+      (met/with-gtaps! {:gtaps      {:orders {:query      (mt/native-query
+                                                            {:query         (str "SELECT ORDERS.* FROM ORDERS "
+                                                                                 "LEFT JOIN PEOPLE ON PEOPLE.ID = ORDERS.USER_ID "
+                                                                                 "WHERE PEOPLE.STATE = {{state}}")
+                                                             :template-tags {"state" {:display-name "State"
+                                                                                      :id           "1"
+                                                                                      :name         "state"
+                                                                                      :type         :text}}})
+                                              :remappings {"state" [:variable [:template-tag "state"]]}}
+                                     :people {:query      (mt/native-query
+                                                            {:query         "SELECT * FROM PEOPLE WHERE STATE = {{state}}"
+                                                             :template-tags {"state" {:display-name "State"
+                                                                                      :id           "2"
+                                                                                      :name         "state"
+                                                                                      :type         :text}}})
+                                              :remappings {"state" [:variable [:template-tag "state"]]}}}
+                        :attributes {"state" "CA"}}
+        ;; grant full access to Products, which is not sandboxed
+        (data-perms/set-table-permission! &group (mt/id :products) :perms/create-queries :query-builder)
+        (data-perms/set-database-permission! &group (mt/id) :perms/view-data :unrestricted)
+        (qp.store/with-metadata-provider (lib.tu/remap-metadata-provider
+                                          (mt/metadata-provider)
+                                          (mt/id :orders :user_id)    (mt/id :people :name)
+                                          (mt/id :orders :product_id) (mt/id :products :title))
+          (let [result      (mt/run-mbql-query orders
+                              {:fields [$user_id $product_id]
+                               :joins  [{:source-table $$people
+                                         :alias        "P"
+                                         :fields       [&P.people.state]
+                                         :condition    [:= $user_id &P.people.id]}
+                                        {:source-table $$products
+                                         :alias        "Q"
+                                         :fields       [&Q.products.category]
+                                         :condition    [:= $product_id &Q.products.id]}]
+                               :limit  5})
+                cols        (mt/cols result)
+                col-by-name (m/index-by :name cols)]
+            (is (=? {:status :completed}
+                    result))
+            (testing "orders.user_id should be remapped to people.name"
+              (is (= "NAME"
+                     (:remapped_to (col-by-name "USER_ID"))))
+              (is (= "USER_ID"
+                     (:remapped_from (col-by-name "NAME")))))
+            (testing "orders.product_id should be remapped to products.title"
+              (is (= "TITLE"
+                     (:remapped_to (col-by-name "PRODUCT_ID"))))
+              (is (= "PRODUCT_ID"
+                     (:remapped_from (col-by-name "TITLE")))))
+            (testing "every column with :remapped_from must point at a column with a matching :remapped_to (the FE errors otherwise)"
+              (doseq [col  cols
+                      :when (:remapped_from col)
+                      :let [source-col (col-by-name (:remapped_from col))]]
+                (is (some? source-col))
+                (is (= (:name col)
+                       (:remapped_to source-col)))))))))))
+
 (deftest pivot-query-test
   (mt/test-drivers (sandboxing-fk-drivers)
     (testing "Pivot table queries should work with sandboxed users (#14969)"

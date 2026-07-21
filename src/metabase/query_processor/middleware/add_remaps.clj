@@ -31,6 +31,7 @@
    [medley.core :as m]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.equality :as lib.equality]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -106,6 +107,9 @@
   [:and
    [:map
     [:original-field-clause :mbql.clause/field]
+    ;; the column metadata `:original-field-clause` was generated from; used to match the clause against existing refs
+    ;; in the query when the generated ref doesn't agree with them syntactically (see [[matching-existing-ref]])
+    [:original-column       {:optional true} ::lib.schema.metadata/column]
     [:new-field-clause      [:and
                              :mbql.clause/field
                              [:tuple
@@ -146,6 +150,7 @@
                                            (field-id->remapping-dimension query id))]
                       (let [original-ref (lib/ref col)]
                         {:original-field-clause original-ref
+                         :original-column       col
                          :new-field-clause      [:field
                                                  (merge
                                                   {:lib/uuid                (str (random-uuid))
@@ -159,15 +164,46 @@
                                                        :human-readable-field-name (-> dimension :human-readable-field-id unique-name))})))))
            (lib.walk/apply-f-for-stage-at-path lib/returned-columns query path)))))
 
+(mu/defn- matching-existing-ref :- [:maybe ::lib.schema.ref/ref]
+  "Find the ref in `refs` that corresponds to a remap-info's original (remapped-from) column: first by simplified-ref
+  equality against the ref we generated for the column, then by falling back
+  to [[lib.equality/find-matching-ref]] column matching.
+
+  The fallback is needed because the generated ref does not always agree syntactically with the refs already present
+  in the query: for example when the source table has been swapped out for a sandbox subquery the column comes from a
+  previous stage, so the generated ref is name-based, while a saved question's `:fields` still reference the column by
+  ID at this point in preprocessing (see #78187)."
+  [{:keys [original-field-clause original-column]} :- ::remap-info
+   refs                                            :- [:maybe [:sequential ::lib.schema.ref/ref]]]
+  (let [field-refs (filterv #(= (first %) :field) refs)]
+    (when (seq field-refs)
+      (or (let [simplified (simplify-ref-options original-field-clause)]
+            (m/find-first #(= (simplify-ref-options %) simplified) field-refs))
+          (when original-column
+            (try
+              (lib.equality/find-matching-ref original-column field-refs)
+              ;; find-matching-ref throws if there are multiple ambiguous matches; in that case just treat it as no
+              ;; match rather than failing the whole query
+              (catch Throwable _e
+                nil)))))))
+
+(mu/defn- existing-ref->remapped-col :- [:map-of ::simplified-ref :mbql.clause/field]
+  "Build a map of simplified existing ref (an element of `refs`) -> remap `:new-field-clause`, matching each remap
+  info in `infos` against `refs` with [[matching-existing-ref]]."
+  [infos :- [:maybe [:sequential ::remap-info]]
+   refs  :- [:maybe [:sequential ::lib.schema.ref/ref]]]
+  (into {}
+        (keep (fn [{:keys [new-field-clause], :as info}]
+                (when-let [matched (matching-existing-ref info refs)]
+                  [(simplify-ref-options matched) new-field-clause])))
+        infos))
+
 (mu/defn- add-fk-remaps-rewrite-existing-fields-add-original-field-dimension-id :- ::lib.schema/fields
   "Rewrite existing `:fields` in a query. Add `::original-field-dimension-id` to any Field clauses that are
   remapped-from."
   [infos  :- [:maybe [:sequential ::remap-info]]
    fields :- ::lib.schema/fields]
-  (let [field->remapped-col (into {}
-                                  (map (fn [{:keys [original-field-clause new-field-clause]}]
-                                         [(simplify-ref-options original-field-clause) new-field-clause]))
-                                  infos)]
+  (let [field->remapped-col (existing-ref->remapped-col infos fields)]
     (mapv
      (fn [field-ref]
        (if-let [[_tag {::keys [new-field-dimension-id], :as _opts} _id-or-name] (field->remapped-col (simplify-ref-options field-ref))]
@@ -264,14 +300,9 @@
     (if-let [infos (remap-column-infos query path)]
       ;; if they do, update `:fields`, `:order-by` and `:breakout` clauses accordingly and add to the query
       (let [new-fields         (add-fk-remaps-to-fields infos fields)
-            ;; make a map of field-id-clause -> fk-clause from the tuples
-            original->remapped (into {}
-                                     (map (fn [{:keys [original-field-clause new-field-clause]}]
-                                            [(simplify-ref-options original-field-clause) new-field-clause]))
-                                     infos)
             ;; PERF: More indexing on the same stuff! This really needs to be poured into a common context.
-            new-breakout       (add-fk-remaps-rewrite-breakout original->remapped breakout)
-            new-order-by       (add-fk-remaps-rewrite-order-by original->remapped order-by)
+            new-breakout       (add-fk-remaps-rewrite-breakout (existing-ref->remapped-col infos breakout) breakout)
+            new-order-by       (add-fk-remaps-rewrite-order-by (existing-ref->remapped-col infos (mapv peek order-by)) order-by)
             remaps             (into []
                                      (comp cat
                                            (distinct))
