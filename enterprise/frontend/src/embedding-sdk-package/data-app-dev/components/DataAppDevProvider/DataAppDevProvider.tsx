@@ -1,6 +1,7 @@
 import { once } from "underscore";
 
 import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-provider";
+import { SdkThemeProvider } from "embedding-sdk-package/components/private/SdkThemeProvider/SdkThemeProvider";
 import { MetabaseProvider } from "embedding-sdk-package/components/public/MetabaseProvider/MetabaseProvider";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 
@@ -21,5 +22,9 @@ export const DataAppDevProvider = ({
 }: DataAppDevProviderProps) => {
   registerDataAppDevContext(appSlug);
 
-  return <MetabaseProvider {...props}>{children}</MetabaseProvider>;
+  return (
+    <MetabaseProvider {...props}>
+      <SdkThemeProvider theme={props.theme}>{children}</SdkThemeProvider>
+    </MetabaseProvider>
+  );
 };
