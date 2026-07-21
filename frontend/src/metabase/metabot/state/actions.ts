@@ -82,6 +82,7 @@ export const {
   toolCallStart,
   toolCallArgs,
   toolCallEnd,
+  toolCallSearchResults,
   setMetabotReqIdOverride,
   setDebugMode,
   addSuggestedTransform,
@@ -593,6 +594,16 @@ export const sendAgentRequest = createAsyncThunk<
                   pushDataPart({ type: "data_part", part });
                 },
               )
+              .with({ type: "data-search_results" }, (part) => {
+                dispatchToConvo(
+                  toolCallSearchResults({
+                    agentId,
+                    toolCallId: part.data.tool_call_id,
+                    totalCount: part.data.total_count,
+                    results: part.data.results,
+                  }),
+                );
+              })
               .exhaustive();
           },
           onStart: function handleStart(event) {
@@ -622,6 +633,7 @@ export const sendAgentRequest = createAsyncThunk<
               toolCallStart({
                 toolCallId: event.toolCallId,
                 toolName: event.toolName,
+                title: event.title,
                 agentId,
                 nowMs: Date.now(),
               }),
@@ -632,6 +644,7 @@ export const sendAgentRequest = createAsyncThunk<
               toolCallArgs({
                 toolCallId: event.toolCallId,
                 toolName: event.toolName,
+                title: event.title,
                 args: JSON.stringify(event.input),
                 agentId,
                 nowMs: Date.now(),
