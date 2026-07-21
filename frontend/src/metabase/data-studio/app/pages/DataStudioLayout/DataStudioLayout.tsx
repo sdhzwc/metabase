@@ -15,8 +15,7 @@ import {
   PLUGIN_WORKSPACES,
 } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { Outlet } from "metabase/router";
-import { getLocation } from "metabase/selectors/routing";
+import { Outlet, useLocation } from "metabase/router";
 import { canAccessTransforms as canAccessTransformsSelector } from "metabase/transforms/selectors";
 import {
   ActionIcon,
@@ -81,7 +80,7 @@ type DataStudioNavProps = {
 };
 
 function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
-  const { pathname } = useSelector(getLocation);
+  const { pathname } = useLocation();
   const canAccessDataModel = useSelector(
     PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessDataModel,
   );

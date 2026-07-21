@@ -5,9 +5,7 @@ import { EditableText } from "metabase/common/components/EditableText";
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
 import { MetabotDataStudioButton } from "metabase/metabot/components/MetabotDataStudioButton";
 import { AppSwitcher } from "metabase/nav/components/AppSwitcher";
-import { useSelector } from "metabase/redux";
-import { Link } from "metabase/router";
-import { getLocation } from "metabase/selectors/routing";
+import { Link, useLocation } from "metabase/router";
 import {
   Box,
   Button,
@@ -155,7 +153,7 @@ function isTabSelected(tab: PaneHeaderTab, pathname: string) {
 }
 
 export function PaneHeaderTabs({ tabs }: PaneHeaderTabsProps) {
-  const { pathname } = useSelector(getLocation);
+  const { pathname } = useLocation();
   const activeTab = tabs.find((tab) => isTabSelected(tab, pathname));
 
   return (

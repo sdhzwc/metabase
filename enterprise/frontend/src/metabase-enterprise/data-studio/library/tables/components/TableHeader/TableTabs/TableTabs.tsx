@@ -1,4 +1,3 @@
-import type { Location } from "history";
 import { t } from "ttag";
 
 import {
@@ -6,8 +5,7 @@ import {
   PaneHeaderTabs,
 } from "metabase/common/data-studio/components/PaneHeader";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
-import { useSelector } from "metabase/redux";
-import { getLocation } from "metabase/selectors/routing";
+import { type Location, useLocation } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { Table } from "metabase-types/api";
 
@@ -16,7 +14,7 @@ type TableTabsProps = {
 };
 
 export function TableTabs({ table }: TableTabsProps) {
-  const location = useSelector(getLocation);
+  const location = useLocation();
   const tabs = getTabs(table, location);
   return <PaneHeaderTabs tabs={tabs} />;
 }
