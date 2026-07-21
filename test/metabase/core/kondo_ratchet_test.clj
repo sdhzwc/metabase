@@ -105,6 +105,11 @@
     ;; the ignore key buried behind other attr-map keys still counts (tagged :embedded? in matches)
     [:buried]           "(def ^{:added \"0.1\" :clj-kondo/ignore [:buried]} x 1)"
     [:buried]           "(ns b {:doc \"d\" :clj-kondo/ignore [:buried]})"
+    ;; nesting in the attr map must not hide a real ignore, and must not invent one
+    [:after-nested]     "(def ^{:opts {:a 1} :clj-kondo/ignore [:after-nested]} x 1)"
+    [:after-vec]        "(def ^{:tags [:a :b] :clj-kondo/ignore [:after-vec]} x 1)"
+    []                  "(def ^{:doc [:clj-kondo/ignore [:nested-data]]} x 1)"
+    []                  "(def ^{:doc {:k [:clj-kondo/ignore [:deeper]]}} x 1)"
     ;; vector-less forms suppress everything -> :all
     [:all]              "  #_:clj-kondo/ignore"
     [:all]              "  #_ :clj-kondo/ignore (foo)"

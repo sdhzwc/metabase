@@ -39,11 +39,11 @@
 (def ^:private bare-form-re
   (re-pattern (str "(?:#_\\s*|\\^)" ignore-marker "(?![\\w./-])")))
 
-;; The ignore key buried behind other keys in a metadata/attr map, e.g. `^{:added "x" :clj-kondo/ignore
-;; [:y]}`. Matched separately and tagged `:embedded?` -- these count and need justification like any
-;; ignore, but a removal can't excise them without taking the map's other keys, so removal skips them.
-(def ^:private embedded-form-re
-  (re-pattern (str "\\{[^{}]*?" ignore-marker "\\s*\\[([^\\]]*)\\]")))
+;; The ignore key with its linter vector, wherever it appears. On its own this says nothing about
+;; whether the key is a real ignore or just data that happens to look like one -- see
+;; [[embedded-matches]], which decides that by looking at what encloses it.
+(def ^:private ignore-key-re
+  (re-pattern (str ignore-marker "\\s*\\[([^\\]]*)\\]")))
 
 (defn mask-strings-and-comments
   "`content` with string-literal and line-comment interiors replaced by spaces, newlines kept.
@@ -137,6 +137,39 @@
                  (when-let [prev (some-> prev-idx comment-at)]
                    (re-matches substantive-comment-re (str/trim prev)))))))
 
+(defn- enclosing-opener
+  "Index of the delimiter directly enclosing `i` in `s`, or nil if `i` is at top level. Walks backwards
+  balancing `)]}` against `([{`, so nested forms are skipped rather than mistaken for the enclosure."
+  ^Long [^String s ^long i]
+  (loop [j (dec i), depth 0]
+    (when (>= j 0)
+      (let [c (.charAt s j)]
+        (cond
+          (or (= c \)) (= c \]) (= c \})) (recur (dec j) (inc depth))
+          (or (= c \() (= c \[) (= c \{)) (if (zero? depth) j (recur (dec j) (dec depth)))
+          :else                              (recur (dec j) depth))))))
+
+(defn- embedded-matches
+  "Ignore keys sitting behind other keys in a metadata/attr map, e.g. `^{:added \"x\" :clj-kondo/ignore
+  [:y]}`. These count and need justification like any ignore, but removal tooling must skip them --
+  excising one would take the map's other keys along.
+
+  Delimiter-aware on purpose: the key only counts when a `{` directly encloses it, so
+  `^{:doc [:clj-kondo/ignore [:x]]}` is data rather than a suppression, and
+  `^{:opts {:a 1} :clj-kondo/ignore [:x]}` still counts despite the nested map in front of it. A regex
+  bounded by `[^{}]` gets both of those backwards."
+  [^String masked]
+  (let [m (re-matcher ignore-key-re masked)]
+    (loop [acc []]
+      (if (.find m)
+        (let [opener (enclosing-opener masked (.start m))]
+          (recur (if (and opener (= \{ (.charAt masked (long opener))))
+                   (conj acc {:start   (.start m)
+                              :end     (.end m)
+                              :linters (vec (linter-keywords (.group m 1)))})
+                   acc)))
+        acc))))
+
 (defn ignore-matches
   "Inline ignore matches in `content`, in file order:
   `{:start _, :end _, :line _, :linters [...], :justified? _}` with character offsets and a 1-based line.
@@ -149,7 +182,7 @@
                          (matches-with-offsets bare-form-re masked true))
         covered? (fn [{:keys [start end]}]
                    (some #(and (< start (:end %)) (< (:start %) end)) primary))
-        embedded (->> (matches-with-offsets embedded-form-re masked false)
+        embedded (->> (embedded-matches masked)
                       (remove covered?)
                       (map #(assoc % :embedded? true)))]
     (->> (concat primary embedded)
