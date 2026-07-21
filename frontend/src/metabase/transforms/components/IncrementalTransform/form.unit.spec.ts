@@ -1,8 +1,12 @@
-import { createMockTransform } from "metabase-types/api/mocks";
+import {
+  createMockTransform,
+  createMockTransformSource,
+} from "metabase-types/api/mocks";
 
 import {
   type IncrementalSettingsFormValues,
   VALIDATION_SCHEMA,
+  buildIncrementalSource,
   buildIncrementalTarget,
   getIncrementalSettingsFromTransform,
 } from "./form";
@@ -14,6 +18,8 @@ const getValues = (
   sourceStrategy: "checkpoint",
   checkpointFilterFieldId: "123",
   uniqueKey: "",
+  lookbackValue: null,
+  lookbackUnit: null,
   ...values,
 });
 
@@ -89,6 +95,73 @@ describe("buildIncrementalTarget (merge)", () => {
       getValues({ incremental: false, uniqueKey: "order_id" }),
     );
     expect(target.type).toBe("table");
+  });
+});
+
+describe("buildIncrementalSource (lookback)", () => {
+  it("omits lookback when no value is set", () => {
+    const source = buildIncrementalSource(
+      createMockTransformSource(),
+      getValues(),
+    );
+    expect(source["source-incremental-strategy"]?.lookback).toBeUndefined();
+  });
+
+  it("includes value and unit for a temporal lookback", () => {
+    const source = buildIncrementalSource(
+      createMockTransformSource(),
+      getValues({ lookbackValue: 4, lookbackUnit: "day" }),
+    );
+    expect(source["source-incremental-strategy"]?.lookback).toEqual({
+      value: 4,
+      unit: "day",
+    });
+  });
+
+  it("omits the unit for a numeric lookback", () => {
+    const source = buildIncrementalSource(
+      createMockTransformSource(),
+      getValues({ lookbackValue: 4, lookbackUnit: null }),
+    );
+    expect(source["source-incremental-strategy"]?.lookback).toEqual({
+      value: 4,
+    });
+  });
+});
+
+describe("getIncrementalSettingsFromTransform (lookback)", () => {
+  it("reads the lookback into form values", () => {
+    const transform = createMockTransform({
+      source: {
+        ...createMockTransformSource(),
+        "source-incremental-strategy": {
+          type: "checkpoint",
+          "checkpoint-filter-field-id": 123,
+          lookback: { value: 4, unit: "day" },
+        },
+      },
+      target: {
+        type: "table-incremental",
+        name: "t",
+        schema: "public",
+        database: 1,
+        "target-incremental-strategy": { type: "append" },
+      },
+    });
+    expect(getIncrementalSettingsFromTransform(transform)).toMatchObject({
+      incremental: true,
+      checkpointFilterFieldId: "123",
+      lookbackValue: 4,
+      lookbackUnit: "day",
+    });
+  });
+
+  it("defaults to no lookback when the strategy has none", () => {
+    const transform = createMockTransform();
+    expect(getIncrementalSettingsFromTransform(transform)).toMatchObject({
+      lookbackValue: null,
+      lookbackUnit: null,
+    });
   });
 });
 
