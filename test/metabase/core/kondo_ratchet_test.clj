@@ -114,8 +114,22 @@
     []                  "(def x {:label :clj-kondo/ignore [:not-a-suppression] :other 1})"
     []                  "(def x {:a 1 :b :clj-kondo/ignore [:also-a-value]})"
     [:key-again]        "(def x ^{:label :a :clj-kondo/ignore [:key-again]} y)"
-    ;; a discarded form doesn't shift the key/value parity
+    ;; a discarded form doesn't shift the key/value parity, and neither does a reader form that reads as
+    ;; one value but scans as two tokens
     [:after-discard]    "(def x ^{:a 1 #_:skipped #_2 :clj-kondo/ignore [:after-discard]} y)"
+    [:after-meta]       "(def x ^{:a ^String s :clj-kondo/ignore [:after-meta]} y)"
+    [:after-tag]        "(def x ^{:a #inst \"2026\" :clj-kondo/ignore [:after-tag]} y)"
+    [:after-set]        "(def x ^{:a #{1 2} :clj-kondo/ignore [:after-set]} y)"
+    [:after-fn]         "(def x ^{:a #(inc %) :clj-kondo/ignore [:after-fn]} y)"
+    [:after-regex]      "(def x ^{:a #\"re\" :clj-kondo/ignore [:after-regex]} y)"
+    [:after-var]        "(def x ^{:a #'foo :clj-kondo/ignore [:after-var]} y)"
+    [:after-quote]      "(def x ^{:a 'sym :clj-kondo/ignore [:after-quote]} y)"
+    ;; an unprefixed map only suppresses where an attr map is read, so data holding the marker doesn't
+    ;; count however the marker is positioned
+    []                  "(def x {:clj-kondo/ignore [:data] :a 1})"
+    []                  "(def x {:a 1 :clj-kondo/ignore [:data]})"
+    []                  "(let [m {:a 1 :clj-kondo/ignore [:data]}] m)"
+    [:macro-attr]       "(defmacro f \"doc\" {:clj-kondo/ignore [:macro-attr]} [args] 1)"
     ;; vector-less forms suppress everything -> :all
     [:all]              "  #_:clj-kondo/ignore"
     [:all]              "  #_ :clj-kondo/ignore (foo)"
@@ -156,6 +170,17 @@
              (map #(select-keys % [:line :linters :justified? :embedded?])
                   (kondo-ratchet/ignore-matches content)))
           "the match is reported on the `^{` line, not the line the key happens to sit on"))))
+
+(deftest ^:parallel comment-inside-attr-map-test
+  (testing "a comment between attr-map entries is skipped, not scanned as a form that never ends"
+    (let [content  (str "(def ^{:a 1\n"
+                        "       ;; the ignore below needs this\n"
+                        "       :clj-kondo/ignore [:x]}\n"
+                        "  y 1)")
+          matches  (future (vec (kondo-ratchet/ignore-matches content)))]
+      (is (= [{:line 1, :linters [:x]}]
+             (map #(select-keys % [:line :linters])
+                  (deref matches 10000 [::timed-out-scanning])))))))
 
 (deftest ^:parallel scan-test
   (let [dir (.toFile (java.nio.file.Files/createTempDirectory

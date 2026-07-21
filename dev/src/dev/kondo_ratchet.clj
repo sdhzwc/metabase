@@ -151,46 +151,109 @@
           (or (= c \() (= c \[) (= c \{)) (if (zero? depth) j (recur (dec j) (dec depth)))
           :else                              (recur (dec j) depth))))))
 
-(defn- form-end
-  "Index just past the form starting at `i` in masked source `s`. Bracketed forms are skipped whole, a
-  string runs to its closing quote (masking leaves both quotes in place), and anything else is a token
-  running to the next delimiter or space."
+(defn- skip-blanks
+  "Index of the first thing at or after `i` in masked source `s` that could start a form. Whitespace,
+  commas and comments are not forms; masking blanks a comment's interior but leaves its `;`, so a
+  comment is skipped by running to the end of its line."
   ^long [^String s ^long i]
   (let [n (count s)]
-    (case (.charAt s i)
-      (\( \[ \{) (loop [j (inc i), depth 1]
-                   (if (>= j n)
-                     j
-                     (case (.charAt s j)
-                       (\( \[ \{) (recur (inc j) (inc depth))
-                       (\) \] \}) (if (= depth 1) (inc j) (recur (inc j) (dec depth)))
-                       (recur (inc j) depth))))
-      \"         (if-let [k (str/index-of s "\"" (inc i))] (inc (long k)) n)
-      (loop [j i]
-        (if (or (>= j n)
-                (Character/isWhitespace (.charAt s j))
-                (contains? #{\( \) \[ \] \{ \} \" \, \;} (.charAt s j)))
-          j
-          (recur (inc j)))))))
+    (loop [j i]
+      (if (>= j n)
+        n
+        (let [c (.charAt s j)]
+          (cond
+            (or (Character/isWhitespace c) (= \, c)) (recur (inc j))
+            (= \; c)                                 (recur (long (or (str/index-of s "\n" j) n)))
+            :else                                    j))))))
+
+(defn- discard-at?
+  "Is there a `#_` -- which drops the form after it -- at `i` in `s`?"
+  [^String s ^long i]
+  (and (= \# (.charAt s i))
+       (< (inc i) (count s))
+       (= \_ (.charAt s (inc i)))))
+
+(defn- form-end
+  "Index just past the whole form starting at `i` in masked source `s`. Bracketed forms are skipped
+  whole and a string runs to its closing quote (masking leaves both quotes in place). A reader prefix
+  reads as one form with what follows it, so `^String x`, `#inst \"...\"`, `'sym` and `#_ dropped` each
+  end where that trailing form does. Anything else is a token running to the next delimiter or space."
+  ^long [^String s ^long i]
+  (let [n (count s)]
+    (if (>= i n)
+      n
+      (let [c (.charAt s i)]
+        (cond
+          (contains? #{\( \[ \{} c)
+          (loop [j (inc i), depth 1]
+            (if (>= j n)
+              j
+              (case (.charAt s j)
+                (\( \[ \{) (recur (inc j) (inc depth))
+                (\) \] \}) (if (= depth 1) (inc j) (recur (inc j) (dec depth)))
+                (recur (inc j) depth))))
+
+          (= \" c)
+          (if-let [k (str/index-of s "\"" (inc i))] (inc (long k)) n)
+
+          ;; `^meta value` reads as one form, and so does `#tag value`
+          (or (= \^ c)
+              (and (= \# c) (not (contains? #{\_ \{ \( \" \'} (get s (inc i))))))
+          (let [decoration-end (form-end s (skip-blanks s (inc i)))]
+            (form-end s (skip-blanks s decoration-end)))
+
+          ;; a quote, a deref, an unquote, `#_`, and the dispatch forms `#{} #() #"" #'` each take a
+          ;; single form after them
+          (contains? #{\# \' \@ \~ \`} c)
+          (form-end s (skip-blanks s (+ i (if (discard-at? s i) 2 1))))
+
+          :else
+          (loop [j i]
+            (if (or (>= j n)
+                    (Character/isWhitespace (.charAt s j))
+                    (contains? #{\( \) \[ \] \{ \} \" \, \;} (.charAt s j)))
+              j
+              (recur (inc j)))))))))
 
 (defn- key-position?
   "Is the form at `i` in masked source `s` a key of the map opening at `opener`? Counts the forms in
-  between: an even count means `i` is a key, an odd one a value. Reader prefixes (`^meta`, `#`, quotes)
-  attach to the form they precede instead of counting on their own, and a `#_` discards the next one.
-  This is what tells the suppression `{:a 1 :clj-kondo/ignore [:x]}` from the data
+  between -- an even count means `i` is a key, an odd one a value -- reading each the way the reader
+  would, so metadata, tags and quotes stay attached to what they decorate and a `#_` form drops out
+  entirely. This is what tells the suppression `{:a 1 :clj-kondo/ignore [:x]}` from the data
   `{:label :clj-kondo/ignore [:x]}`, where the marker is a value."
   [^String s ^long opener ^long i]
-  (loop [j (inc opener), forms 0, discard? false]
-    (let [c (when (< j (count s)) (.charAt s j))]
-      (cond
-        (>= j i)                                (and (= j i) (even? forms))
-        (or (Character/isWhitespace ^char c)
-            (= \, c))                           (recur (inc j) forms discard?)
-        (and (= \# c) (= \_ (.charAt s (inc j)))) (recur (+ j 2) forms true)
-        (contains? #{\^ \# \' \@ \~ \`} c)      (recur (inc j) forms discard?)
-        :else                                   (recur (form-end s j)
-                                                       (if discard? forms (inc forms))
-                                                       false)))))
+  (loop [j (skip-blanks s (inc opener)), forms 0]
+    (if (>= j i)
+      (and (= j i) (even? forms))
+      (let [discard? (discard-at? s j)
+            ;; never stand still, whatever the source looks like: a scanner that can't advance would
+            ;; hang the whole ratchet
+            end      (max (inc j) (form-end s j))]
+        (recur (skip-blanks s end) (if discard? forms (inc forms)))))))
+
+(defn- prefixed-form?
+  "Does the form opening at `i` in `s` carry a `#_` or `^` prefix?"
+  [^String s ^long i]
+  (let [before (str/trimr (subs s 0 i))]
+    (or (str/ends-with? before "#_")
+        (str/ends-with? before "^"))))
+
+(defn- attr-map-context?
+  "Is the map opening at `opener` in masked source `s` somewhere an ignore key would suppress anything,
+  rather than plain data that happens to contain the marker? A `#_` or `^` prefix settles it. Failing
+  that it has to be an attr map, which kondo reads in `(ns ...)`, and in a `def...` form when something
+  follows the map -- the argument vector -- unlike `(def x {:a 1})`, where the map is the value."
+  [^String s ^long opener]
+  (or (prefixed-form? s opener)
+      (when-let [list-open (enclosing-opener s opener)]
+        (when (= \( (.charAt s (long list-open)))
+          (let [head-start (skip-blanks s (inc (long list-open)))
+                head       (subs s head-start (form-end s head-start))
+                after      (skip-blanks s (form-end s opener))]
+            (or (= "ns" head)
+                (and (str/starts-with? head "def")
+                     (< after (count s))
+                     (not= \) (.charAt s after)))))))))
 
 (defn- embedded-matches
   "Ignore keys sitting behind other keys in a metadata/attr map, e.g. `^{:added \"x\" :clj-kondo/ignore
@@ -198,10 +261,11 @@
   excising one would take the map's other keys along. `:form-start` is the enclosing map's `{`: the
   ignore is part of that form, so that is the line it belongs to and the line a justification sits above.
 
-  Structural on purpose, not regex-bounded: the key counts only when a `{` directly encloses it and it
-  sits in key position, so `^{:doc [:clj-kondo/ignore [:x]]}` and `{:label :clj-kondo/ignore [:x]}` are
-  data rather than suppressions, while `^{:opts {:a 1} :clj-kondo/ignore [:x]}` still counts despite the
-  nested map in front of it. A regex bounded by `[^{}]` gets all of those backwards."
+  Structural on purpose, not regex-bounded. The key counts only when a `{` directly encloses it, it sits
+  in key position, and that map is somewhere a suppression can live -- so `^{:doc [:clj-kondo/ignore
+  [:x]]}`, `{:label :clj-kondo/ignore [:x]}` and `(def x {:a 1 :clj-kondo/ignore [:x]})` are all data,
+  while `^{:opts {:a 1} :clj-kondo/ignore [:x]}` counts despite the nested map in front of it. A regex
+  bounded by `[^{}]` gets all of those backwards."
   [^String masked]
   (let [m (re-matcher ignore-key-re masked)]
     (loop [acc []]
@@ -209,7 +273,8 @@
         (let [opener (enclosing-opener masked (.start m))]
           (recur (if (and opener
                           (= \{ (.charAt masked (long opener)))
-                          (key-position? masked opener (.start m)))
+                          (key-position? masked opener (.start m))
+                          (attr-map-context? masked opener))
                    (conj acc {:start      (.start m)
                               :end        (.end m)
                               :form-start opener
@@ -229,7 +294,12 @@
   writes above the form is the one that justifies it."
   [content]
   (let [masked   (mask-strings-and-comments content)
-        primary  (concat (matches-with-offsets vector-form-re masked false)
+        ;; an unprefixed `{...}` match is only a suppression where an attr map would be read -- the same
+        ;; test the embedded keys get, since `{:clj-kondo/ignore [:x] :a 1}` in data is no different
+        suppressing? (fn [{:keys [start]}]
+                       (or (not= \{ (.charAt ^String masked (long start)))
+                           (attr-map-context? masked start)))
+        primary  (concat (filter suppressing? (matches-with-offsets vector-form-re masked false))
                          (matches-with-offsets bare-form-re masked true))
         covered? (fn [{:keys [start end]}]
                    (some #(and (< start (:end %)) (< (:start %) end)) primary))
