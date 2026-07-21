@@ -155,7 +155,9 @@
    "openai/gpt-5.5-pro"          "GPT-5.5 Pro"
    "openai/gpt-5.4"              "GPT-5.4"
    "openai/gpt-5.4-pro"          "GPT-5.4 Pro"
-   "openai/gpt-5.4-mini"         "GPT-5.4 Mini"})
+   "openai/gpt-5.4-mini"         "GPT-5.4 Mini"
+   "z-ai/glm-5.2"                "GLM-5.2"
+   "deepseek/deepseek-v4-pro"    "DeepSeek V4 Pro"})
 
 (defn- supported-model?
   "Whether a `/v1/models` catalog entry is one of the [[supported-models]]."
