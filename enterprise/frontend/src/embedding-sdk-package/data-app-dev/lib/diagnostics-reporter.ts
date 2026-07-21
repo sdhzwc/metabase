@@ -3,47 +3,21 @@
 // served without HMR.
 
 import {
-  type DevDiagnosticEntry,
-  devDiagnosticHint,
   getDevConnectionStatus,
   getDevDiagnostics,
-  isFailedSdkCall,
-  splitDevDiagnostic,
   subscribeDevDiagnostics,
 } from "../components/DevToolbar/diagnostics";
 import {
   DATA_APP_DIAGNOSTICS_EVENT,
-  type DataAppDiagnosticPayload,
   type DataAppDiagnosticsMessage,
-  truncateDiagnosticText,
 } from "../diagnostics-channel";
+
+import { toPayload } from "./diagnostics-payload";
 
 /** The subset of `import.meta.hot` this needs, so tests can pass a stub. */
 export interface DiagnosticsReporterHot {
   send: (event: string, data: DataAppDiagnosticsMessage) => void;
 }
-
-const isAlert = (entry: DevDiagnosticEntry): boolean =>
-  entry.kind === "error" ||
-  entry.kind === "blocked-api" ||
-  entry.kind === "blocked-network" ||
-  entry.kind === "csp-violation" ||
-  isFailedSdkCall(entry);
-
-const toPayload = (entry: DevDiagnosticEntry): DataAppDiagnosticPayload => {
-  const { summary, detail } = splitDevDiagnostic(entry);
-  return {
-    // Re-stamped by the dev server on receipt; this is only a placeholder so the
-    // payload is well-formed in transit.
-    eventId: entry.id,
-    time: entry.time,
-    kind: entry.kind,
-    summary: truncateDiagnosticText(summary),
-    detail: detail === null ? null : truncateDiagnosticText(detail),
-    hint: devDiagnosticHint(entry),
-    alert: isAlert(entry),
-  };
-};
 
 /** Batching window: a render can record several entries in one tick. */
 const FLUSH_MS = 100;

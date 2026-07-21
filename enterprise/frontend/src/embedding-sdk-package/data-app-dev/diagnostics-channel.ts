@@ -35,9 +35,12 @@ export const truncateDiagnosticText = (
     ? value
     : `${value.slice(0, max)}… (truncated, ${value.length} chars)`;
 
-export interface DataAppDiagnosticPayload {
-  /** Server-assigned, monotonic for the life of the dev server. */
-  eventId: number;
+/**
+ * One diagnostic as the page captures it — the derived, rendered shape the
+ * toolbar and an agent both read (`summary`/`hint`, not raw event fields). No
+ * `eventId`: the dev server assigns that on receipt (see {@link DataAppDiagnosticPayload}).
+ */
+export interface DataAppDiagnosticEntry {
   time: number;
   kind: string;
   /** The single-line headline, as rendered in the toolbar. */
@@ -50,10 +53,16 @@ export interface DataAppDiagnosticPayload {
   alert: boolean;
 }
 
+/** A stored/served entry: what the page captured, plus the dev server's id. */
+export interface DataAppDiagnosticPayload extends DataAppDiagnosticEntry {
+  /** Server-assigned, monotonic for the life of the dev server. */
+  eventId: number;
+}
+
 /**
- * What the page sends up the socket on each batch of new events. Note there is
- * no manifest: the dev server validates `data_app.yaml` itself, so the client
- * never reports one back.
+ * What the page sends up the socket on each batch of new events. Entries have no
+ * `eventId` — the server assigns it. Note there is no manifest either: the dev
+ * server validates `data_app.yaml` itself, so the client never reports one back.
  */
 export interface DataAppDiagnosticsMessage {
   /**
@@ -62,11 +71,14 @@ export interface DataAppDiagnosticsMessage {
    * tells the dev server the previous page is gone and its events are stale.
    */
   session: string;
-  entries: DataAppDiagnosticPayload[];
+  entries: DataAppDiagnosticEntry[];
   connection: unknown | null;
 }
 
-export interface DataAppDiagnosticsReport extends DataAppDiagnosticsMessage {
+/** What the dev server serves at {@link DATA_APP_DIAGNOSTICS_URL}. */
+export interface DataAppDiagnosticsReport {
+  entries: DataAppDiagnosticPayload[];
+  connection: unknown | null;
   /** Validated by the dev server, available before any client connects. */
   manifest: unknown | null;
   /**
