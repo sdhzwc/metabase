@@ -1,5 +1,7 @@
 (ns metabase-enterprise.semantic-search.embedding
   (:require
+   [buddy.core.codecs :as buddy-codecs]
+   [buddy.core.hash :as buddy-hash]
    [clj-http.client :as http]
    [clojure.string :as str]
    [metabase-enterprise.semantic-search.models.token-tracking :as semantic.models.token-tracking]
@@ -44,14 +46,23 @@
 (defn clean-provider-name
   "Clean up a provider names for use in index names."
   [provider-name]
-  (str/replace provider-name #"[-:.]" "_"))
+  (-> provider-name
+      (str/replace #"[^A-Za-z0-9_]" "_")
+      (str/replace #"_{2,}" "_")
+      (str/replace #"^_+|_+$" "")))
 
 (defn abbrev-provider-name
   "Abbreviate long provider names for use in index names."
   [provider-name]
   (case provider-name
     "ai-service" "ais"
-    (clean-provider-name provider-name)))
+    "ollama" "ollama"
+    "openai" "openai"
+    "in-process" "inproc"
+    ;; Every plugin provider uses the same reserved form, including already-safe names. Otherwise an unsafe name's
+    ;; encoded output could itself be registered as a safe provider name and collide with the same physical index.
+    (str "plugin_" (clean-provider-name provider-name) "_"
+         (subs (buddy-codecs/bytes->hex (buddy-hash/sha1 provider-name)) 0 16))))
 
 ;;; Token Counting for OpenAI Models
 
@@ -134,6 +145,18 @@
 
 ;;;; Provider API
 
+(defn- record-in-process-token-usage!
+  [{:keys [provider model-name]} texts {:keys [record-tokens? type]}]
+  (when (= "in-process" provider)
+    ;; The bundled tokenizer is intentionally private to the plugin artifact. Use the existing cl100k
+    ;; counter as an operational estimate so local inference participates in the same metrics/tracking.
+    (let [tokens (count-tokens-batch texts)]
+      (analytics/inc! :metabase-search/semantic-embedding-tokens
+                      {:provider provider :model model-name}
+                      tokens)
+      (when record-tokens?
+        (semantic.models.token-tracking/record-tokens model-name type tokens)))))
+
 (defn resolve-model
   "Resolve a requested embedding model to its immutable vector-space descriptor."
   [embedding-model]
@@ -142,12 +165,16 @@
 (defn get-embedding
   "Return one embedding vector for `text`."
   [embedding-model text & {:as opts}]
-  (embeddings.provider/embed-text embedding-model text opts))
+  (let [resolved-model (resolve-model embedding-model)]
+    (u/prog1 (embeddings.provider/embed-text resolved-model text opts)
+      (record-in-process-token-usage! resolved-model [text] opts))))
 
 (defn get-embeddings-batch
   "Return one embedding vector per input text, in the same order."
   [embedding-model texts & {:as opts}]
-  (embeddings.provider/embed-texts embedding-model texts opts))
+  (let [resolved-model (resolve-model embedding-model)]
+    (u/prog1 (embeddings.provider/embed-texts resolved-model texts opts)
+      (record-in-process-token-usage! resolved-model texts opts))))
 
 (defn pull-model
   "Prepare a provider model eagerly when the provider supports it."
@@ -448,7 +475,7 @@
 
 (comment
   ;; Configuration:
-  ;; MB_EE_EMBEDDING_PROVIDER:  "ai-service" (default), "openai", or "ollama"
+  ;; MB_EE_EMBEDDING_PROVIDER:  "ai-service" (default), "openai", "ollama", or "in-process"
   ;; MB_EE_EMBEDDING_MODEL: optional override (leave empty for provider defaults)
   ;;   - OpenAI default: "text-embedding-3-small"
   ;;   - Ollama default: "mxbai-embed-large"

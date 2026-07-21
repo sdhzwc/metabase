@@ -9,11 +9,13 @@
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.indexer :as semantic.indexer]
+   [metabase-enterprise.semantic-search.models.token-tracking :as semantic.models.token-tracking]
    [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.snowplow-test :as snowplow-test]
+   [metabase.embeddings.provider :as embeddings.provider]
    [metabase.llm.settings :as llm.settings]
    [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
@@ -52,7 +54,17 @@
       (is (= {:provider "openai"
               :model-name "text-embedding-3-small"
               :vector-dimensions 1536}
-             (embedding/get-configured-model))))))
+             (embedding/get-configured-model))))
+    (mt/with-temporary-setting-values [ee-embedding-provider "in-process"
+                                       ee-embedding-model "Snowflake/snowflake-arctic-embed-l-v2.0"
+                                       ee-embedding-model-dimensions 1024]
+      (is (= {:provider "in-process"
+              :model-name "Snowflake/snowflake-arctic-embed-l-v2.0"
+              :vector-dimensions 1024}
+             (embedding/get-configured-model))))
+    (testing "plugin-defined provider names do not require a core allowlist change"
+      (mt/with-temporary-setting-values [ee-embedding-provider "openrouter-plugin"]
+        (is (= "openrouter-plugin" (:provider (embedding/get-configured-model))))))))
 
 (deftest test-model-dimensions-with-settings
   (testing "model-dimensions uses setting defaults when override is nil"
@@ -61,6 +73,13 @@
   (testing "model-dimensions uses override when specified"
     (mt/with-temporary-setting-values [ee-embedding-model-dimensions 768]
       (is (= 768 (:vector-dimensions (embedding/get-configured-model)))))))
+
+(deftest embedding-provider-setting-validation-test
+  (doseq [invalid-value [42 [] {} " "]]
+    (testing (str "rejects " (pr-str invalid-value))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"must be a non-blank string"
+                            (semantic.settings/ee-embedding-provider! invalid-value))))))
 
 (deftest prefix-search-query-test
   (let [arctic {:provider "ai-service" :model-name "Snowflake/snowflake-arctic-embed-l-v2.0" :vector-dimensions 1024}
@@ -96,6 +115,41 @@
     (is (= 9 (#'embedding/count-tokens "This is a longer sentence with more tokens.")))
     (is (zero? (#'embedding/count-tokens "")))
     (is (nil? (#'embedding/count-tokens nil)))))
+
+(deftest in-process-token-usage-test
+  (let [model           {:provider "in-process" :vector-dimensions 4}
+        analytics-calls (atom [])
+        tracking-calls  (atom [])]
+    (with-redefs [embeddings.provider/resolve-model               (fn [requested]
+                                                                    (cond-> requested
+                                                                      (= "in-process" (:provider requested))
+                                                                      (assoc :model-name "local-model")))
+                  embeddings.provider/embed-text                  (fn [_ text _] [text])
+                  embeddings.provider/embed-texts                 (fn [_ texts _] (mapv vector texts))
+                  analytics/inc!                                  (fn [metric labels value]
+                                                                    (swap! analytics-calls conj [metric labels value]))
+                  semantic.models.token-tracking/record-tokens    (fn [& args]
+                                                                    (swap! tracking-calls conj args))]
+      (embedding/get-embedding model "Hello world" :type :query :record-tokens? true)
+      (embedding/get-embeddings-batch model ["Hello world" "again"] :type :index :record-tokens? true)
+      (testing "local calls report approximate token metrics and persistent usage"
+        (is (= [[:metabase-search/semantic-embedding-tokens
+                 {:provider "in-process" :model "local-model"}
+                 2]
+                [:metabase-search/semantic-embedding-tokens
+                 {:provider "in-process" :model "local-model"}
+                 3]]
+               @analytics-calls))
+        (is (= [["local-model" :query 2]
+                ["local-model" :index 3]]
+               @tracking-calls)))
+      (testing "token accounting uses the provider's resolved default model name"
+        (is (nil? (:model-name model)))
+        (is (= "local-model" (ffirst @tracking-calls))))
+      (testing "the adapter does not double-count other providers"
+        (embedding/get-embedding (assoc model :provider "openai") "Hello world")
+        (is (= 2 (count @analytics-calls)))
+        (is (= 2 (count @tracking-calls)))))))
 
 (deftest test-batching-logic
   (testing "create-batches handles empty input"
@@ -397,7 +451,9 @@
       (is (false? (embedding/embedding-supported? {:provider "openai"})))))
   (testing "ollama is always supported; an unrecognized provider is not (:default)"
     (is (true?  (embedding/embedding-supported? {:provider "ollama"})))
-    (is (false? (embedding/embedding-supported? {:provider "no-embedder"})))))
+    (is (false? (embedding/embedding-supported? {:provider "no-embedder"}))))
+  (testing "in-process can be configured before its plugin is installed, but is not ready without it"
+    (is (false? (embedding/embedding-supported? {:provider "in-process"})))))
 
 (deftest resolve-model-test
   (let [requested {:provider          "openai"
