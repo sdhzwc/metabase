@@ -19,7 +19,7 @@ const FLUSH_MS = 100;
 export const installDiagnosticsReporter = (
   hot: DiagnosticsReporterHot,
 ): (() => void) => {
-  const session = String(Date.now());
+  const sessionId = String(Date.now());
 
   let lastSentId = 0;
   let timer: ReturnType<typeof setTimeout> | null = null;
@@ -34,7 +34,7 @@ export const installDiagnosticsReporter = (
     }
 
     hot.send(DATA_APP_DIAGNOSTICS_EVENT, {
-      session,
+      sessionId,
       entries: fresh.map(toPayload),
       connection: getDevConnectionStatus(),
     });

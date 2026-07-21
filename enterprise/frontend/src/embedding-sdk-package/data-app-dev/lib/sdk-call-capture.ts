@@ -1,5 +1,4 @@
 import { recordDevDiagnostic } from "../components/DevToolbar/diagnostics";
-import { truncateDiagnosticText } from "../diagnostics-channel";
 
 let installed = false;
 
@@ -49,7 +48,8 @@ const readErrorMessage = (text: string): string => {
  * The status code alone doesn't say what went wrong, and without the reason the
  * feed can only report *that* a query failed. Only failures are read: they are
  * rare and small, whereas cloning successful responses would download every
- * query result twice.
+ * query result twice. The clone is what keeps the body readable by the caller.
+ * Length is bounded by `recordDevDiagnostic`, which caps every string field.
  */
 const captureFailureReason = async (
   response: Response,
@@ -61,7 +61,7 @@ const captureFailureReason = async (
   try {
     const text = await response.clone().text();
 
-    return text ? truncateDiagnosticText(readErrorMessage(text)) : undefined;
+    return text ? readErrorMessage(text) : undefined;
   } catch {
     return undefined;
   }

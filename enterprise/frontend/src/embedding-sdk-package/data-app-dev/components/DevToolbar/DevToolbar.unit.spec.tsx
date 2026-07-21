@@ -41,7 +41,7 @@ const serve = (
     lastReportAt: 1,
     lastRebuildAt: 1,
     nextEventId: (entries.at(-1)?.eventId ?? 0) + 1,
-    session: "session-1",
+    sessionId: "page-1",
     ...overrides,
   };
 };

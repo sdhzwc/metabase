@@ -78,7 +78,7 @@ export function dataAppSandboxDevPlugin(
   let manifestStatus: ReturnType<typeof validateDataAppManifest> | null = null;
   let lastReportAt: number | null = null;
   let lastRebuildAt: number | null = null;
-  let currentSession: string | null = null;
+  let currentSessionId: string | null = null;
   // Re-stamped server-side: the page's counter restarts at 1 on every reload, so
   // trusting it would make fresh events sort before a poller's cursor.
   let nextEventId = 1;
@@ -213,11 +213,11 @@ export function dataAppSandboxDevPlugin(
 
           // A new page: drop the previous one's events, but keep `nextEventId`
           // climbing so an existing poller's cursor stays valid.
-          if (message?.session && message.session !== currentSession) {
-            if (currentSession !== null) {
+          if (message?.sessionId && message.sessionId !== currentSessionId) {
+            if (currentSessionId !== null) {
               diagnosticEntries = [];
             }
-            currentSession = message.session;
+            currentSessionId = message.sessionId;
           }
 
           if (Array.isArray(message?.entries) && message.entries.length > 0) {
@@ -271,7 +271,7 @@ export function dataAppSandboxDevPlugin(
           lastReportAt,
           lastRebuildAt,
           nextEventId: (diagnosticEntries.at(-1)?.eventId ?? 0) + 1,
-          session: currentSession,
+          sessionId: currentSessionId,
         };
 
         res.setHeader("Content-Type", "application/json");

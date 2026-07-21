@@ -71,7 +71,7 @@ export interface DataAppDiagnosticPayload extends DataAppDiagnosticEntry {
 }
 
 export interface DataAppDiagnosticsMessage {
-  session: string;
+  sessionId: string;
   entries: DataAppDiagnosticEntry[];
   connection: DevConnectionStatus | null;
 }
@@ -85,5 +85,5 @@ export interface DataAppDiagnosticsReport {
   lastRebuildAt: number | null;
   /** Cursor for the next poll (`?startEventId=`): the last event's id + 1. */
   nextEventId: number;
-  session: string | null;
+  sessionId: string | null;
 }

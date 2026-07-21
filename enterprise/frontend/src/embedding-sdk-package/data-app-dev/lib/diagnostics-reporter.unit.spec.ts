@@ -163,15 +163,15 @@ describe("installDiagnosticsReporter", () => {
     expect(sent).toHaveLength(1);
   });
 
-  it("tags every message with a stable per-install session", () => {
+  it("tags every message with a stable per-install sessionId", () => {
     const { sent, teardown } = setup();
     recordDevDiagnostic({ kind: "error", message: "one" });
     jest.runOnlyPendingTimers();
 
-    expect(typeof sent[0].session).toBe("string");
-    expect(sent[0].session).not.toBe("");
-    // Same page load → same session on every message.
-    expect(sent[sent.length - 1].session).toBe(sent[0].session);
+    expect(typeof sent[0].sessionId).toBe("string");
+    expect(sent[0].sessionId).not.toBe("");
+    // Same page load → same sessionId on every message.
+    expect(sent[sent.length - 1].sessionId).toBe(sent[0].sessionId);
 
     teardown();
   });

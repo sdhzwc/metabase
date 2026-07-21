@@ -42,7 +42,7 @@ const report = (
   lastReportAt: 1,
   lastRebuildAt: 1,
   nextEventId: (entries.at(-1)?.eventId ?? 0) + 1,
-  session: "session-1",
+  sessionId: "page-1",
   ...over,
 });
 
@@ -239,6 +239,38 @@ describe("scenarios > data-apps > dev diagnostics toolbar", () => {
       root()
         .findByText(/api\/card\/1/)
         .should("not.exist");
+    });
+
+    it("shows why a query failed, behind the same disclosure as a stack", () => {
+      serveFeed([
+        entry({
+          eventId: 1,
+          kind: "sdk-call",
+          summary: "POST /api/dataset → 400 (12ms)",
+          detail: 'Table "orders" is not in the manifest',
+          alert: true,
+        }),
+      ]);
+
+      cy.mount(<DevToolbar />);
+      open();
+      root().findByRole("tab", { name: "Queries" }).click();
+
+      // Without the reason the author only learns *that* a query failed, and
+      // has to leave the toolbar for the browser's Network tab to find out why.
+      root()
+        .findByText(/POST \/api\/dataset → 400/)
+        .should("be.visible");
+      root()
+        .findByText(/is not in the manifest/)
+        .should("not.be.visible");
+
+      root()
+        .findByText(/POST \/api\/dataset → 400/)
+        .click();
+      root()
+        .findByText(/is not in the manifest/)
+        .should("be.visible");
     });
 
     it("renders the manifest status the feed carries", () => {

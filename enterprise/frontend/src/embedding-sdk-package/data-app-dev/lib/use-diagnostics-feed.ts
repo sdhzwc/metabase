@@ -27,30 +27,33 @@ export interface DiagnosticsFeed {
   clear: () => void;
 }
 
-const EMPTY: DataAppDiagnosticPayload[] = [];
+const EMPTY_ENTRIES: DataAppDiagnosticPayload[] = [];
 
 export const useDiagnosticsFeed = (
   url: string = DATA_APP_DIAGNOSTICS_URL,
   pollMs: number = REFETCH_POLL_MS,
 ): DiagnosticsFeed => {
-  const [entries, setEntries] = useState<DataAppDiagnosticPayload[]>(EMPTY);
+  const [entries, setEntries] =
+    useState<DataAppDiagnosticPayload[]>(EMPTY_ENTRIES);
   const [report, setReport] = useState<DataAppDiagnosticsReport | null>(null);
   const [problem, setProblem] = useState<DiagnosticsFeedProblem | null>(null);
-  const [loaded, setLoaded] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
 
-  // A ref, not state: advancing it must not trigger a re-render or the poll loops.
+  // Changing startEventId must not trigger a re-render or the poll loops, so useRef.
   const startEventId = useRef(0);
   // A poll can outlive its tick (a rebuild blocks the server for seconds).
   // Without this, overlapping reads share a cursor and append the same batch twice.
   const inFlight = useRef(false);
   const generation = useRef(0);
-  const session = useRef<string | null>(null);
+  const sessionId = useRef<string | null>(null);
 
   const poll = useCallback(async () => {
     if (inFlight.current) {
       return;
     }
+
     inFlight.current = true;
+
     const polledGeneration = generation.current;
 
     try {
@@ -63,7 +66,7 @@ export const useDiagnosticsFeed = (
         return;
       }
 
-      // `json()` returns `any`; the dev plugin serves exactly this shape.
+      // `json()` returns `any`
       const next = (await response.json()) as DataAppDiagnosticsReport;
 
       if (polledGeneration !== generation.current) {
@@ -71,15 +74,15 @@ export const useDiagnosticsFeed = (
       }
 
       setProblem(null);
-      setLoaded(true);
+      setIsLoaded(true);
       setReport(next);
 
-      if (next.session !== null && next.session !== session.current) {
-        if (session.current !== null) {
+      if (next.sessionId !== null && next.sessionId !== sessionId.current) {
+        if (sessionId.current !== null) {
           startEventId.current = 0;
-          setEntries(EMPTY);
+          setEntries(EMPTY_ENTRIES);
         }
-        session.current = next.session;
+        sessionId.current = next.sessionId;
       }
 
       // A restarted dev server begins its ids at 1 again. Without this the cursor
@@ -87,7 +90,7 @@ export const useDiagnosticsFeed = (
       // Accumulated entries belong to the old server and would collide on id.
       if (next.nextEventId < startEventId.current) {
         startEventId.current = 0;
-        setEntries(EMPTY);
+        setEntries(EMPTY_ENTRIES);
       }
 
       if (next.entries.length > 0) {
@@ -112,7 +115,7 @@ export const useDiagnosticsFeed = (
 
   const clear = useCallback(() => {
     generation.current += 1;
-    setEntries(EMPTY);
+    setEntries(EMPTY_ENTRIES);
     startEventId.current = 0;
 
     void fetch(url, { method: "DELETE" }).catch(() =>
@@ -128,7 +131,7 @@ export const useDiagnosticsFeed = (
     lastReportAt: report?.lastReportAt ?? null,
     lastRebuildAt: report?.lastRebuildAt ?? null,
     problem,
-    loaded,
+    loaded: isLoaded,
     clear,
   };
 };

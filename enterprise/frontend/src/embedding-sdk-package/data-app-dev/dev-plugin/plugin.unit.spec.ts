@@ -360,12 +360,12 @@ describe("dataAppSandboxDevPlugin", () => {
       const report = (
         server: FakeServer,
         entries: unknown[],
-        session?: string,
+        sessionId?: string,
       ) => {
         const handler = server.ws.on.mock.calls.find(
           ([event]) => event === DATA_APP_DIAGNOSTICS_EVENT,
         )?.[1];
-        handler({ session, entries, connection: { reachable: true } });
+        handler({ sessionId, entries, connection: { reachable: true } });
       };
 
       it("serves what the page reported, and passes other URLs through", async () => {
@@ -462,10 +462,10 @@ describe("dataAppSandboxDevPlugin", () => {
         expect(body.entries.map((e: { summary: string }) => e.summary)).toEqual(
           ["after reload"],
         );
-        expect(body.session).toBe("page-2");
+        expect(body.sessionId).toBe("page-2");
       });
 
-      it("keeps events across a soft reload (same session)", async () => {
+      it("keeps events across a soft reload (same sessionId)", async () => {
         const { server } = await setup();
 
         report(server, [{ eventId: 1, summary: "first" }], "page-1");
