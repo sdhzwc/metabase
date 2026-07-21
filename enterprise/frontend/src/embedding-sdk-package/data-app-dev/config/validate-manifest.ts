@@ -7,12 +7,11 @@ import { load as parseYaml } from "js-yaml";
 // eslint-disable-next-line metabase/no-external-references-for-sdk-package-code
 import * as sandboxAllowedHosts from "metabase-enterprise/data_apps/sandbox/allowed-hosts";
 
+import { DATA_APP_MANIFEST_FILE_NAME } from "../constants/paths";
 import type { DataAppManifestStatus } from "../types/manifest-status";
 
 const { isValidAllowedHostEntry, normalizeAllowedHostEntry } =
   sandboxAllowedHosts;
-
-const CONFIG_FILE_NAME = "data_app.yaml";
 
 // Keep in sync with the backend's `slug-pattern` / `reserved-slugs`.
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -80,10 +79,10 @@ export function validateDataAppManifest(
     status.errors.push(`"${slug}" is a reserved slug — rename the directory.`);
   }
 
-  const manifestPath = path.join(appRoot, CONFIG_FILE_NAME);
+  const manifestPath = path.join(appRoot, DATA_APP_MANIFEST_FILE_NAME);
   if (!fs.existsSync(manifestPath)) {
     status.errors.push(
-      `No ${CONFIG_FILE_NAME} found — this app will not sync.`,
+      `No ${DATA_APP_MANIFEST_FILE_NAME} found — this app will not sync.`,
     );
     return status;
   }
@@ -93,7 +92,7 @@ export function validateDataAppManifest(
     parsed = parseYaml(fs.readFileSync(manifestPath, "utf8"));
   } catch (error) {
     status.errors.push(
-      `Could not parse ${CONFIG_FILE_NAME}: ${
+      `Could not parse ${DATA_APP_MANIFEST_FILE_NAME}: ${
         error instanceof Error ? error.message : String(error)
       }`,
     );
@@ -108,18 +107,20 @@ export function validateDataAppManifest(
   status.name = asTrimmedString(manifestValue("name"));
 
   if (status.name == null) {
-    status.errors.push(`${CONFIG_FILE_NAME}: "name" is required.`);
+    status.errors.push(`${DATA_APP_MANIFEST_FILE_NAME}: "name" is required.`);
   }
 
   const bundlePath = asTrimmedString(manifestValue("path"));
 
   if (bundlePath == null) {
-    status.errors.push(`${CONFIG_FILE_NAME}: "path" is required.`);
+    status.errors.push(`${DATA_APP_MANIFEST_FILE_NAME}: "path" is required.`);
   } else {
     status.bundlePath = normalizePath(bundlePath);
 
     if (hasPathTraversal(status.bundlePath)) {
-      status.errors.push(`${CONFIG_FILE_NAME}: "path" must not contain "..".`);
+      status.errors.push(
+        `${DATA_APP_MANIFEST_FILE_NAME}: "path" must not contain "..".`,
+      );
     } else {
       status.bundlePathExists = fs.existsSync(
         path.join(appRoot, status.bundlePath),
@@ -135,7 +136,9 @@ export function validateDataAppManifest(
 
   const rawHosts = manifestValue("allowed_hosts");
   if (rawHosts != null && !Array.isArray(rawHosts)) {
-    status.errors.push(`${CONFIG_FILE_NAME}: "allowed_hosts" must be a list.`);
+    status.errors.push(
+      `${DATA_APP_MANIFEST_FILE_NAME}: "allowed_hosts" must be a list.`,
+    );
   } else if (Array.isArray(rawHosts)) {
     for (const entry of rawHosts) {
       const host = asTrimmedString(entry);
