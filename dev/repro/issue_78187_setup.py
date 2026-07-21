@@ -230,7 +230,11 @@ def main():
     meta = mb.get(f"/api/database/{db_id}/metadata")
     tables = {t["name"].lower(): t for t in meta["tables"]}
     orders, people, products = tables["orders"], tables["people"], tables["products"]
-    schema = orders.get("schema") or "PUBLIC"
+    # Use the table's real schema as the permissions-graph key. On instances where
+    # the sample DB was synced long ago the schema is NULL -> keyed as "" -- keying
+    # these under "PUBLIC" would store rows the schema-visibility check can't find,
+    # making Browse data show "This database doesn't have any tables."
+    schema = orders.get("schema") or ""
 
     orders_user_id = find_field(orders, "user_id")
     orders_product_id = find_field(orders, "product_id")
