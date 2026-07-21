@@ -2,6 +2,7 @@ import { type ReactElement, type ReactNode, useEffect } from "react";
 
 import { canAccessDataStudio } from "metabase/common/data-studio/selectors";
 import {
+  canAccessAiAuditing,
   canAccessAlertsManagement,
   canAccessMonitor,
   canAccessMonitorDiagnostics,
@@ -231,6 +232,11 @@ const UserCanAccessAlertsManagement = createRedirectGuard(
   "/unauthorized",
 );
 
+const UserCanAccessAiAuditing = createRedirectGuard(
+  (state) => canAccessAiAuditing(state),
+  "/unauthorized",
+);
+
 export const IsAuthenticated = () => (
   <MetabaseIsSetup>
     <UserIsAuthenticated>
@@ -318,4 +324,10 @@ export const CanAccessAlertsManagement = () => (
   <UserCanAccessAlertsManagement>
     <Outlet />
   </UserCanAccessAlertsManagement>
+);
+
+export const CanAccessAiAuditing = () => (
+  <UserCanAccessAiAuditing>
+    <Outlet />
+  </UserCanAccessAiAuditing>
 );
