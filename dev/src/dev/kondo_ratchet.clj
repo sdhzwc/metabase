@@ -196,15 +196,17 @@
           (= \" c)
           (if-let [k (str/index-of s "\"" (inc i))] (inc (long k)) n)
 
-          ;; `^meta value` reads as one form, and so does `#tag value`
+          ;; `^meta value` reads as one form, and so does `#tag value` -- but `##Inf` and friends are
+          ;; symbolic values that stand alone, so they fall through to the token scan below
           (or (= \^ c)
-              (and (= \# c) (not (contains? #{\_ \{ \( \" \'} (get s (inc i))))))
+              (and (= \# c) (not (contains? #{\_ \{ \( \" \' \#} (get s (inc i))))))
           (let [decoration-end (form-end s (skip-blanks s (inc i)))]
             (form-end s (skip-blanks s decoration-end)))
 
           ;; a quote, a deref, an unquote, `#_`, and the dispatch forms `#{} #() #"" #'` each take a
-          ;; single form after them
-          (contains? #{\# \' \@ \~ \`} c)
+          ;; single form after them -- but `##Inf`, `##-Inf` and `##NaN` are whole forms in themselves
+          (and (contains? #{\# \' \@ \~ \`} c)
+               (not= \# (get s (inc i))))
           (form-end s (skip-blanks s (+ i (if (discard-at? s i) 2 1))))
 
           :else
@@ -238,20 +240,38 @@
     (or (str/ends-with? before "#_")
         (str/ends-with? before "^"))))
 
+(defn- forms-in
+  "The forms of the list opening at `list-open` in masked source `s`, as `{:start _, :end _}` maps, up to
+  and including the one starting at `until` (or all of them, when it isn't one of them)."
+  [^String s ^long list-open ^long until]
+  (loop [j (skip-blanks s (inc list-open)), acc []]
+    (let [c (get s j)]
+      (if (or (nil? c) (= \) c) (> j until))
+        acc
+        (let [end (max (inc j) (form-end s j))
+              acc (conj acc {:start j, :end end})]
+          (if (= j until)
+            acc
+            (recur (skip-blanks s end) acc)))))))
+
 (defn- attr-map-context?
   "Is the map opening at `opener` in masked source `s` somewhere an ignore key would suppress anything,
   rather than plain data that happens to contain the marker? A `#_` or `^` prefix settles it. Failing
-  that it has to be an attr map, which kondo reads in `(ns ...)`, and in a `def...` form when something
-  follows the map -- the argument vector -- unlike `(def x {:a 1})`, where the map is the value."
+  that it has to be a real attr map: kondo reads one in `(ns ...)`, and in a `def...` form in the slot
+  before the argument vector -- so `(defn f {...} [x] ...)` is one, while `(def x {...})`, where the map
+  is the value, and `(defn f [x] {...} nil)`, where it is a body form, are not."
   [^String s ^long opener]
   (or (prefixed-form? s opener)
       (when-let [list-open (enclosing-opener s opener)]
         (when (= \( (.charAt s (long list-open)))
-          (let [head-start (skip-blanks s (inc (long list-open)))
-                head       (subs s head-start (form-end s head-start))
-                after      (skip-blanks s (form-end s opener))]
+          (let [forms (forms-in s list-open opener)
+                head  (when-let [{:keys [start end]} (first forms)] (subs s start end))
+                after (skip-blanks s (form-end s opener))]
             (or (= "ns" head)
-                (and (str/starts-with? head "def")
+                (and head
+                     (str/starts-with? head "def")
+                     ;; the argument vector comes after the attr map, never before it
+                     (not-any? #(= \[ (.charAt s (long (:start %)))) (butlast (rest forms)))
                      (< after (count s))
                      (not= \) (.charAt s after)))))))))
 

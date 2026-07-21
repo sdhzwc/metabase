@@ -124,12 +124,18 @@
     [:after-regex]      "(def x ^{:a #\"re\" :clj-kondo/ignore [:after-regex]} y)"
     [:after-var]        "(def x ^{:a #'foo :clj-kondo/ignore [:after-var]} y)"
     [:after-quote]      "(def x ^{:a 'sym :clj-kondo/ignore [:after-quote]} y)"
+    ;; ... and a symbolic value is a whole form, not a dispatch waiting for one
+    [:after-inf]        "(def x ^{:a ##Inf :clj-kondo/ignore [:after-inf]} y)"
+    [:after-nan]        "(def x ^{:a ##NaN :clj-kondo/ignore [:after-nan]} y)"
     ;; an unprefixed map only suppresses where an attr map is read, so data holding the marker doesn't
     ;; count however the marker is positioned
     []                  "(def x {:clj-kondo/ignore [:data] :a 1})"
     []                  "(def x {:a 1 :clj-kondo/ignore [:data]})"
     []                  "(let [m {:a 1 :clj-kondo/ignore [:data]}] m)"
     [:macro-attr]       "(defmacro f \"doc\" {:clj-kondo/ignore [:macro-attr]} [args] 1)"
+    ;; the attr map is the slot before the argument vector, so a map after one is a body form
+    []                  "(defn f [] {:clj-kondo/ignore [:data]} nil)"
+    [:multi-arity]      "(defn f {:clj-kondo/ignore [:multi-arity]} ([] 1) ([a] a))"
     ;; vector-less forms suppress everything -> :all
     [:all]              "  #_:clj-kondo/ignore"
     [:all]              "  #_ :clj-kondo/ignore (foo)"
