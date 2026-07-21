@@ -1,8 +1,5 @@
 import { recordDevDiagnostic } from "../components/DevToolbar/diagnostics";
-
-// Exact paths only: `/api/dataset/csv` etc. are exports, and buffering one to
-// count rows would download the whole file before the caller sees the response.
-const QUERY_ENDPOINT_RE = /^\/api\/(dataset|card\/\d+\/query)$/;
+import { truncateDiagnosticText } from "../diagnostics-channel";
 
 let installed = false;
 
@@ -28,43 +25,54 @@ const resolveMethod = (
   return method.toUpperCase();
 };
 
-const readRowCount = (body: unknown): number | undefined => {
-  if (typeof body !== "object" || body === null || !("data" in body)) {
-    return undefined;
+/** Metabase reports API errors as `{ message }`; anything else reads better raw. */
+const readErrorMessage = (text: string): string => {
+  try {
+    const body: unknown = JSON.parse(text);
+
+    if (
+      typeof body === "object" &&
+      body !== null &&
+      "message" in body &&
+      typeof body.message === "string"
+    ) {
+      return body.message;
+    }
+  } catch {
+    // Not JSON — a proxy's HTML error page, or a bare string.
   }
 
-  const { data } = body;
-
-  if (typeof data !== "object" || data === null || !("rows" in data)) {
-    return undefined;
-  }
-
-  return Array.isArray(data.rows) ? data.rows.length : undefined;
+  return text;
 };
 
-const captureRowCount = async (
-  endpoint: string,
+/**
+ * The status code alone doesn't say what went wrong, and without the reason the
+ * feed can only report *that* a query failed. Only failures are read: they are
+ * rare and small, whereas cloning successful responses would download every
+ * query result twice.
+ */
+const captureFailureReason = async (
   response: Response,
-): Promise<number | undefined> => {
-  if (!response.ok || !QUERY_ENDPOINT_RE.test(endpoint)) {
-    return undefined;
-  }
-
-  if (!response.headers.get("content-type")?.includes("application/json")) {
+): Promise<string | undefined> => {
+  if (response.ok) {
     return undefined;
   }
 
   try {
-    return readRowCount(await response.clone().json());
+    const text = await response.clone().text();
+
+    return text ? truncateDiagnosticText(readErrorMessage(text)) : undefined;
   } catch {
     return undefined;
   }
 };
 
-/** Aborts are routine — StrictMode remounts, superseded queries — not failures. */
-const isAbort = (error: unknown): boolean =>
+const isAbortError = (error: unknown): boolean =>
   error instanceof DOMException && error.name === "AbortError";
 
+/**
+ * It uses window.fetch pathing. At this moment this is the easiest option to do it and should not affect anything.
+ */
 export function installSdkCallCapture(
   metabaseUrl: string | undefined,
 ): () => void {
@@ -108,11 +116,11 @@ export function installSdkCallCapture(
         endpoint,
         status: response.status,
         durationMs: durationMs(),
-        rowCount: await captureRowCount(endpoint, response),
+        error: await captureFailureReason(response),
       });
       return response;
     } catch (error) {
-      if (!isAbort(error)) {
+      if (!isAbortError(error)) {
         recordDevDiagnostic({
           kind: "sdk-call",
           method,

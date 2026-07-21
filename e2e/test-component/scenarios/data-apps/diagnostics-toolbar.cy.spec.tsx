@@ -188,7 +188,9 @@ describe("scenarios > data-apps > dev diagnostics toolbar", () => {
       open();
 
       root().findByText("plain error").should("be.visible");
-      root().findByText(/Blocked fetch to/).should("not.exist");
+      root()
+        .findByText(/Blocked fetch to/)
+        .should("not.exist");
 
       root().findByRole("tab", { name: "Blocked" }).click();
       root()
@@ -220,7 +222,9 @@ describe("scenarios > data-apps > dev diagnostics toolbar", () => {
       open();
       root().findByRole("tab", { name: "Queries" }).click();
 
-      root().findByText(/Dev runs with an API key/).should("be.visible");
+      root()
+        .findByText(/Dev runs with an API key/)
+        .should("be.visible");
       root()
         .findByText(/api\/card\/1/)
         .should("be.visible");
@@ -260,9 +264,13 @@ describe("scenarios > data-apps > dev diagnostics toolbar", () => {
       // scroll fold.
       root().findByText("path is required").should("be.visible");
       root().findByText("bundle is large").should("exist");
-      root().findByText(/allowed_hosts changed/).should("exist");
+      root()
+        .findByText(/allowed_hosts changed/)
+        .should("exist");
       root().findByText("Demo").should("exist");
-      root().findByText(/file not found/).should("exist");
+      root()
+        .findByText(/file not found/)
+        .should("exist");
       root().findByText("https://api.example.com").should("exist");
     });
 

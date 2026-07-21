@@ -13,6 +13,12 @@ const jsonResponse = (body: unknown) =>
     headers: { "Content-Type": "application/json" },
   });
 
+const errorResponse = (status: number, body: unknown) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+
 let realFetch: jest.Mock<Promise<Response>, []>;
 let teardown: () => void;
 
@@ -39,27 +45,10 @@ describe("installSdkCallCapture", () => {
     expect(calls()[0]).toMatchObject({ endpoint: "/api/card/1", status: 200 });
   });
 
-  it("does not buffer an export body to count rows", async () => {
+  it("never buffers a successful response", async () => {
     install();
-    const csv = new Response("a,b\n1,2", {
-      status: 200,
-      headers: { "Content-Type": "text/csv" },
-    });
-    const clone = jest.spyOn(csv, "clone");
-    realFetch.mockResolvedValue(csv);
-
-    // `/api/dataset/csv` used to match the query-endpoint pattern, so the whole
-    // export was cloned, downloaded and JSON-parsed before the caller saw it.
-    await window.fetch(`${METABASE_URL}/api/dataset/csv`);
-
-    expect(clone).not.toHaveBeenCalled();
-    expect(calls()[0].endpoint).toBe("/api/dataset/csv");
-  });
-
-  it("does not buffer a JSON export, which content-type alone can't rule out", async () => {
-    install();
-    // `/api/dataset/json` is an export that really does return application/json,
-    // so only the exact-path match keeps a large one from being downloaded twice.
+    // Reading a success body would download every query result — and every
+    // export — twice, and there is nothing in it worth reporting.
     const exported = jsonResponse([{ a: 1 }]);
     const clone = jest.spyOn(exported, "clone");
     realFetch.mockResolvedValue(exported);
@@ -81,13 +70,43 @@ describe("installSdkCallCapture", () => {
     expect(calls()[1].method).toBe("PUT");
   });
 
-  it("counts rows for a real query result", async () => {
+  it("reports why a request failed, not just that it did", async () => {
     install();
-    realFetch.mockResolvedValue(jsonResponse({ data: { rows: [1, 2, 3] } }));
+    realFetch.mockResolvedValue(
+      errorResponse(400, { message: 'Table "orders" is not in the manifest' }),
+    );
 
     await window.fetch(`${METABASE_URL}/api/dataset`);
 
-    expect(calls()[0]).toMatchObject({ rowCount: 3 });
+    // The status alone leaves the author — and an agent reading the feed —
+    // with "a query failed" and nowhere to go next.
+    expect(calls()[0]).toMatchObject({
+      status: 400,
+      error: 'Table "orders" is not in the manifest',
+    });
+  });
+
+  it("falls back to the raw body when the failure isn't a Metabase error", async () => {
+    install();
+    realFetch.mockResolvedValue(
+      new Response("<html>502 Bad Gateway</html>", { status: 502 }),
+    );
+
+    await window.fetch(`${METABASE_URL}/api/dataset`);
+
+    expect(calls()[0]).toMatchObject({
+      status: 502,
+      error: "<html>502 Bad Gateway</html>",
+    });
+  });
+
+  it("records a failure with an empty body without inventing a reason", async () => {
+    install();
+    realFetch.mockResolvedValue(new Response("", { status: 500 }));
+
+    await window.fetch(`${METABASE_URL}/api/dataset`);
+
+    expect(calls()[0]).toMatchObject({ status: 500, error: undefined });
   });
 
   it("ignores an aborted request rather than reporting a failure", async () => {
@@ -117,16 +136,12 @@ describe("installSdkCallCapture", () => {
 
   it("strips the base path of a sub-path deployment", async () => {
     install("https://acme.com/metabase");
-    realFetch.mockResolvedValue(jsonResponse({ data: { rows: [1] } }));
 
     await window.fetch("https://acme.com/metabase/api/dataset");
 
-    // Without stripping, the endpoint reads `/metabase/api/dataset` and never
-    // matches the query pattern, so row counts silently vanish.
-    expect(calls()[0]).toMatchObject({
-      endpoint: "/api/dataset",
-      rowCount: 1,
-    });
+    // Without stripping, every endpoint reads `/metabase/api/...`, which matches
+    // neither the paths the author knows nor the ones in the Metabase docs.
+    expect(calls()[0]).toMatchObject({ endpoint: "/api/dataset" });
   });
 
   it("stops recording once torn down, and can be reinstalled without double-counting", async () => {

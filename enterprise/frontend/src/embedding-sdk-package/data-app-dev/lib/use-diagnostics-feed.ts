@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
-  DATA_APP_DIAGNOSTICS_LIMIT,
   DATA_APP_DIAGNOSTICS_URL,
   type DataAppDiagnosticPayload,
   type DataAppDiagnosticsReport,
   type DevConnectionStatus,
+  capDiagnosticEntries,
 } from "../diagnostics-channel";
 import type { DataAppManifestStatus } from "../manifest-status";
 
@@ -93,7 +93,7 @@ export const useDiagnosticsFeed = (
       if (next.entries.length > 0) {
         startEventId.current = next.nextEventId;
         setEntries((current) =>
-          [...current, ...next.entries].slice(-DATA_APP_DIAGNOSTICS_LIMIT),
+          capDiagnosticEntries([...current, ...next.entries]),
         );
       }
     } catch {

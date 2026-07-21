@@ -29,8 +29,11 @@ export const formatDevDiagnostic = (entry: DevDiagnosticEntry): string => {
         entry.blockedUri || "inline content"
       }`;
     case "sdk-call": {
-      const status = entry.error ?? entry.status ?? "pending";
-      return `${entry.method} ${entry.endpoint} → ${status} (${entry.durationMs}ms)`;
+      // The reason goes on its own line so `splitDevDiagnostic` files it as the
+      // collapsible detail rather than burying the endpoint behind it.
+      const summary = `${entry.method} ${entry.endpoint} → ${entry.status ?? "failed"} (${entry.durationMs}ms)`;
+
+      return entry.error ? `${summary}\n${entry.error}` : summary;
     }
     default: {
       const exhaustive: never = entry;

@@ -15,12 +15,12 @@ import { getDataAppDefine } from "../config/define";
 import { validateDataAppManifest } from "../config/validate-manifest";
 import {
   DATA_APP_DIAGNOSTICS_EVENT,
-  DATA_APP_DIAGNOSTICS_LIMIT,
   DATA_APP_DIAGNOSTICS_URL,
   type DataAppDiagnosticPayload,
   type DataAppDiagnosticsMessage,
   type DataAppDiagnosticsReport,
   type DevConnectionStatus,
+  capDiagnosticEntries,
   truncateDiagnosticText,
 } from "../diagnostics-channel";
 
@@ -232,9 +232,10 @@ export function dataAppSandboxDevPlugin(
               eventId: nextEventId++,
             }));
 
-            diagnosticEntries = [...diagnosticEntries, ...stamped].slice(
-              -DATA_APP_DIAGNOSTICS_LIMIT,
-            );
+            diagnosticEntries = capDiagnosticEntries([
+              ...diagnosticEntries,
+              ...stamped,
+            ]);
           }
         },
       );

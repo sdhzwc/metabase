@@ -163,6 +163,28 @@ describe("dev diagnostics store", () => {
     expect(formatDevDiagnostic(entries[0])).toBe("error 5");
     expect(formatDevDiagnostic(last(entries))).toBe("error 204");
   });
+
+  it("does not let a flood of requests evict earlier errors", () => {
+    console.error("the error worth keeping");
+
+    for (let i = 0; i < 500; i++) {
+      recordDevDiagnostic({
+        kind: "sdk-call",
+        method: "GET",
+        endpoint: `/api/card/${i}`,
+        status: 200,
+        durationMs: 1,
+      });
+    }
+
+    // A polling app used to push whatever explained its own failures out of the
+    // shared buffer — the one entry an author or an agent actually needs.
+    const entries = getDevDiagnostics();
+    expect(formatDevDiagnostic(entries[0])).toBe("the error worth keeping");
+    expect(entries.filter((entry) => entry.kind === "sdk-call")).toHaveLength(
+      50,
+    );
+  });
 });
 
 describe("recordSandboxBlockedEvent", () => {
@@ -217,7 +239,6 @@ describe("sdk-call entries", () => {
       endpoint: "/api/card/1/query",
       status: 202,
       durationMs: 45,
-      rowCount: 10,
     });
 
     expect(formatDevDiagnostic(last(getDevDiagnostics()))).toBe(
@@ -225,7 +246,22 @@ describe("sdk-call entries", () => {
     );
   });
 
-  it("formats a failed call with its error", () => {
+  it("keeps the endpoint on the summary line and the reason below it", () => {
+    recordDevDiagnostic({
+      kind: "sdk-call",
+      method: "POST",
+      endpoint: "/api/dataset",
+      status: 400,
+      durationMs: 12,
+      error: 'Table "orders" is not in the manifest',
+    });
+
+    expect(formatDevDiagnostic(last(getDevDiagnostics()))).toBe(
+      'POST /api/dataset → 400 (12ms)\nTable "orders" is not in the manifest',
+    );
+  });
+
+  it("formats a transport failure, which has no status", () => {
     recordDevDiagnostic({
       kind: "sdk-call",
       method: "GET",
@@ -236,7 +272,7 @@ describe("sdk-call entries", () => {
     });
 
     expect(formatDevDiagnostic(last(getDevDiagnostics()))).toBe(
-      "GET /api/user/current → Failed to fetch (5ms)",
+      "GET /api/user/current → failed (5ms)\nFailed to fetch",
     );
   });
 });

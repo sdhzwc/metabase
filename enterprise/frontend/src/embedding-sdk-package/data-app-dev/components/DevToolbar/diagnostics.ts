@@ -2,6 +2,7 @@ import type { SandboxBlockedEvent } from "metabase-enterprise/data_apps/sandbox/
 
 import {
   type DevConnectionStatus,
+  capDiagnosticEntries,
   truncateDiagnosticText,
 } from "../../diagnostics-channel";
 
@@ -21,7 +22,8 @@ export type DevDiagnosticEvent =
       endpoint: string;
       status: number | null;
       durationMs: number;
-      rowCount?: number;
+      // Why it failed: the response body on a non-2xx, the thrown message on a
+      // transport failure. Absent on success.
       error?: string;
     };
 
@@ -29,8 +31,6 @@ export type DevDiagnosticEntry = {
   id: number;
   time: number;
 } & DevDiagnosticEvent;
-
-const MAX_ENTRIES = 200;
 
 let entries: DevDiagnosticEntry[] = [];
 let connectionStatus: DevConnectionStatus | null = null;
@@ -71,13 +71,10 @@ const cappedEvent = (event: DevDiagnosticEvent): DevDiagnosticEvent =>
 
 export const recordDevDiagnostic = (event: DevDiagnosticEvent): void => {
   // New array reference each time so `useSyncExternalStore` re-renders.
-  entries = [
+  entries = capDiagnosticEntries([
     ...entries,
     { id: nextId++, time: Date.now(), ...cappedEvent(event) },
-  ];
-  if (entries.length > MAX_ENTRIES) {
-    entries = entries.slice(-MAX_ENTRIES);
-  }
+  ]);
   emit();
 };
 
