@@ -256,16 +256,25 @@
 
 (defn- vector-form?
   "Does the form at `i` in masked source `s` read as a vector? Metadata is stepped over, so `^:tag [x]`
-  counts, and a reader conditional is taken as one too -- it may well expand to the argument vector, and
-  the only thing that costs us is counting an ignore we could have ruled out."
+  counts, and a reader conditional counts when one of its branches is a vector -- `#?(:clj [x])` is an
+  argument vector, while `#?(:clj \"doc\")` is a docstring, and taking that for one would drop the real
+  ignore in the attr map after it."
   [^String s ^long i]
   (loop [j i]
     (let [c (get s j)]
       (cond
-        (= \[ c)                         true
-        (and (= \# c) (= \? (get s (inc j)))) true
-        (= \^ c)                         (recur (skip-blanks s (form-end s (skip-blanks s (inc j)))))
-        :else                            false))))
+        (= \[ c) true
+
+        (= \^ c) (recur (skip-blanks s (form-end s (skip-blanks s (inc j)))))
+
+        (and (= \# c) (= \? (get s (inc j))))
+        (let [splice?   (= \@ (get s (+ j 2)))
+              list-open (skip-blanks s (+ j (if splice? 3 2)))]
+          (and (= \( (get s list-open))
+               (boolean (some #(vector-form? s (:start %))
+                              (forms-in s list-open (form-end s list-open))))))
+
+        :else false))))
 
 (defn- attr-map-context?
   "Is the map opening at `opener` in masked source `s` somewhere an ignore key would suppress anything,

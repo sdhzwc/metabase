@@ -138,6 +138,8 @@
     []                  "(defn f [] {:clj-kondo/ignore [:data]} nil)"
     []                  "(defn f ^:tag [x] {:clj-kondo/ignore [:data]} nil)"
     []                  "(defn f #?(:clj [x] :cljs [y]) {:clj-kondo/ignore [:data]} nil)"
+    ;; ... but only when a branch of the conditional really is one -- a conditional docstring isn't
+    [:after-cond-doc]   "(defn f #?(:clj \"doc\" :cljs \"doc\") {:clj-kondo/ignore [:after-cond-doc]} [a] 1)"
     [:multi-arity]      "(defn f {:clj-kondo/ignore [:multi-arity]} ([] 1) ([a] a))"
     [:before-meta-args] "(defn f {:clj-kondo/ignore [:before-meta-args]} ^:tag [a] 1)"
     ;; defmethod's second argument is a dispatch value, not an attr map
