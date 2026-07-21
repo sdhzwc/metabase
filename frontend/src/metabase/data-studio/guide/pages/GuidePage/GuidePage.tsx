@@ -1,10 +1,12 @@
+import type { ReactNode } from "react";
 import { jt, t } from "ttag";
 
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
 import { usePageTitle } from "metabase/hooks/use-page-title";
-import { Box, Card, Stack, Text, Title } from "metabase/ui";
+import { Box, Card, Group, Icon, Stack, Text, Title } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
 
 import S from "./GuidePage.module.css";
 
@@ -26,9 +28,9 @@ export function GuidePage() {
         <Card shadow="none" withBorder>
           <Stack className={S.cardContent} gap="2rem">
             <Box data-testid="guide-transforms-section">
-              <Title mb="md" order={3}>
+              <SectionHeading icon="transform">
                 {t`Transform your data to make it easier to query`}
-              </Title>
+              </SectionHeading>
               <Stack gap="md">
                 <Text c="text-secondary">
                   {jt`Use ${(
@@ -43,9 +45,9 @@ export function GuidePage() {
             </Box>
 
             <Box data-testid="guide-publish-section">
-              <Title mb="md" order={3}>
+              <SectionHeading icon="repository">
                 {t`Publish query-ready tables to the Semantic Layer`}
-              </Title>
+              </SectionHeading>
               <Stack gap="md">
                 <Text c="text-secondary">
                   {jt`Find all your tables in ${(
@@ -62,9 +64,9 @@ export function GuidePage() {
             </Box>
 
             <Box data-testid="guide-define-section">
-              <Title mb="md" order={3}>
+              <SectionHeading icon="metric">
                 {t`Define key metrics and terms`}
-              </Title>
+              </SectionHeading>
               <Stack gap="md">
                 <Text c="text-secondary">
                   {jt`Build on tables’ segments and measures to define important numbers like KPIs as ${(
@@ -79,5 +81,20 @@ export function GuidePage() {
         </Card>
       </Box>
     </PageContainer>
+  );
+}
+
+function SectionHeading({
+  icon,
+  children,
+}: {
+  icon: IconName;
+  children: ReactNode;
+}) {
+  return (
+    <Group gap={8} align="center" mb={8} wrap="nowrap">
+      <Icon name={icon} size={20} c="core-brand" />
+      <Title order={3}>{children}</Title>
+    </Group>
   );
 }

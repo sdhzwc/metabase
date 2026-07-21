@@ -1,4 +1,4 @@
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui";
 
 import { GuidePage } from "./GuidePage";
 
@@ -18,13 +18,33 @@ describe("GuidePage", () => {
       screen.getByText("Build your semantic layer in Data Studio"),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("Clean up your schema with transforms"),
+      screen.getByText("Transform your data to make it easier to query"),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("Publish tables for your team and agents to use"),
+      screen.getByText("Publish query-ready tables to the Semantic Layer"),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("Define your segments, measures and metrics"),
+      screen.getByText("Define key metrics and terms"),
+    ).toBeInTheDocument();
+  });
+
+  it("shows brand icons next to each section heading", () => {
+    renderWithProviders(<GuidePage />);
+
+    expect(
+      within(screen.getByTestId("guide-transforms-section")).getByLabelText(
+        "transform icon",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByTestId("guide-publish-section")).getByLabelText(
+        "repository icon",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByTestId("guide-define-section")).getByLabelText(
+        "metric icon",
+      ),
     ).toBeInTheDocument();
   });
 
@@ -32,13 +52,13 @@ describe("GuidePage", () => {
     renderWithProviders(<GuidePage />);
 
     expect(screen.getByTestId("guide-transforms-section")).toHaveTextContent(
-      /Find them under Data/,
+      /Use Transforms to write new tables/,
     );
     expect(screen.getByTestId("guide-publish-section")).toHaveTextContent(
-      /Connected data is where you browse synced tables/,
+      /Find all your tables in Connected data/,
     );
     expect(screen.getByTestId("guide-define-section")).toHaveTextContent(
-      /Define segments and measures on top of published tables/,
+      /Build on tables’ segments and measures/,
     );
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });
