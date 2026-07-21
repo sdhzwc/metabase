@@ -256,9 +256,13 @@
 
 (defn- vector-form?
   "Does the form at `i` in masked source `s` read as a vector? Metadata is stepped over, so `^:tag [x]`
-  counts, and a reader conditional counts when one of its branches is a vector -- `#?(:clj [x])` is an
-  argument vector, while `#?(:clj \"doc\")` is a docstring, and taking that for one would drop the real
-  ignore in the attr map after it."
+  counts.
+
+  A reader conditional counts only when *every* branch is a vector, since we can't know which platform
+  is being read: `#?(:clj [x] :cljs \"doc\")` is an argument vector in Clojure and a docstring in
+  ClojureScript, and if it's a docstring then the map after it is a real attr map whose ignore we'd
+  otherwise drop. Splicing conditionals are read one level deeper, since `#?@(:clj [\"doc\"])` emits the
+  docstring rather than the vector holding it."
   [^String s ^long i]
   (loop [j i]
     (let [c (get s j)]
@@ -269,10 +273,20 @@
 
         (and (= \# c) (= \? (get s (inc j))))
         (let [splice?   (= \@ (get s (+ j 2)))
-              list-open (skip-blanks s (+ j (if splice? 3 2)))]
-          (and (= \( (get s list-open))
-               (boolean (some #(vector-form? s (:start %))
-                              (forms-in s list-open (form-end s list-open))))))
+              list-open (skip-blanks s (+ j (if splice? 3 2)))
+              ;; the forms in a conditional alternate feature keyword, value, feature keyword, value
+              branches  (when (= \( (get s list-open))
+                          (take-nth 2 (rest (forms-in s list-open (form-end s list-open)))))
+              emitted   (fn [{:keys [start]}]
+                          (if splice?
+                            ;; what a branch splices in is its collection's first form, if it has one
+                            (let [inner (skip-blanks s (inc (long start)))]
+                              (when-not (contains? #{\] \) \}} (get s inner))
+                                inner))
+                            start))]
+          (boolean (and (seq branches)
+                        (every? #(when-let [start (emitted %)] (vector-form? s start))
+                                branches))))
 
         :else false))))
 
