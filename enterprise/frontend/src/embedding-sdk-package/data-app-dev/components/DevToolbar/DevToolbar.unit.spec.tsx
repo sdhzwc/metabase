@@ -5,7 +5,7 @@ import { fireEvent, render, screen, waitFor } from "__support__/ui";
 import type {
   DataAppDiagnosticPayload,
   DataAppDiagnosticsReport,
-} from "../../diagnostics-channel";
+} from "../../types/diagnostics-channel";
 
 import { DevToolbar } from "./DevToolbar";
 

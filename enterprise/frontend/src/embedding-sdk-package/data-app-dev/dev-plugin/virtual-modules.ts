@@ -12,7 +12,7 @@ import {
   DATA_APP_DEV_ENTRY_FILE_NAME,
   PACKAGE_JSON_FILE_NAME,
   SDK_PACKAGE_NAME,
-} from "../constants";
+} from "../constants/paths";
 
 const { DATA_APP_DEV_CONFIG_VIRTUAL_ID, DATA_APP_DEV_ENTRY_VIRTUAL_ID } =
   dataAppVirtualModules;

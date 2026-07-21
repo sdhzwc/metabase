@@ -1,5 +1,5 @@
 import { setDevConnectionStatus } from "../components/DevToolbar/diagnostics";
-import type { DevConnectionStatus } from "../diagnostics-channel";
+import type { DevConnectionStatus } from "../types/diagnostics-channel";
 
 export interface DevConnectionCheckOptions {
   metabaseUrl: string | undefined;

@@ -1,10 +1,9 @@
 /* eslint-disable metabase/no-literal-metabase-strings -- dev-only guidance for data-app authors, not whitelabel-able product UI */
 
 import type { DevDiagnosticEntry } from "../components/DevToolbar/diagnostics";
-import {
-  type DataAppDiagnosticEntry,
-  truncateDiagnosticText,
-} from "../diagnostics-channel";
+import type { DataAppDiagnosticEntry } from "../types/diagnostics-channel";
+
+import { truncateDiagnosticText } from "./diagnostics-limits";
 
 export const isFailedSdkCall = (entry: DevDiagnosticEntry): boolean =>
   entry.kind === "sdk-call" &&

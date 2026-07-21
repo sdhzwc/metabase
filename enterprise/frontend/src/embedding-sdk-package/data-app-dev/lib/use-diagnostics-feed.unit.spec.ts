@@ -1,10 +1,10 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 
-import {
-  DATA_APP_DIAGNOSTICS_LIMIT,
-  type DataAppDiagnosticPayload,
-  type DataAppDiagnosticsReport,
-} from "../diagnostics-channel";
+import { DATA_APP_DIAGNOSTICS_LIMIT } from "../constants/diagnostics-channel";
+import type {
+  DataAppDiagnosticPayload,
+  DataAppDiagnosticsReport,
+} from "../types/diagnostics-channel";
 
 import { useDiagnosticsFeed } from "./use-diagnostics-feed";
 

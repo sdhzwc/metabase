@@ -3,10 +3,8 @@ import {
   getDevDiagnostics,
   subscribeDevDiagnostics,
 } from "../components/DevToolbar/diagnostics";
-import {
-  DATA_APP_DIAGNOSTICS_EVENT,
-  type DataAppDiagnosticsMessage,
-} from "../diagnostics-channel";
+import { DATA_APP_DIAGNOSTICS_EVENT } from "../constants/diagnostics-channel";
+import type { DataAppDiagnosticsMessage } from "../types/diagnostics-channel";
 
 import { toPayload } from "./diagnostics-payload";
 

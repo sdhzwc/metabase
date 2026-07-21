@@ -2,8 +2,8 @@ import {
   DATA_APP_DIAGNOSTICS_CALL_LIMIT,
   DATA_APP_DIAGNOSTICS_LIMIT,
   DATA_APP_DIAGNOSTIC_MAX_CHARS,
-  type DataAppDiagnosticEntry,
-} from "../diagnostics-channel";
+} from "../constants/diagnostics-channel";
+import type { DataAppDiagnosticEntry } from "../types/diagnostics-channel";
 
 import { createDiagnosticsStore } from "./diagnostics-store";
 

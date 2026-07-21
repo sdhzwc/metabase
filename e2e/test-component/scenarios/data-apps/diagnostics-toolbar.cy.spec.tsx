@@ -2,7 +2,7 @@ import { DevToolbar } from "embedding-sdk-package/data-app-dev/components/DevToo
 import type {
   DataAppDiagnosticPayload,
   DataAppDiagnosticsReport,
-} from "embedding-sdk-package/data-app-dev/diagnostics-channel";
+} from "embedding-sdk-package/data-app-dev/types/diagnostics-channel";
 
 // The dev diagnostics toolbar (`npm run dev` preview only) reads the dev server's
 // JSON feed and renders it. The unit tests drive it in jsdom against a stubbed

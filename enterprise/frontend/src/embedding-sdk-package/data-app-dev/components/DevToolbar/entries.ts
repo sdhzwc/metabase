@@ -1,4 +1,4 @@
-import type { DataAppDiagnosticPayload } from "../../diagnostics-channel";
+import type { DataAppDiagnosticPayload } from "../../types/diagnostics-channel";
 
 export type TabId =
   | "errors"

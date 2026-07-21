@@ -2,11 +2,9 @@ import type {
   DevDiagnosticEntry,
   DevDiagnosticEvent,
 } from "../components/DevToolbar/diagnostics";
-import {
-  DATA_APP_DIAGNOSTIC_MAX_CHARS,
-  truncateDiagnosticText,
-} from "../diagnostics-channel";
+import { DATA_APP_DIAGNOSTIC_MAX_CHARS } from "../constants/diagnostics-channel";
 
+import { truncateDiagnosticText } from "./diagnostics-limits";
 import { devDiagnosticHint, isAlert, toPayload } from "./diagnostics-payload";
 
 const entry = (event: DevDiagnosticEvent): DevDiagnosticEntry => ({

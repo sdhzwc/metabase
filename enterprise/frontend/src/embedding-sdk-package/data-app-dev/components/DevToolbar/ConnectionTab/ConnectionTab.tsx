@@ -1,6 +1,6 @@
 /* eslint-disable i18next/no-literal-string */
 /* eslint-disable metabase/no-literal-metabase-strings -- dev-only toolbar for data-app authors, not whitelabel-able product UI */
-import type { DevConnectionStatus } from "../../../diagnostics-channel";
+import type { DevConnectionStatus } from "../../../types/diagnostics-channel";
 import S from "../DevToolbar.module.css";
 import { StatusRow } from "../StatusRow/StatusRow";
 

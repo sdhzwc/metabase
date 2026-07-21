@@ -2,7 +2,7 @@
 /* eslint-disable metabase/no-literal-metabase-strings -- dev-only toolbar for data-app authors, not whitelabel-able product UI */
 import { useState } from "react";
 
-import type { DataAppDiagnosticPayload } from "../../../diagnostics-channel";
+import type { DataAppDiagnosticPayload } from "../../../types/diagnostics-channel";
 import S from "../DevToolbar.module.css";
 import { EntryList } from "../EntryList/EntryList";
 import { isFailedCall } from "../entries";

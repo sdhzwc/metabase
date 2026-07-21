@@ -2,11 +2,9 @@ import {
   clearDevDiagnostics,
   getDevDiagnostics,
 } from "../components/DevToolbar/diagnostics";
-import {
-  DATA_APP_DIAGNOSTIC_MAX_CHARS,
-  truncateDiagnosticText,
-} from "../diagnostics-channel";
+import { DATA_APP_DIAGNOSTIC_MAX_CHARS } from "../constants/diagnostics-channel";
 
+import { truncateDiagnosticText } from "./diagnostics-limits";
 import { installSdkCallCapture } from "./sdk-call-capture";
 
 const METABASE_URL = "http://localhost:3000";

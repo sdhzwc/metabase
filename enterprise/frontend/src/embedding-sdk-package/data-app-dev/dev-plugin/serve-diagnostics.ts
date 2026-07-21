@@ -2,10 +2,10 @@ import type { Connect } from "vite";
 
 import {
   DATA_APP_DIAGNOSTICS_URL,
-  type DataAppDiagnosticsReport,
   START_EVENT_ID_PARAM,
-} from "../diagnostics-channel";
+} from "../constants/diagnostics-channel";
 import type { DataAppManifestStatus } from "../manifest-status";
+import type { DataAppDiagnosticsReport } from "../types/diagnostics-channel";
 
 import type { DiagnosticsStore } from "./diagnostics-store";
 

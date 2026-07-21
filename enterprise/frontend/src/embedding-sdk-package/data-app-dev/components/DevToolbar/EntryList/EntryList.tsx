@@ -1,6 +1,6 @@
 import cx from "classnames";
 
-import type { DataAppDiagnosticPayload } from "../../../diagnostics-channel";
+import type { DataAppDiagnosticPayload } from "../../../types/diagnostics-channel";
 import S from "../DevToolbar.module.css";
 import { isFailedCall } from "../entries";
 

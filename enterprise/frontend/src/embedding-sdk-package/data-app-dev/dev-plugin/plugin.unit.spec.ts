@@ -12,7 +12,7 @@ import { DATA_APP_BUNDLE_URL, DATA_APP_REBUILT_EVENT } from "../bundle";
 import {
   DATA_APP_DIAGNOSTICS_EVENT,
   DATA_APP_DIAGNOSTICS_URL,
-} from "../diagnostics-channel";
+} from "../constants/diagnostics-channel";
 
 import { dataAppSandboxDevPlugin } from "./plugin";
 

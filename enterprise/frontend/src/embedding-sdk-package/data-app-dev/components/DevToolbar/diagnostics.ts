@@ -1,10 +1,10 @@
 import type { SandboxBlockedEvent } from "metabase-enterprise/data_apps/sandbox/distortions";
 
 import {
-  type DevConnectionStatus,
   capDiagnosticEntries,
   truncateDiagnosticText,
-} from "../../diagnostics-channel";
+} from "../../lib/diagnostics-limits";
+import type { DevConnectionStatus } from "../../types/diagnostics-channel";
 
 export type DevDiagnosticEvent =
   | { kind: "error"; message: string }

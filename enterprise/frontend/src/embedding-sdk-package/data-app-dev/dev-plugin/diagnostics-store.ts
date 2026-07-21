@@ -1,11 +1,13 @@
 import {
-  type DataAppDiagnosticEntry,
-  type DataAppDiagnosticPayload,
-  type DataAppDiagnosticsMessage,
-  type DevConnectionStatus,
   capDiagnosticEntries,
   truncateDiagnosticText,
-} from "../diagnostics-channel";
+} from "../lib/diagnostics-limits";
+import type {
+  DataAppDiagnosticEntry,
+  DataAppDiagnosticPayload,
+  DataAppDiagnosticsMessage,
+  DevConnectionStatus,
+} from "../types/diagnostics-channel";
 
 export interface DiagnosticsStore {
   ingest: (message: DataAppDiagnosticsMessage) => void;
