@@ -6,6 +6,7 @@ import {
   mountDevToolbar,
   openDevToolbar,
   serveDiagnosticsFeed,
+  serveUnreachableDiagnosticsFeed,
 } from "e2e/support/helpers/e2e-data-app-dev-helpers";
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
 import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
@@ -269,7 +270,7 @@ describe("scenarios > data-apps > dev diagnostics toolbar", () => {
     });
 
     it("says so, instead of looking healthy, when the dev server is unreachable", () => {
-      cy.intercept("GET", FEED, { forceNetworkError: true }).as("feed");
+      serveUnreachableDiagnosticsFeed();
 
       mountDevToolbar();
       openDevToolbar();

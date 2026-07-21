@@ -81,6 +81,11 @@ export function serveDiagnosticsFeed(
   }).as("clear");
 }
 
+/** Fail the feed at the transport level, as a stopped dev server would. */
+export function serveUnreachableDiagnosticsFeed() {
+  cy.intercept("GET", FEED, { forceNetworkError: true }).as("feed");
+}
+
 /**
  * The toolbar reads its theme variables from `SdkThemeProvider`, which
  * `DataAppDevProvider` supplies — the same wrapper the dev preview renders under.
