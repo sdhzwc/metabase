@@ -166,7 +166,7 @@
   margin: 8px 4px;
   padding: 8px 10px;
   border-radius: 6px;
-  background: var(--mb-color-error-background, #fce8e8);
+  background: var(--mb-color-background-error, hsl(0deg 76% 97%));
   color: var(--mb-color-error, #e35050);
   font-size: 12px;
 }
@@ -175,7 +175,7 @@
   margin: 8px 4px;
   padding: 8px 10px;
   border-radius: 6px;
-  background: var(--mb-color-warning-background, #fdf4e5);
+  background: var(--mb-color-background-warning, hsl(45deg 100% 96%));
   color: var(--mb-color-text-primary, #4c5773);
   font-size: 12px;
 }
