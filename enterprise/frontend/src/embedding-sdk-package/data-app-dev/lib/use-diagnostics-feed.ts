@@ -5,6 +5,7 @@ import {
   type DataAppDiagnosticPayload,
   type DataAppDiagnosticsReport,
   type DevConnectionStatus,
+  START_EVENT_ID_PARAM,
   capDiagnosticEntries,
 } from "../diagnostics-channel";
 import type { DataAppManifestStatus } from "../manifest-status";
@@ -58,7 +59,7 @@ export const useDiagnosticsFeed = (
 
     try {
       const response = await fetch(
-        `${url}?startEventId=${startEventId.current}`,
+        `${url}?${START_EVENT_ID_PARAM}=${startEventId.current}`,
       );
 
       if (!response.ok) {

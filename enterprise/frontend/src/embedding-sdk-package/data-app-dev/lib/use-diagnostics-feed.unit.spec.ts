@@ -78,7 +78,7 @@ describe("useDiagnosticsFeed", () => {
     expect(fetchSpy).toHaveBeenCalledTimes(1);
 
     await act(async () => {
-      release(serve("/feed?startEventId=0"));
+      release(serve(`/feed?startEventId=0`));
       await pending;
     });
 
