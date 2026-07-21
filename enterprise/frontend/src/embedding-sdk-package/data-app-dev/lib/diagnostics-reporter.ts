@@ -1,6 +1,4 @@
-// Pushes the diagnostics store up the HMR socket so the dev server can re-serve
-// it as JSON (see `diagnostics-channel.ts`). Dev-only, and inert when the page is
-// served without HMR.
+// Pushes the diagnostics store up the HMR socket for the dev server to re-serve.
 
 import {
   getDevConnectionStatus,
@@ -19,23 +17,18 @@ export interface DiagnosticsReporterHot {
   send: (event: string, data: DataAppDiagnosticsMessage) => void;
 }
 
-/** Batching window: a render can record several entries in one tick. */
+// A render can record several entries in one tick.
 const FLUSH_MS = 100;
 
-/** A per-page-load id. Runs once per module load, i.e. once per full page load. */
+// Once per module load, i.e. once per full page load.
 const makeSessionId = (): string =>
   typeof crypto !== "undefined" && "randomUUID" in crypto
     ? crypto.randomUUID()
     : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
 /**
- * Start mirroring the diagnostics store to the dev server. The manifest is NOT
- * reported: the dev server validates `data_app.yaml` itself and owns that status.
- * Sends each entry once,
- * tracked by an id that only ever increases, so nothing is mirrored twice — along
- * with the current connection status.
- *
- * Returns a teardown fn.
+ * Mirrors the store to the dev server. Sends each entry once, tracked by an
+ * ever-increasing id. The manifest is not reported — the dev server owns it.
  */
 export const installDiagnosticsReporter = (
   hot: DiagnosticsReporterHot,
@@ -63,8 +56,7 @@ export const installDiagnosticsReporter = (
     timer ??= setTimeout(flush, FLUSH_MS);
   };
 
-  // Report once up front, so the server knows a client is alive and has the
-  // current status even on a clean run with nothing to report.
+  // Report once up front so the server knows a client is alive.
   flush();
 
   const unsubscribe = subscribeDevDiagnostics(schedule);

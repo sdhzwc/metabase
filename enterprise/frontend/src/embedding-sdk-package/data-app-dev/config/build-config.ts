@@ -10,15 +10,9 @@ import {
 } from "../bundle";
 
 /**
- * The data-app bundle contract, shared by `vite build` (production) and the dev
- * server's in-memory membrane build so both emit the same shape: one IIFE that
- * assigns the app factory to `__dataAppFactory__`, with React + the SDK left
- * external and mapped to the globals the sandbox endows. `fileName` is the only
- * difference — the shipped `index.js` vs the dev `data-app-bundle.js`.
- *
- * `assetsInlineLimit: () => true` forces every imported asset (images, fonts, …)
- * to be base64-inlined: the backend serves one bundle file, so the build must
- * emit a single self-contained `.js` with no sidecar assets.
+ * The bundle contract, shared by `vite build` and the dev server's in-memory
+ * build so both emit the same shape. `assetsInlineLimit` base64-inlines every
+ * asset: the backend serves one file, so the build must be self-contained.
  */
 export function dataAppLibBuild(fileName: string) {
   return {
@@ -36,11 +30,7 @@ export function dataAppLibBuild(fileName: string) {
   };
 }
 
-/**
- * Plugins every data-app build needs: inline imported CSS into the JS (the IIFE
- * has no HTML to link a stylesheet), and let SVGs be imported as React
- * components via `vite-plugin-svgr`.
- */
+// CSS is inlined into the JS — the IIFE has no HTML to link a stylesheet.
 export function dataAppBuildPlugins() {
   return [cssInjectedByJsPlugin(), svgr()];
 }

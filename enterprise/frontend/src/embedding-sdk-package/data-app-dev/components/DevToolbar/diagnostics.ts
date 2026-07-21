@@ -1,18 +1,8 @@
-// The capture side of dev diagnostics: records typed events — errors, blocked
-// sandbox calls, CSP violations, SDK calls — and holds the latest connection
-// status (the sandbox otherwise reports blocked APIs only as an opaque
-// `#<Object>`).
+// The capture side of dev diagnostics. This is a buffer, not a source anyone
+// renders from: `installDiagnosticsReporter` mirrors it to the dev server, and
+// the toolbar reads the server's feed like any other client.
 //
-// This is a buffer, not a source anyone renders from. `installDiagnosticsReporter`
-// mirrors it to the dev server (projecting each entry to the wire shape via
-// `lib/diagnostics-payload`), the server serves it at `/__data-app/diagnostics`,
-// and the toolbar reads that feed like any other client — so the panel and an
-// agent polling the same URL can't disagree.
-//
-// Capture is opt-in: it only patches `console.error` / listens for uncaught
-// errors once `installDevDiagnostics()` is called. Nothing here runs on import,
-// so a host that imports `createDataAppSandbox` from the same entry doesn't pull
-// any of this in unless it's actually used.
+// Capture is opt-in — nothing here runs until `installDevDiagnostics()` is called.
 
 import type { SandboxBlockedEvent } from "metabase-enterprise/data_apps/sandbox/distortions";
 
@@ -23,8 +13,6 @@ import {
 
 export type DevDiagnosticEvent =
   | { kind: "error"; message: string }
-  // A sandbox-blocked API (dangerous tag, inline handler, `javascript:` URL,
-  // DOM mutation, …), reported structurally at the block site.
   | { kind: "blocked-api"; message: string }
   | {
       kind: "blocked-network";
@@ -33,8 +21,6 @@ export type DevDiagnosticEvent =
       reason: string;
     }
   | { kind: "csp-violation"; directive: string; blockedUri: string }
-  // A request the harness page made to the connected Metabase (the SDK's
-  // sanctioned channel), captured by `installSdkCallCapture`.
   | {
       kind: "sdk-call";
       method: string;
@@ -66,8 +52,6 @@ const emit = () => {
 };
 
 const formatArg = (arg: unknown): string => {
-  // Capped here, at the one place arbitrary app data becomes a string: a logged
-  // query result would otherwise be retained in full and re-serialized per poll.
   if (typeof arg === "string") {
     return truncateDiagnosticText(arg);
   }
@@ -81,15 +65,11 @@ const formatArg = (arg: unknown): string => {
   }
 };
 
-/**
- * Cap every string an event carries. `formatArg` bounds one console argument, but
- * a call with many args, or a structured event whose `url`/`reason` came from the
- * guest realm, still lands here unbounded — so the cap belongs at the one point
- * every capture path goes through.
- */
+// Caps every string an event carries — the one point every capture path goes
+// through, so a logged query result can't be retained in full.
 const cappedEvent = (event: DevDiagnosticEvent): DevDiagnosticEvent =>
-  // Rebuilding a discriminated union through entries() loses the tie between
-  // `kind` and its fields; values are only ever mapped string→string.
+  // Rebuilding the union through entries() loses the `kind`→fields tie; values
+  // are only ever mapped string→string.
   Object.fromEntries(
     Object.entries(event).map(([key, value]) => [
       key,
@@ -97,11 +77,6 @@ const cappedEvent = (event: DevDiagnosticEvent): DevDiagnosticEvent =>
     ]),
   ) as DevDiagnosticEvent;
 
-/**
- * Record a diagnostic event into the store. This is how the structured
- * capture points (sandbox block hooks, SDK call capture, connection check)
- * feed the toolbar.
- */
 export const recordDevDiagnostic = (event: DevDiagnosticEvent): void => {
   // New array reference each time so `useSyncExternalStore` re-renders.
   entries = [
@@ -114,22 +89,14 @@ export const recordDevDiagnostic = (event: DevDiagnosticEvent): void => {
   emit();
 };
 
-/**
- * Log to the real `console.error` without the diagnostics capture recording it
- * again — for capture points that already recorded a structured event but still
- * want the message in the browser console. Falls back to `console.error` when
- * capture isn't installed.
- */
+// Logs without the capture recording it again, for points that already recorded
+// a structured entry.
 const logDevDiagnosticToConsole = (message: string): void => {
   (uncapturedConsoleError ?? console.error)(message);
 };
 
-/**
- * The sandbox `onBlocked` listener for dev: records the block as a structured
- * entry (the toolbar's Blocked tab) and still logs it to the real console —
- * at the block point, where the console stack points at the data-app code
- * that made the blocked call.
- */
+// Still logs to the console at the block point, where the stack points at the
+// data-app code that made the blocked call.
 export const recordSandboxBlockedEvent = (event: SandboxBlockedEvent): void => {
   if (event.type === "api") {
     recordDevDiagnostic({ kind: "blocked-api", message: event.message });
@@ -171,13 +138,9 @@ export const clearDevDiagnostics = (): void => {
 };
 
 /**
- * Start capturing errors into the diagnostics store: wraps `console.error` and
- * listens for uncaught errors / unhandled rejections. Idempotent. Call it before
- * the sandbox runs so nothing is missed.
- *
- * Returns a teardown, like its siblings. Without one, re-evaluating this module
- * (an HMR reload of the dev entry) resets `installed` and re-wraps the already
- * wrapped `console.error`, doubling every capture for each cycle.
+ * Wraps `console.error` and listens for uncaught errors. Idempotent; call before
+ * the sandbox runs so nothing is missed. The teardown matters: without it, an HMR
+ * reload re-wraps the already-wrapped `console.error` and doubles every capture.
  */
 export const installDevDiagnostics = (): (() => void) => {
   if (installed || typeof window === "undefined") {
@@ -214,10 +177,8 @@ export const installDevDiagnostics = (): (() => void) => {
   window.addEventListener("error", onError);
   window.addEventListener("unhandledrejection", onRejection);
 
-  // The dev server mirrors Metabase's production CSP, so a violation here means
-  // the app would be blocked once sandboxed in Metabase too — e.g. a native
-  // `<form action="…">` hitting `form-action 'none'`. These never reach
-  // `console.error`, so the toolbar wouldn't see them otherwise.
+  // A violation here means the app would be blocked in Metabase too. These never
+  // reach `console.error`, so the toolbar wouldn't see them otherwise.
   const onCspViolation = (event: SecurityPolicyViolationEvent) => {
     recordDevDiagnostic({
       kind: "csp-violation",

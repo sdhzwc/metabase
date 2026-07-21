@@ -1,16 +1,13 @@
-// Live sync-parity validation of `data_app.yaml` for the dev toolbar's Manifest
-// tab. Mirrors the backend's `parse-app-config` (`data_apps/config.clj`): every
-// `errors` entry here is a manifest remote-sync would reject with a 400 — so the
-// developer finds out while editing, not after pushing. Node-side: run by the
-// dev plugin at startup and whenever the manifest changes.
+// Mirrors the backend's `parse-app-config` (`data_apps/config.clj`): every
+// `errors` entry here is a manifest remote-sync would reject with a 400, so the
+// developer finds out while editing rather than after pushing.
 
 import fs from "node:fs";
 import path from "node:path";
 
 import { load as parseYaml } from "js-yaml";
 
-// The sandbox's own origin matcher, so "valid entry" here can't drift from what
-// the sandbox will actually allow; pure code, bundled as a value (cf. plugin.ts).
+// The sandbox's own matcher, so "valid entry" can't drift from what it allows.
 // A namespace import stays single-line so the disable covers the reported line.
 // eslint-disable-next-line metabase/no-external-references-for-sdk-package-code
 import * as sandboxAllowedHosts from "metabase-enterprise/data_apps/sandbox/allowed-hosts";
@@ -26,9 +23,8 @@ const CONFIG_FILE_NAME = "data_app.yaml";
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const RESERVED_SLUGS = new Set(["repo-status"]);
 
-// The backend does `(some-> v str str/trim not-empty)`, so a YAML scalar like
-// `name: 2024` imports fine as "2024". Coerce the same way rather than reporting
-// an error the sync wouldn't raise.
+// The backend stringifies, so `name: 2024` imports fine as "2024". Coerce the
+// same way rather than reporting an error the sync wouldn't raise.
 const asTrimmedString = (value: unknown): string | null => {
   if (
     typeof value !== "string" &&
@@ -46,10 +42,9 @@ const normalizePath = (value: string): string => value.replace(/^\.\//, "");
 const hasPathTraversal = (value: string): boolean =>
   value.split("/").includes("..");
 
-// Compared after the backend's normalization and sorted: the startup list is the
-// raw YAML (untrimmed, possibly invalid), while the validated list is normalized,
-// so a padded entry or a reordered list would otherwise report a restart that
-// changes nothing — permanently, since restarting can't make the two match.
+// Normalized and sorted before comparing: the startup list is raw YAML, so a
+// padded or reordered entry would otherwise demand a restart that changes nothing
+// — permanently, since restarting can't make the two match.
 const sameHosts = (left: string[], right: string[]): boolean => {
   const normalize = (hosts: string[]) =>
     hosts
@@ -64,10 +59,9 @@ const sameHosts = (left: string[], right: string[]): boolean => {
 };
 
 /**
- * Validate the app's manifest against the same rules remote-sync applies.
- * `startupAllowedHosts` is the list the dev server booted with — when the
- * manifest drifts from it, the sandbox allowlist and CSP are stale until
- * restart, which the status flags via `restartRequired`.
+ * `startupAllowedHosts` is what the dev server booted with — when the manifest
+ * drifts from it the sandbox allowlist and CSP are stale until restart, which the
+ * status flags via `restartRequired`.
  */
 export function validateDataAppManifest(
   appRoot: string,

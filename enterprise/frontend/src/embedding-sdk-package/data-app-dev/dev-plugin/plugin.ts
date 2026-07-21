@@ -5,9 +5,7 @@ import { fileURLToPath } from "node:url";
 
 import { type Plugin, type Rollup, build } from "vite";
 
-// Build-time string constants shared with the rspack config; bundled as values,
-// so this references no app runtime code (cf. `use-load-sdk-bundle.ts`). A
-// namespace import stays single-line so the disable covers the reported line.
+// A namespace import stays single-line so the disable covers the reported line.
 // eslint-disable-next-line metabase/no-external-references-for-sdk-package-code
 import * as dataAppVirtualModules from "build-configs/embedding-sdk/constants/data-app-virtual-modules";
 
@@ -26,12 +24,6 @@ import {
   truncateDiagnosticText,
 } from "../diagnostics-channel";
 
-// Virtual modules the dev server provides. The dev server serves a synthetic
-// `index.html` (below) that imports the dev entry; the dev entry imports the
-// config (the app's allowed hosts + the bundle URL/event). The dev entry is the
-// prebuilt `data-app-dev-entry.js` (bundled by the SDK's browser build, shipped
-// next to this bundle in `dist`); it keeps React + `@metabase/embedding-sdk-react`
-// external so the consumer's Vite resolves them to its single instance.
 const { DATA_APP_DEV_CONFIG_VIRTUAL_ID, DATA_APP_DEV_ENTRY_VIRTUAL_ID } =
   dataAppVirtualModules;
 
@@ -39,10 +31,6 @@ const DEV_ENTRY_SOURCE_PATH = fileURLToPath(
   new URL("data-app-dev-entry.js", import.meta.url),
 );
 
-// The dev server's HTML shell, served synthetically so the app scaffold needs no
-// `index.html`. It just boots the dev entry (resolved + served as a virtual
-// module below), which injects the baseline reset CSS itself (the same file the
-// production iframe loads).
 const INDEX_HTML = `<!doctype html>
 <html lang="en">
   <head>
@@ -59,11 +47,6 @@ const INDEX_HTML = `<!doctype html>
 </html>
 `;
 
-/**
- * The `@metabase/embedding-sdk-react` version installed in the app, resolved
- * from the app's own dependency tree (the package exports `./package.json`).
- * `null` when it can't be resolved — the toolbar shows "unknown".
- */
 function readInstalledSdkVersion(appRoot: string): string | null {
   try {
     const requireFromApp = createRequire(path.join(appRoot, "package.json"));
@@ -81,23 +64,15 @@ function readInstalledSdkVersion(appRoot: string): string | null {
   }
 }
 
-// Rollup/Vite's virtual-module marker: a leading NUL byte tells Rollup core and
-// other plugins that an id is synthetic, so they don't try to resolve/load it
-// from disk. It's a convention (not a public export), so we spell it out; Vite
-// encodes it as `__x00__` in dev URLs.
+// Rollup's virtual-module marker: a leading NUL tells plugins the id is synthetic.
 const RESOLVED_PREFIX = "\0";
 
 /**
- * Makes `npm run dev` run the app through the real Near-Membrane sandbox instead
- * of mounting it un-sandboxed, so dev behaves like production — including for
- * third-party libraries the app bundles.
- *
- * The membrane evaluates a code string, not Vite's module graph, so the app is
- * built in-memory as the production IIFE on server start and on every `src/`
- * change, served at `DATA_APP_BUNDLE_URL`. Instead of a full page reload it emits
- * `DATA_APP_REBUILT_EVENT`, and the dev entry re-evaluates the new bundle in the
- * live sandbox and re-renders in place — preserving the loaded SDK + auth (a
- * soft reload; component state still resets, since the app is an opaque bundle).
+ * Runs `npm run dev` through the real Near-Membrane sandbox so dev behaves like
+ * production. The membrane evaluates a code string, not Vite's module graph, so
+ * the app is rebuilt in-memory as the production IIFE and served at
+ * `DATA_APP_BUNDLE_URL`; instead of a page reload it emits
+ * `DATA_APP_REBUILT_EVENT` and the dev entry re-evaluates in the live sandbox.
  */
 export function dataAppSandboxDevPlugin(
   appSlug: string,
@@ -105,22 +80,14 @@ export function dataAppSandboxDevPlugin(
 ): Plugin {
   let bundleCode = "";
 
-  // Mirror of the page's diagnostics, so tools without a browser can read it.
   let diagnosticEntries: DataAppDiagnosticPayload[] = [];
   let diagnosticConnection: DevConnectionStatus | null = null;
-  // Validated here, not reported by the page: the dev server is what reads
-  // `data_app.yaml`, so round-tripping it through the client only added a race
-  // where the feed could report "not validated yet" for a perfectly valid file.
   let manifestStatus: ReturnType<typeof validateDataAppManifest> | null = null;
   let lastReportAt: number | null = null;
   let lastRebuildAt: number | null = null;
-  // The page load whose events the buffer currently holds. When a full reload
-  // starts a new reporter, its session differs and we drop the old page's
-  // events — the toolbar shows the current page, not a graveyard of past ones.
   let currentSession: string | null = null;
-  // Ids are re-stamped server-side: the page's counter restarts at 1 on every
-  // reload, so trusting it would make fresh events sort *before* a poller's
-  // cursor and silently disappear.
+  // Re-stamped server-side: the page's counter restarts at 1 on every reload, so
+  // trusting it would make fresh events sort before a poller's cursor.
   let nextEventId = 1;
 
   const rebuild = async (root: string, mode: string) => {
@@ -134,10 +101,8 @@ export function dataAppSandboxDevPlugin(
       build: {
         write: false,
         minify: mode === "production",
-        // Inline, not a sibling `.map`: only `chunk.code` is kept below and the
-        // result is handed to the sandbox as a string, so a file reference has
-        // nothing to resolve against. This is what lets DevTools show the
-        // original `src/` files in stacks and breakpoints.
+        // Inline: only `chunk.code` is kept, so a sibling `.map` has nothing to
+        // resolve against.
         sourcemap: "inline",
         ...dataAppLibBuild("data-app-bundle.js"),
       },
@@ -202,9 +167,7 @@ export function dataAppSandboxDevPlugin(
         }
       };
 
-      // Coalesce rebuilds: at most one Vite build runs at a time, and changes
-      // that arrive mid-build collapse into a single follow-up — so a burst of
-      // saves can't back up a queue of full rebuilds (or fire a soft reload each).
+      // Coalesce rebuilds: changes arriving mid-build collapse into one follow-up.
       let building = false;
       let pending = false;
       const rebuildAndNotify = async () => {
@@ -229,7 +192,6 @@ export function dataAppSandboxDevPlugin(
         }
       };
 
-      // Initial build; no client is connected yet, so nothing to notify.
       await safeRebuild();
 
       server.middlewares.use((req, res, next) => {
@@ -251,21 +213,15 @@ export function dataAppSandboxDevPlugin(
         res.end(bundleCode);
       });
 
-      // The page mirrors its diagnostics store up the socket; we buffer it and
-      // re-serve it as JSON below, so an agent with only a shell reads exactly
-      // what a human reads in the toolbar.
       server.ws.on(
         DATA_APP_DIAGNOSTICS_EVENT,
         (message: DataAppDiagnosticsMessage) => {
           lastReportAt = Date.now();
-          // Only the connection status is the page's to report — it's the page
-          // that reaches Metabase. The manifest is validated here (below), so it
-          // is never taken from the client.
           diagnosticConnection = message?.connection ?? diagnosticConnection;
 
+          // A new page: drop the previous one's events, but keep `nextEventId`
+          // climbing so an existing poller's cursor stays valid.
           if (message?.session && message.session !== currentSession) {
-            // A new page. Drop the previous one's events, but keep `nextEventId`
-            // climbing so any existing poller's cursor stays valid.
             if (currentSession !== null) {
               diagnosticEntries = [];
             }
@@ -273,8 +229,7 @@ export function dataAppSandboxDevPlugin(
           }
 
           if (Array.isArray(message?.entries) && message.entries.length > 0) {
-            // Re-capped server-side: the socket is only as trustworthy as any
-            // local process, and this buffer is re-serialized on every poll.
+            // Re-capped: the socket is only as trustworthy as any local process.
             const stamped = message.entries.map((entry) => ({
               ...entry,
               summary: truncateDiagnosticText(String(entry.summary ?? "")),
@@ -300,8 +255,6 @@ export function dataAppSandboxDevPlugin(
           return;
         }
 
-        // The toolbar's Clear button. Clears for every reader, since the buffer
-        // is the one source both the panel and any external poller read.
         if (req.method === "DELETE") {
           diagnosticEntries = [];
           res.statusCode = 204;
@@ -321,7 +274,7 @@ export function dataAppSandboxDevPlugin(
           entries,
           connection: diagnosticConnection,
           manifest: manifestStatus,
-          // Zero clients means nothing has run: an empty `entries` then says
+          // Zero clients means nothing has run, so an empty `entries` says
           // nothing about the app's health.
           clients: server.ws.clients.size,
           lastReportAt,
@@ -331,8 +284,8 @@ export function dataAppSandboxDevPlugin(
         };
 
         res.setHeader("Content-Type", "application/json");
-        // Repeated reads hit the same URL whenever no new events arrive, and a
-        // heuristically cached response would freeze the toolbar on stale data.
+        // Repeated reads hit the same URL, so a cached response would freeze the
+        // toolbar on stale data.
         res.setHeader("Cache-Control", "no-store");
         res.end(JSON.stringify(report, null, 2));
       });
@@ -345,17 +298,13 @@ export function dataAppSandboxDevPlugin(
         }
       });
 
-      // Manifest validation for the toolbar's Manifest tab and the feed. Validated
-      // here rather than in the page, and served over the diagnostics feed like
-      // everything else, so there is one source. `allowedHosts` stays what the
-      // server booted with, so the validator can flag a drifted allowlist as
-      // restart-required.
+      // `allowedHosts` stays what the server booted with, so the validator can
+      // flag a drifted allowlist as restart-required.
       const refreshManifestStatus = () => {
         manifestStatus = validateDataAppManifest(root, allowedHosts);
       };
 
-      // Up front, so the feed carries a status before any client connects — an
-      // agent polling before the preview is open still gets it.
+      // Up front, so the feed carries a status before any client connects.
       refreshManifestStatus();
 
       server.watcher.on("all", (_event, file) => {
@@ -364,10 +313,8 @@ export function dataAppSandboxDevPlugin(
         }
       });
 
-      // Serve the synthetic index.html as a POST middleware (after Vite's
-      // transform/asset middlewares) so it only catches navigation requests —
-      // the initial load and any deep link / SPA route, not module/asset fetches.
-      // `transformIndexHtml` injects the HMR client + resolves the entry import.
+      // Registered after Vite's own middlewares so it only catches navigations,
+      // not module/asset fetches.
       return () => {
         server.middlewares.use(async (req, res, next) => {
           if (
@@ -387,7 +334,6 @@ export function dataAppSandboxDevPlugin(
 
             res.statusCode = 200;
 
-            // Apply the configured `server.headers` (our CSP) to this document.
             const configuredHeaders = server.config.server.headers;
             if (configuredHeaders) {
               for (const [name, value] of Object.entries(configuredHeaders)) {

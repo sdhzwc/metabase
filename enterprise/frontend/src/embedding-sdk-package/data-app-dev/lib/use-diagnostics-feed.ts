@@ -1,7 +1,5 @@
-// The toolbar's data source. Collection happens elsewhere (the capture points
-// feed the in-page store, and `installDiagnosticsReporter` mirrors it to the dev
-// server); this only reads the server's feed back, so the panel and any external
-// reader — an agent polling the same URL — always show the same thing.
+// The toolbar's data source: reads the dev server's feed, so the panel and any
+// external reader (an agent polling the same URL) always show the same thing.
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -16,11 +14,7 @@ import type { DataAppManifestStatus } from "../manifest-status";
 
 const REFETCH_POLL_MS = 1000;
 
-/**
- * Why the feed has no fresh data. `unreachable` is a dead or restarting dev
- * server; `http` is one that answered but refused — worth distinguishing, since
- * only the first is fixed by restarting `npm run dev`.
- */
+// Distinguished because only `unreachable` is fixed by restarting `npm run dev`.
 export type DiagnosticsFeedProblem =
   | { kind: "unreachable" }
   | { kind: "http"; status: number };
@@ -48,19 +42,15 @@ export const useDiagnosticsFeed = (
   const [problem, setProblem] = useState<DiagnosticsFeedProblem | null>(null);
   const [loaded, setLoaded] = useState(false);
 
-  // The cursor lives in a ref, not state: advancing it must not itself trigger a
-  // re-render or the poll would loop.
+  // A ref, not state: advancing it must not trigger a re-render or the poll loops.
   const startEventId = useRef(0);
-  // A poll can outlive its interval tick — a rebuild blocks the dev server for
-  // seconds. Without this, overlapping reads share a cursor and append the same
-  // batch twice: duplicate rows, and duplicate React keys.
+  // A poll can outlive its tick (a rebuild blocks the server for seconds).
+  // Without this, overlapping reads share a cursor and append the same batch twice.
   const inFlight = useRef(false);
-  // Bumped by `clear()`, so a response fetched before the clear is discarded
-  // rather than resurrecting the entries it carries.
+  // Bumped by `clear()`, so a response fetched before it is discarded.
   const generation = useRef(0);
-  // The page load these entries belong to. When it changes — a full browser
-  // reload started a new reporter — drop the previous page's events, so the panel
-  // shows the current page rather than accumulating across reloads.
+  // When this changes (a full reload started a new reporter) the previous page's
+  // events are dropped.
   const session = useRef<string | null>(null);
 
   const poll = useCallback(async () => {
@@ -80,8 +70,7 @@ export const useDiagnosticsFeed = (
         return;
       }
 
-      // Authored by our own dev plugin, which serves exactly this shape; JSON
-      // parsing is what erases the type.
+      // Authored by our own dev plugin; JSON parsing is what erases the type.
       const next = (await response.json()) as DataAppDiagnosticsReport;
 
       if (polledGeneration !== generation.current) {
@@ -100,11 +89,9 @@ export const useDiagnosticsFeed = (
         session.current = next.session;
       }
 
-      // A restarted dev server begins its ids at 1 again. Without this, the
-      // cursor stays above every new id, `eventId >= startEventId` matches
-      // nothing, and the panel shows a healthy but permanently empty feed. The
-      // accumulated entries belong to the previous server — and would collide on
-      // id with the new ones — so they go too.
+      // A restarted dev server begins its ids at 1 again. Without this the cursor
+      // stays above every new id and the panel looks healthy but stays empty.
+      // Accumulated entries belong to the old server and would collide on id.
       if (next.nextEventId < startEventId.current) {
         startEventId.current = 0;
         setEntries(EMPTY);
@@ -112,14 +99,13 @@ export const useDiagnosticsFeed = (
 
       if (next.entries.length > 0) {
         startEventId.current = next.nextEventId;
-        // Bounded like the server's ring buffer: every SDK call is an event, so
-        // an unbounded list would grow all session and be re-filtered per render.
+        // Bounded like the server's ring buffer.
         setEntries((current) =>
           [...current, ...next.entries].slice(-DATA_APP_DIAGNOSTICS_LIMIT),
         );
       }
     } catch {
-      // The dev server is down or restarting; keep what we have and say so.
+      // Down or restarting: keep what we have and say so.
       setProblem({ kind: "unreachable" });
     } finally {
       inFlight.current = false;
@@ -136,8 +122,7 @@ export const useDiagnosticsFeed = (
   const clear = useCallback(() => {
     generation.current += 1;
     setEntries(EMPTY);
-    // Read from the start again: the buffer is empty, and ids only climb, so
-    // nothing already shown can come back.
+    // Ids only climb, so nothing already shown can come back.
     startEventId.current = 0;
 
     void fetch(url, { method: "DELETE" }).catch(() =>

@@ -1,14 +1,10 @@
-// Captures the harness page's requests to the connected Metabase (the SDK's
-// sanctioned channel) into the diagnostics store — the toolbar's Queries tab.
-// Dev-only: patches the page's `fetch`, records method/endpoint/status/duration,
-// and the row count for query endpoints. The sandboxed app can't reach the
-// Metabase origin itself, so everything captured here went through the SDK.
+// Patches the page's `fetch` to record SDK→Metabase calls for the Queries tab.
+// The sandboxed app can't reach the Metabase origin, so everything here is the SDK.
 
 import { recordDevDiagnostic } from "../components/DevToolbar/diagnostics";
 
-// Exact paths only. `/api/dataset/csv` and `/api/dataset/xlsx` are exports, and
-// buffering one of those to count rows would clone and download the whole file
-// before the caller ever sees the response.
+// Exact paths only: `/api/dataset/csv` etc. are exports, and buffering one to
+// count rows would download the whole file before the caller sees the response.
 const QUERY_ENDPOINT_RE = /^\/api\/(dataset|card\/\d+\/query)$/;
 
 let installed = false;
@@ -51,8 +47,7 @@ const captureRowCount = async (
   if (!response.ok || !QUERY_ENDPOINT_RE.test(endpoint)) {
     return undefined;
   }
-  // Belt and braces with the path check above: never buffer a body that isn't
-  // the JSON query result we can actually count.
+  // Belt and braces with the path check above.
   if (!response.headers.get("content-type")?.includes("application/json")) {
     return undefined;
   }
@@ -68,11 +63,9 @@ const isAbort = (error: unknown): boolean =>
   error instanceof DOMException && error.name === "AbortError";
 
 /**
- * Start capturing SDK→Metabase calls. Call before the SDK issues its first
- * request. Idempotent; a missing `metabaseUrl` (unset `.env.local`) is a no-op —
- * the Connection tab reports that case. Returns a teardown that restores the
- * original `fetch`, so a re-mounted harness can't wrap an already-wrapped fetch
- * and record every call twice.
+ * Call before the SDK issues its first request. Idempotent; a missing
+ * `metabaseUrl` is a no-op. The teardown restores the original `fetch`, so a
+ * re-mounted harness can't wrap an already-wrapped fetch and double-record.
  */
 export function installSdkCallCapture(
   metabaseUrl: string | undefined,
@@ -86,8 +79,7 @@ export function installSdkCallCapture(
   try {
     const parsed = new URL(metabaseUrl);
     metabaseOrigin = parsed.origin;
-    // A sub-path deployment (`https://acme.com/metabase`) prefixes every path;
-    // strip it so endpoints are comparable to the paths the SDK documents.
+    // A sub-path deployment prefixes every path; strip it.
     basePath = parsed.pathname.replace(/\/+$/, "");
   } catch {
     return () => undefined;

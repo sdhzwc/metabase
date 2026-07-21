@@ -20,6 +20,5 @@ const BLOCKED_KINDS = ["blocked-api", "blocked-network", "csp-violation"];
 export const isBlocked = (entry: DataAppDiagnosticPayload): boolean =>
   BLOCKED_KINDS.includes(entry.kind);
 
-/** A failed SDK call — the Queries entries the toolbar badges and can filter to. */
 export const isFailedCall = (entry: DataAppDiagnosticPayload): boolean =>
   entry.kind === "sdk-call" && entry.alert;

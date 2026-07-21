@@ -15,11 +15,7 @@ import { ResizeHandle } from "./ResizeHandle/ResizeHandle";
 import { TABS, type TabId, isBlocked } from "./entries";
 import { usePanelResize } from "./use-panel-resize";
 
-/**
- * The data-app dev diagnostics toolbar. Closed, it's a corner button; open, a
- * bottom-docked, resizable panel of tabbed diagnostics. It's a pure reader of the
- * dev server's feed (see `useDiagnosticsFeed`).
- */
+// A pure reader of the dev server's feed — capture lives elsewhere.
 export function DevToolbar() {
   const feed = useDiagnosticsFeed();
   const [open, setOpen] = useState(false);

@@ -15,12 +15,8 @@ export type DataAppDevProviderProps = MetabaseProviderProps & {
 };
 
 /**
- * Provider for the data-app local dev preview (`npm run dev`). Wraps
- * `MetabaseProvider` and reports the page's traffic as the data app, so query
- * executions are attributed to the app (as "data-app-preview") instead of the
- * React SDK.
- *
- * Intended only for the local Vite dev server.
+ * Wraps `MetabaseProvider` for the local dev preview, reporting the page's
+ * traffic as the data app so queries are attributed to it, not the React SDK.
  */
 export const DataAppDevProvider = ({
   appSlug,
