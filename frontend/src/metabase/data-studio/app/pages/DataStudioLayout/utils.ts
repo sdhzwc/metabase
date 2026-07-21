@@ -13,51 +13,6 @@ type TabName =
   | "workspaces"
   | "settings";
 
-const DATA_STUDIO_ROOT = Urls.dataStudio();
-
-export function getDataStudioTopLevelRoute(pathname: string): string | null {
-  const pathWithoutQuery = pathname.split(/[?#]/)[0];
-
-  if (!pathWithoutQuery.startsWith(DATA_STUDIO_ROOT)) {
-    return null;
-  }
-
-  const remainder = pathWithoutQuery.slice(DATA_STUDIO_ROOT.length);
-  if (remainder === "" || remainder === "/") {
-    return null;
-  }
-
-  const [segment] = remainder.split("/").filter(Boolean);
-  if (segment == null) {
-    return null;
-  }
-
-  switch (segment) {
-    case "guide":
-      return Urls.dataStudioGuide();
-    case "data":
-      return Urls.dataStudioData();
-    case "transforms":
-      return Urls.transformList();
-    case "library":
-      return Urls.dataStudioLibrary();
-    case "glossary":
-      return Urls.dataStudioGlossary();
-    case "schema-viewer":
-      return Urls.dataStudioSchemaViewer();
-    case "dependencies":
-      return Urls.dependencyGraph();
-    case "dependency-diagnostics":
-      return Urls.dependencyDiagnostics();
-    case "git-sync":
-      return Urls.dataStudioGitSync();
-    case "workspaces":
-      return Urls.workspaces();
-    default:
-      return null;
-  }
-}
-
 export const getCurrentTab = (pathname: string): TabName => {
   switch (true) {
     case pathname.startsWith(Urls.dataStudioGuide()):

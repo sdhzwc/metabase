@@ -1,26 +1,4 @@
-import { getCurrentTab, getDataStudioTopLevelRoute } from "./utils";
-
-describe("getDataStudioTopLevelRoute", () => {
-  it.each`
-    pathname                                                    | expectedRoute
-    ${"/data-studio/guide"}                                     | ${"/data-studio/guide"}
-    ${"/data-studio/data/database/1/schema/1:public/table/193"} | ${"/data-studio/data"}
-    ${"/data-studio/transforms/jobs/123"}                       | ${"/data-studio/transforms"}
-    ${"/data-studio/transforms/runs?page=2"}                    | ${"/data-studio/transforms"}
-    ${"/data-studio/library/tables/42"}                         | ${"/data-studio/library"}
-    ${"/data-studio/schema-viewer?database-id=1"}               | ${"/data-studio/schema-viewer"}
-    ${"/data-studio/dependency-diagnostics/broken"}             | ${"/data-studio/dependency-diagnostics"}
-    ${"/data-studio/workspaces/current"}                        | ${"/data-studio/workspaces"}
-    ${"/data-studio"}                                           | ${null}
-    ${"/data-studio/"}                                          | ${null}
-    ${"/other"}                                                 | ${null}
-  `(
-    "should return '$expectedRoute' for pathname '$pathname'",
-    ({ pathname, expectedRoute }) => {
-      expect(getDataStudioTopLevelRoute(pathname)).toBe(expectedRoute);
-    },
-  );
-});
+import { getCurrentTab } from "./utils";
 
 describe("getCurrentTab", () => {
   it.each`
@@ -51,7 +29,6 @@ describe("getCurrentTab", () => {
     ${"/data-studio/schema-viewer"}                       | ${"schema-viewer"}
     ${"/data-studio"}                                     | ${"guide"}
     ${"/data-studio/settings"}                            | ${"settings"}
-    ${"/data-studio"}                                     | ${"data"}
   `(
     "should return '$expectedTab' for pathname '$pathname'",
     ({ pathname, expectedTab }) => {

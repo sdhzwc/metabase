@@ -1,2 +1,2 @@
 [:map
- [:value [:or :boolean :string]]]
+ [:value :boolean]]

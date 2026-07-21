@@ -35,7 +35,6 @@ import { isMac } from "metabase/utils/browser";
 import type { IconName } from "metabase-types/api";
 
 import S from "./DataStudioLayout.module.css";
-import { useDataStudioRoutePersistence } from "./useDataStudioRoutePersistence";
 import { getCurrentTab } from "./utils";
 
 export function DataStudioLayout() {
@@ -58,8 +57,6 @@ export function DataStudioLayout() {
     ],
     [isNavbarOpened],
   );
-
-  useDataStudioRoutePersistence();
 
   return isLoadingNavbarKey ? (
     <Center h="100%">

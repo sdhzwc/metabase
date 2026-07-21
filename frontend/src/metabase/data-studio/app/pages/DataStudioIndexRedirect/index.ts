@@ -1,1 +1,0 @@
-export { DataStudioIndexRedirect } from "./DataStudioIndexRedirect";

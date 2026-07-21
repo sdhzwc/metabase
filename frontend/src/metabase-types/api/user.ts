@@ -200,11 +200,6 @@ export type UserKeyValue =
       value: boolean;
     }
   | {
-      namespace: "data_studio";
-      key: "lastTopLevelRoute";
-      value: string;
-    }
-  | {
       namespace: "dependency_diagnostics";
       key: string;
       value: DependencyDiagnosticsUserParams;

@@ -6,11 +6,16 @@ import {
   PLUGIN_SCHEMA_VIEWER,
   PLUGIN_WORKSPACES,
 } from "metabase/plugins";
-import { Route, type RouteComponent, withRouteProps } from "metabase/router";
+import {
+  Route,
+  type RouteComponent,
+  redirect,
+  withRouteProps,
+} from "metabase/router";
 import { getDataStudioTransformRoutes } from "metabase/transforms/routes";
+import * as Urls from "metabase/urls";
 
 import { DataSectionLayout } from "./app/pages/DataSectionLayout";
-import { DataStudioIndexRedirect } from "./app/pages/DataStudioIndexRedirect";
 import { DataStudioLayout } from "./app/pages/DataStudioLayout";
 import { DependenciesSectionLayout } from "./app/pages/DependenciesSectionLayout";
 import { GitSyncSectionLayout } from "./app/pages/GitSyncSectionLayout";
@@ -36,7 +41,7 @@ export function getDataStudioRoutes(
   return (
     <Route element={<CanAccessDataStudio />}>
       <Route path="data-studio" element={<DataStudioLayout />}>
-        <Route index element={<DataStudioIndexRedirect />} />
+        <Route index element={redirect(Urls.dataStudioGuide())} />
         <Route path="guide" element={<GuidePage />} />
         <Route path="data" element={<CanAccessDataModel />}>
           <Route element={<DataSectionLayout />}>
