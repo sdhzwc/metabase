@@ -1,7 +1,7 @@
-import type { LocationDescriptor } from "history";
 import type { NavigateFunction, NavigateOptions, To } from "react-router-v7";
 
 import type { RouterNavigator } from "../middleware";
+import type { LocationDescriptor } from "../types";
 
 /**
  * The live v7 `navigate`, registered by `V7ReduxBridge` once the router mounts.
