@@ -6,6 +6,7 @@
    [metabase-enterprise.semantic-search.settings :as semantic-settings]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
+   [metabase.embeddings.provider :as embeddings.provider]
    [metabase.llm.settings :as llm.settings]
    [metabase.premium-features.core :as premium-features]
    [metabase.tracing.core :as tracing]
@@ -131,21 +132,27 @@
       (conj batches current-batch)
       batches)))
 
-;;;; Provider SPI
+;;;; Provider API
 
-(defn- dispatch-provider [embedding-model & _] (:provider embedding-model))
+(defn resolve-model
+  "Resolve a requested embedding model to its immutable vector-space descriptor."
+  [embedding-model]
+  (embeddings.provider/resolve-model embedding-model))
 
-(defmulti get-embedding
-  "Returns a single embedding vector for the given text"
-  {:arglists '([embedding-model text & opts])} dispatch-provider)
+(defn get-embedding
+  "Return one embedding vector for `text`."
+  [embedding-model text & {:as opts}]
+  (embeddings.provider/embed-text embedding-model text opts))
 
-(defmulti get-embeddings-batch
-  "Returns a sequential collection of embedding vectors, in the same order as the input texts."
-  {:arglists '([embedding-model texts & opts])} dispatch-provider)
+(defn get-embeddings-batch
+  "Return one embedding vector per input text, in the same order."
+  [embedding-model texts & {:as opts}]
+  (embeddings.provider/embed-texts embedding-model texts opts))
 
-(defmulti pull-model
-  "If a model needs to be downloaded (which is the case for ollama), downloads it."
-  {:arglists '([embedding-model])} dispatch-provider)
+(defn pull-model
+  "Prepare a provider model eagerly when the provider supports it."
+  [embedding-model]
+  (embeddings.provider/prepare! embedding-model))
 
 ;;;; Ollama impl
 
@@ -179,11 +186,6 @@
     (catch Exception e
       (log/error e "Failed to pull embedding model")
       (throw e))))
-
-;; Ollama is not used in production. Token tracking is not implemented.
-(defmethod get-embedding        "ollama" [{:keys [model-name]} text & {:as _opts}]  (ollama-get-embedding model-name text))
-(defmethod get-embeddings-batch "ollama" [{:keys [model-name]} texts & {:as _opts}] (ollama-get-embeddings-batch model-name texts))
-(defmethod pull-model           "ollama" [{:keys [model-name]}]       (ollama-pull-model model-name))
 
 ;;;; OpenAI-compatible embedding service impl (shared by "ai-service" and "openai" providers)
 
@@ -296,21 +298,8 @@
                         {:settings ["ee-embedding-service-base-url"
                                     "ai-service-base-url"]}))))
 
-(defmethod get-embedding "ai-service"
-  [{:keys [model-name]} text & {:keys [record-tokens? type]}]
-  (let [[endpoint api-key] (embedding-service-resolve-config!)]
-    (first (openai-compatible-get-embeddings-batch
-            {:provider       "ai-service"
-             :endpoint       endpoint
-             :api-key        api-key
-             :model-name     model-name
-             :texts          [text]
-             :snowplow?      true
-             :record-tokens? record-tokens?
-             :type           type}))))
-
-(defmethod get-embeddings-batch "ai-service"
-  [{:keys [model-name]} texts & {:keys [record-tokens? type]}]
+(defn- ai-service-get-embeddings-batch
+  [{:keys [model-name]} texts {:keys [record-tokens? type]}]
   (let [[endpoint api-key] (embedding-service-resolve-config!)]
     (openai-compatible-get-embeddings-batch
      {:provider       "ai-service"
@@ -322,9 +311,6 @@
       :record-tokens? record-tokens?
       :type           type})))
 
-(defmethod pull-model "ai-service" [_]
-  (log/debug "ai-service provider does not require pulling a model"))
-
 ;;;; OpenAI provider
 
 (defn- openai-resolve-config!
@@ -335,22 +321,8 @@
       (throw (ex-info "OpenAI API key not configured" {:setting "llm-openai-api-key"})))
     [(str (semantic-settings/openai-api-base-url) "/v1/embeddings") api-key]))
 
-(defmethod get-embedding "openai"
-  [embedding-model text & {:keys [record-tokens? type]}]
-  (let [[endpoint api-key] (openai-resolve-config!)]
-    (first (openai-compatible-get-embeddings-batch
-            {:provider       "openai"
-             :endpoint       endpoint
-             :api-key        api-key
-             :model-name     (:model-name embedding-model)
-             :texts          [text]
-             :record-tokens? record-tokens?
-             :extra-body     (when (supports-dimensions? embedding-model)
-                               {:dimensions (:vector-dimensions embedding-model)})
-             :type           type}))))
-
-(defmethod get-embeddings-batch "openai"
-  [embedding-model texts & {:keys [record-tokens? type]}]
+(defn- openai-get-embeddings-batch
+  [embedding-model texts {:keys [record-tokens? type]}]
   (let [[endpoint api-key] (openai-resolve-config!)]
     (openai-compatible-get-embeddings-batch
      {:provider       "openai"
@@ -363,8 +335,36 @@
                         {:dimensions (:vector-dimensions embedding-model)})
       :type           type})))
 
-(defmethod pull-model "openai" [_]
-  (log/debug "OpenAI provider does not require pulling a model"))
+(defn- register-built-in-providers!
+  []
+  (let [spi-version embeddings.provider/embedding-spi-version
+        legacy      embeddings.provider/legacy-resolved-model]
+    (embeddings.provider/register-provider!
+     "ollama"
+     {:embedding-spi-version spi-version
+      :readiness             (constantly {:ready? true})
+      :resolve-model         legacy
+      :embed-texts           (fn [{:keys [model-name]} texts _opts]
+                               (ollama-get-embeddings-batch model-name texts))
+      :prepare!              (fn [{:keys [model-name]}]
+                               (ollama-pull-model model-name))})
+    (embeddings.provider/register-provider!
+     "ai-service"
+     {:embedding-spi-version spi-version
+      :readiness             (fn [_]
+                               {:ready? (boolean (or (not-empty (semantic-settings/ee-embedding-service-base-url))
+                                                     (not-empty (llm.settings/ai-service-base-url))))})
+      :resolve-model         legacy
+      :embed-texts           ai-service-get-embeddings-batch})
+    (embeddings.provider/register-provider!
+     "openai"
+     {:embedding-spi-version spi-version
+      :readiness             (fn [_]
+                               {:ready? (boolean (not-empty (semantic-settings/openai-api-key)))})
+      :resolve-model         legacy
+      :embed-texts           openai-get-embeddings-batch})))
+
+(register-built-in-providers!)
 
 ;;;; Query prefixes for asymmetric retrieval models
 
@@ -402,27 +402,10 @@
    :model-name (semantic-settings/ee-embedding-model)
    :vector-dimensions (semantic-settings/ee-embedding-model-dimensions)})
 
-(defmulti embedding-supported?
-  "Whether `embedding-model`'s provider is *configured* to compute embeddings — the endpoint/credentials it
-  needs are present. This is a config-presence check, not a liveness probe: a set URL whose service is down
-  (or a stopped ollama) still reads as supported and surfaces at call time. Dispatches on provider,
-  mirroring [[get-embedding]] and the config each provider's impl resolves; a new provider — including a
-  future in-process embedder — adds a method. The `:default` is false, so an unrecognized provider gates
-  callers off safely."
-  {:arglists '([embedding-model])} dispatch-provider)
-
-(defmethod embedding-supported? :default [_] false)
-
-(defmethod embedding-supported? "ai-service" [_]
-  (boolean (or (not-empty (semantic-settings/ee-embedding-service-base-url))
-               (not-empty (llm.settings/ai-service-base-url)))))
-
-(defmethod embedding-supported? "openai" [_]
-  (boolean (not-empty (semantic-settings/openai-api-key))))
-
-;; ollama's endpoint is hardcoded (localhost:11434) with no setting to check, so config-presence is always
-;; true — consistent with ai-service/openai, which likewise check for a configured URL, not a live server.
-(defmethod embedding-supported? "ollama" [_] true)
+(defn embedding-supported?
+  "Whether the selected provider is installed and configured. This is not a remote liveness probe."
+  [embedding-model]
+  (embeddings.provider/ready? embedding-model))
 
 (defn- calc-token-metrics
   [texts]
