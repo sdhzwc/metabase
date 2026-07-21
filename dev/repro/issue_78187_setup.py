@@ -134,6 +134,63 @@ def native_state_card(name, sql, database_id, collection_id):
     }
 
 
+def diagnose(mb, args):
+    """Print the stored permissions/sandbox state and what the sandboxed user can see."""
+    dbs = mb.get("/api/database")["data"]
+    sample = next((d for d in dbs if d["name"] == "Sample Database"), None)
+    if not sample:
+        raise SystemExit("No 'Sample Database' found (as admin!)")
+    db_id = sample["id"]
+
+    groups = mb.get("/api/permissions/group")
+    by_name = {g["name"]: g for g in groups}
+    gid = by_name.get("sandboxed", {}).get("id")
+    all_users_id = by_name["All Users"]["id"]
+    print(f"Sample Database id: {db_id}; group ids: sandboxed={gid}, All Users={all_users_id}")
+
+    graph = mb.get("/api/permissions/graph")
+    for label, g in (("All Users", all_users_id), ("sandboxed", gid)):
+        slice_ = graph.get("groups", {}).get(str(g), {}).get(str(db_id))
+        print(f"\n--- graph[{label}][db {db_id}] ---")
+        print(json.dumps(slice_, indent=2, sort_keys=True))
+
+    print("\n--- sandboxes (GET /api/mt/gtap) ---")
+    print(json.dumps(mb.get("/api/mt/gtap"), indent=2))
+
+    found = mb.get(f"/api/user?query={urllib.parse.quote(args.user_email)}")
+    user = next((u for u in found["data"] if u["email"] == args.user_email), None)
+    print(f"\n--- user {args.user_email} ---")
+    if user:
+        print(json.dumps({k: user.get(k) for k in ("id", "group_ids", "login_attributes", "is_active")}, indent=2))
+    else:
+        print("NOT FOUND")
+
+    print(f"\nLogging in as {args.user_email} ...")
+    sandy = Client(args.host)
+    sandy.login(args.user_email, args.user_password)
+
+    sdbs = sandy.get("/api/database")["data"]
+    print(f"databases visible: {[(d['id'], d['name']) for d in sdbs]}")
+
+    schemas = sandy.request("GET", f"/api/database/{db_id}/schemas", expect_error=True)
+    print(f"GET /api/database/{db_id}/schemas -> {schemas}")
+
+    meta = sandy.request("GET", f"/api/database/{db_id}/metadata", expect_error=True)
+    if isinstance(meta, dict) and meta.get("_status"):
+        print(f"GET /api/database/{db_id}/metadata -> HTTP {meta['_status']}: {meta['_body'][:300]}")
+    else:
+        print(f"metadata tables visible: {[t['name'] for t in meta.get('tables', [])]}")
+
+    admin_meta = mb.get(f"/api/database/{db_id}/metadata")
+    tables = {t["name"].lower(): t for t in admin_meta["tables"]}
+    if "orders" in tables:
+        qm = sandy.request("GET", f"/api/table/{tables['orders']['id']}/query_metadata", expect_error=True)
+        if isinstance(qm, dict) and qm.get("_status"):
+            print(f"orders query_metadata -> HTTP {qm['_status']}: {qm['_body'][:300]}")
+        else:
+            print(f"orders query_metadata -> ok ({len(qm.get('fields', []))} fields)")
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--host", default="http://localhost:3060")
@@ -141,11 +198,17 @@ def main():
     ap.add_argument("--admin-password", required=True)
     ap.add_argument("--user-email", default=DEFAULT_USER_EMAIL)
     ap.add_argument("--user-password", default="sandbox-repro-78187")
+    ap.add_argument("--diagnose", action="store_true",
+                    help="Don't change anything; print stored perms/sandbox state and what the sandboxed user sees")
     args = ap.parse_args()
 
     mb = Client(args.host)
     print(f"Logging in to {args.host} as {args.admin_email} ...")
     mb.login(args.admin_email, args.admin_password)
+
+    if args.diagnose:
+        diagnose(mb, args)
+        return
 
     props = mb.get("/api/session/properties")
     features = props.get("token-features") or {}
