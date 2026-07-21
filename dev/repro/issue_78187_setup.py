@@ -339,6 +339,24 @@ def main():
     }
 
     state_target = ["variable", ["template-tag", "state_param"]]
+    # upsert-sandboxes! inserts unless an entry carries the existing sandbox's id,
+    # so on re-runs attach ids to avoid unique (table_id, group_id) violations
+    existing_sandboxes = {
+        (s["group_id"], s["table_id"]): s["id"] for s in mb.get("/api/mt/gtap")
+    }
+
+    def sandbox_entry(table_id, card_id):
+        entry = {
+            "table_id": table_id,
+            "group_id": group_id,
+            "card_id": card_id,
+            "attribute_remappings": {"state": state_target},
+        }
+        existing_id = existing_sandboxes.get((group_id, table_id))
+        if existing_id:
+            entry["id"] = existing_id
+        return entry
+
     new_graph = {
         "revision": graph["revision"],
         "groups": {
@@ -350,18 +368,8 @@ def main():
             },
         },
         "sandboxes": [
-            {
-                "table_id": people["id"],
-                "group_id": group_id,
-                "card_id": q1_id,
-                "attribute_remappings": {"state": state_target},
-            },
-            {
-                "table_id": orders["id"],
-                "group_id": group_id,
-                "card_id": q2_id,
-                "attribute_remappings": {"state": state_target},
-            },
+            sandbox_entry(people["id"], q1_id),
+            sandbox_entry(orders["id"], q2_id),
         ],
     }
     mb.put("/api/permissions/graph", new_graph)
