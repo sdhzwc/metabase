@@ -20,6 +20,31 @@ export function searchToQuery(
 }
 
 /**
+ * Serialize a v3 `location.query` object back into a search string, the inverse
+ * of `searchToQuery`. history@3 accepted a `query` object on a navigation target
+ * and encoded it itself; v7 only understands `search`, so descriptors carrying a
+ * `query` are converted here. Repeated values become repeated keys, and
+ * null/undefined entries are dropped, matching history@3's serializer.
+ */
+export function queryToSearch(query: Record<string, unknown>): string {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value == null) {
+      continue;
+    }
+    if (Array.isArray(value)) {
+      value
+        .filter((entry) => entry != null)
+        .forEach((entry) => params.append(key, String(entry)));
+    } else {
+      params.append(key, String(value));
+    }
+  }
+  const search = params.toString();
+  return search === "" ? "" : `?${search}`;
+}
+
+/**
  * Build the v3-shaped `history` location the facade context and `state.routing`
  * expect from a v7 location plus the current navigation type.
  */
