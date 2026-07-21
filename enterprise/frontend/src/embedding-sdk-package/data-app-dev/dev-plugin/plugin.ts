@@ -2,11 +2,11 @@ import path from "node:path";
 
 import type { Plugin } from "vite";
 
-import { DATA_APP_REBUILT_EVENT } from "../bundle";
 import { validateDataAppManifest } from "../config/validate-manifest";
+import { DATA_APP_REBUILT_EVENT } from "../constants/bundle";
 import { DATA_APP_DIAGNOSTICS_EVENT } from "../constants/diagnostics-channel";
 import { DATA_APP_MANIFEST_FILE_NAME } from "../constants/paths";
-import type { DataAppManifestStatus } from "../manifest-status";
+import type { DataAppManifestStatus } from "../types/manifest-status";
 
 import { createAppBundle, serveAppBundle } from "./app-bundle";
 import { createDiagnosticsStore } from "./diagnostics-store";

@@ -1,5 +1,5 @@
 /* eslint-disable i18next/no-literal-string */
-import type { DataAppManifestStatus } from "../../../manifest-status";
+import type { DataAppManifestStatus } from "../../../types/manifest-status";
 import S from "../DevToolbar.module.css";
 import { StatusRow } from "../StatusRow/StatusRow";
 

@@ -2,9 +2,9 @@ import { DATA_APP_DIAGNOSTIC_MAX_CHARS } from "../../constants/diagnostics-chann
 // `formatDevDiagnostic` is a lens onto captured entries — the projection lives
 // in the payload module now, this spec only uses it to read what was captured.
 import { formatDevDiagnostic } from "../../lib/diagnostics-payload";
+import type { DevDiagnosticEntry } from "../../types/diagnostics";
 
 import {
-  type DevDiagnosticEntry,
   clearDevDiagnostics,
   getDevConnectionStatus,
   getDevDiagnostics,

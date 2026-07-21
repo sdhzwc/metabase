@@ -7,7 +7,7 @@ import {
   DATA_APP_EXTERNALS,
   DATA_APP_FACTORY_GLOBAL,
   DATA_APP_GLOBALS,
-} from "../bundle";
+} from "../constants/bundle";
 
 export function dataAppLibBuild(fileName: string) {
   return {

@@ -1,8 +1,8 @@
+import { DATA_APP_DIAGNOSTIC_MAX_CHARS } from "../constants/diagnostics-channel";
 import type {
   DevDiagnosticEntry,
   DevDiagnosticEvent,
-} from "../components/DevToolbar/diagnostics";
-import { DATA_APP_DIAGNOSTIC_MAX_CHARS } from "../constants/diagnostics-channel";
+} from "../types/diagnostics";
 
 import { truncateDiagnosticText } from "./diagnostics-limits";
 import { devDiagnosticHint, isAlert, toPayload } from "./diagnostics-payload";

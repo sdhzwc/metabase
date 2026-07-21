@@ -7,7 +7,10 @@ import { fileURLToPath } from "node:url";
 // eslint-disable-next-line metabase/no-external-references-for-sdk-package-code
 import * as dataAppVirtualModules from "build-configs/embedding-sdk/constants/data-app-virtual-modules";
 
-import { DATA_APP_BUNDLE_URL, DATA_APP_REBUILT_EVENT } from "../bundle";
+import {
+  DATA_APP_BUNDLE_URL,
+  DATA_APP_REBUILT_EVENT,
+} from "../constants/bundle";
 import {
   DATA_APP_DEV_ENTRY_FILE_NAME,
   PACKAGE_JSON_FILE_NAME,
@@ -23,22 +26,6 @@ const RESOLVED_PREFIX = "\0";
 const DEV_ENTRY_SOURCE_PATH = fileURLToPath(
   new URL(DATA_APP_DEV_ENTRY_FILE_NAME, import.meta.url),
 );
-
-export const INDEX_HTML = `<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Data App Dev Preview</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module">
-      import ${JSON.stringify(DATA_APP_DEV_ENTRY_VIRTUAL_ID)};
-    </script>
-  </body>
-</html>
-`;
 
 const readInstalledSdkVersion = (appRoot: string): string | null => {
   try {

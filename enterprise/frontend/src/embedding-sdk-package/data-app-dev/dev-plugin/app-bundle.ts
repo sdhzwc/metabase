@@ -1,8 +1,8 @@
 import { type Connect, type Rollup, build } from "vite";
 
-import { DATA_APP_BUNDLE_URL } from "../bundle";
 import { dataAppBuildPlugins, dataAppLibBuild } from "../config/build-config";
 import { getDataAppDefine } from "../config/define";
+import { DATA_APP_BUNDLE_URL } from "../constants/bundle";
 
 export interface AppBundleOptions {
   root: string;

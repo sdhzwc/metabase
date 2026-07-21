@@ -8,7 +8,10 @@ import {
   DATA_APP_DEV_ENTRY_VIRTUAL_ID,
 } from "build-configs/embedding-sdk/constants/data-app-virtual-modules";
 
-import { DATA_APP_BUNDLE_URL, DATA_APP_REBUILT_EVENT } from "../bundle";
+import {
+  DATA_APP_BUNDLE_URL,
+  DATA_APP_REBUILT_EVENT,
+} from "../constants/bundle";
 import {
   DATA_APP_DIAGNOSTICS_EVENT,
   DATA_APP_DIAGNOSTICS_URL,

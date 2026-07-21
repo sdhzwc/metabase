@@ -4,12 +4,12 @@ import {
   DATA_APP_DIAGNOSTICS_URL,
   START_EVENT_ID_PARAM,
 } from "../constants/diagnostics-channel";
-import type { DataAppManifestStatus } from "../manifest-status";
 import type {
   DataAppDiagnosticPayload,
   DataAppDiagnosticsReport,
   DevConnectionStatus,
 } from "../types/diagnostics-channel";
+import type { DataAppManifestStatus } from "../types/manifest-status";
 
 import { capDiagnosticEntries } from "./diagnostics-limits";
 

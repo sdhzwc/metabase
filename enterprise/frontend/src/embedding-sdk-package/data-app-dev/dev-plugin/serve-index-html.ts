@@ -1,6 +1,6 @@
 import type { Connect, ViteDevServer } from "vite";
 
-import { INDEX_HTML } from "./virtual-modules";
+import { INDEX_HTML } from "../constants/index-html";
 
 export const serveIndexHtml =
   (server: ViteDevServer): Connect.NextHandleFunction =>

@@ -9,5 +9,5 @@ export {
 export { runDevConnectionCheck } from "./data-app-dev/lib/connection-check";
 export { installDiagnosticsReporter } from "./data-app-dev/lib/diagnostics-reporter";
 export { installSdkCallCapture } from "./data-app-dev/lib/sdk-call-capture";
-export type { DataAppManifestStatus } from "./data-app-dev/manifest-status";
+export type { DataAppManifestStatus } from "./data-app-dev/types/manifest-status";
 export { createDataAppSandbox } from "metabase-enterprise/data_apps/sandbox/sandbox";

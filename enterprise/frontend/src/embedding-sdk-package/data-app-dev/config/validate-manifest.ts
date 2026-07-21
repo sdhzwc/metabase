@@ -7,7 +7,7 @@ import { load as parseYaml } from "js-yaml";
 // eslint-disable-next-line metabase/no-external-references-for-sdk-package-code
 import * as sandboxAllowedHosts from "metabase-enterprise/data_apps/sandbox/allowed-hosts";
 
-import type { DataAppManifestStatus } from "../manifest-status";
+import type { DataAppManifestStatus } from "../types/manifest-status";
 
 const { isValidAllowedHostEntry, normalizeAllowedHostEntry } =
   sandboxAllowedHosts;

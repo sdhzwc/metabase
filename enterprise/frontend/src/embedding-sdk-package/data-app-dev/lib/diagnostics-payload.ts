@@ -1,6 +1,6 @@
 /* eslint-disable metabase/no-literal-metabase-strings -- dev-only guidance for data-app authors, not whitelabel-able product UI */
 
-import type { DevDiagnosticEntry } from "../components/DevToolbar/diagnostics";
+import type { DevDiagnosticEntry } from "../types/diagnostics";
 import type { DataAppDiagnosticEntry } from "../types/diagnostics-channel";
 
 import { truncateDiagnosticText } from "./diagnostics-limits";

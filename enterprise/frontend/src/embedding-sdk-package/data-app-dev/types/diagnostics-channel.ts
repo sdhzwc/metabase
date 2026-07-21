@@ -1,4 +1,4 @@
-import type { DataAppManifestStatus } from "../manifest-status";
+import type { DataAppManifestStatus } from "./manifest-status";
 
 export interface DevConnectionStatus {
   checkedAt: number;
