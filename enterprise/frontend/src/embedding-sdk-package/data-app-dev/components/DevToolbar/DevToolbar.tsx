@@ -59,7 +59,7 @@ export function DevToolbar({ subscribe }: DevToolbarProps = {}) {
   return (
     <div className={S.DevToolbar}>
       <div
-        className={cx(S.Panel, S.Docked)}
+        className={S.Panel}
         style={{ height }}
         data-testid="dev-toolbar-panel"
       >

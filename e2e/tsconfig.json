@@ -20,6 +20,9 @@
       "@metabase/embedding-sdk-react/data-app": [
         "../enterprise/frontend/src/embedding-sdk-package/data-app.ts"
       ],
+      "@metabase/embedding-sdk-react/data-app-dev": [
+        "../enterprise/frontend/src/embedding-sdk-package/data-app-dev.ts"
+      ],
       // The data-app dev preview (toolbar + diagnostics feed) is only reachable
       // from source — its internals aren't on the package's public barrel.
       // Mirrors the webpack `embedding-sdk-package` alias so component specs can

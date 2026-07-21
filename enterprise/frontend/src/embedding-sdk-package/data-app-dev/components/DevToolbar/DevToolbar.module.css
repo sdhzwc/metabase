@@ -1,6 +1,3 @@
-/* The dev toolbar renders in the host page, potentially before the SDK bundle
-   and its theme variables load, so every color falls back to a literal. */
-
 .DevToolbar {
   position: fixed;
   right: 16px;
@@ -22,37 +19,58 @@
   border: none;
   border-radius: 8px;
   cursor: pointer;
-  color: #fff;
-  background: var(--mb-color-brand, #509ee3);
-  box-shadow: 0 2px 8px var(--mb-color-shadow, rgba(0, 0, 0, 0.13));
+  color: var(--mb-color-text-primary-inverse);
+  background: var(--mb-color-brand);
+  box-shadow: 0 2px 8px var(--mb-color-shadow);
   font-weight: 700;
 }
 
 .ToggleHasErrors {
-  background: var(--mb-color-error, #e35050);
+  background: var(--mb-color-error);
 }
 
+/* Chrome-devtools-style bottom dock: full-width, drag the top edge to resize.
+   Height is set inline from component state (see `startResize`). */
 .Panel {
-  width: 380px;
-  max-height: 60vh;
-  margin-bottom: 8px;
+  position: fixed;
+  inset: auto 0 0 0;
   display: flex;
   flex-direction: column;
-  background: var(--mb-color-background-primary, #fff);
-  color: var(--mb-color-text-primary, #4c5773);
-  border: 1px solid var(--mb-color-border, #eeecec);
-  border-radius: 8px;
   overflow: hidden;
-  box-shadow: 0 8px 24px var(--mb-color-shadow, rgba(0, 0, 0, 0.13));
+  background: var(--mb-color-background-primary);
+  color: var(--mb-color-text-primary);
+  border-top: 1px solid var(--mb-color-border);
+  box-shadow: 0 8px 24px var(--mb-color-shadow);
+}
+
+/* The drag handle along the panel's top edge. */
+.ResizeHandle {
+  flex: 0 0 auto;
+  height: 6px;
+  cursor: ns-resize;
+  background: var(--mb-color-border);
+}
+
+.ResizeHandle:hover {
+  background: var(--mb-color-brand);
+}
+
+.Header,
+.Tabs {
+  display: flex;
+  background: var(--mb-color-background-secondary);
+  border-bottom: 1px solid var(--mb-color-border);
 }
 
 .Header {
-  display: flex;
   align-items: center;
   gap: 8px;
   padding: 10px 12px;
-  background: var(--mb-color-background-secondary, #f9fbfc);
-  border-bottom: 1px solid var(--mb-color-border, #eeecec);
+}
+
+.Tabs {
+  gap: 2px;
+  padding: 0 8px;
 }
 
 .Title {
@@ -63,64 +81,29 @@
   flex: 1;
 }
 
-.Action {
-  border: none;
-  background: none;
-  color: var(--mb-color-brand, #509ee3);
-  cursor: pointer;
-  padding: 0;
-  font-size: 13px;
-  font-weight: 600;
-}
-
-/* Chrome-devtools-style bottom dock: full-width, drag the top edge to resize.
-   Height is set inline from component state (see `startResize`). */
-.Docked {
-  position: fixed;
-  inset: auto 0 0 0;
-  width: 100%;
-  max-height: none;
-  margin-bottom: 0;
-  border-radius: 0;
-  border-left: none;
-  border-right: none;
-  border-bottom: none;
-}
-
-/* The drag handle along the panel's top edge. */
-.ResizeHandle {
-  flex: 0 0 auto;
-  height: 6px;
-  cursor: ns-resize;
-  background: var(--mb-color-border, #eeecec);
-}
-
-.ResizeHandle:hover {
-  background: var(--mb-color-brand, #509ee3);
-}
-
-.Tabs {
-  display: flex;
-  gap: 2px;
-  padding: 0 8px;
-  background: var(--mb-color-background-secondary, #f9fbfc);
-  border-bottom: 1px solid var(--mb-color-border, #eeecec);
-}
-
+.Action,
 .Tab {
   border: none;
   background: none;
   cursor: pointer;
-  padding: 8px 10px;
   font-size: 13px;
   font-weight: 600;
-  color: var(--mb-color-text-secondary, #696e7b);
+}
+
+.Action {
+  padding: 0;
+  color: var(--mb-color-brand);
+}
+
+.Tab {
+  padding: 8px 10px;
+  color: var(--mb-color-text-secondary);
   border-bottom: 2px solid transparent;
 }
 
 .TabActive {
-  color: var(--mb-color-brand, #509ee3);
-  border-bottom-color: var(--mb-color-brand, #509ee3);
+  color: var(--mb-color-brand);
+  border-bottom-color: var(--mb-color-brand);
 }
 
 .Body {
@@ -134,8 +117,8 @@
   margin: 8px;
   padding: 8px 10px;
   border-radius: 6px;
-  background: var(--mb-color-background-secondary, #f9fbfc);
-  color: var(--mb-color-text-secondary, #696e7b);
+  background: var(--mb-color-background-secondary);
+  color: var(--mb-color-text-secondary);
   font-size: 12px;
 }
 
@@ -147,37 +130,31 @@
   display: flex;
   gap: 12px;
   padding: 6px 4px;
-  border-bottom: 1px solid var(--mb-color-border, #eeecec);
+  border-bottom: 1px solid var(--mb-color-border);
 }
 
 .StatusLabel {
   flex: 0 0 140px;
   font-weight: 600;
-  color: var(--mb-color-text-secondary, #696e7b);
+  color: var(--mb-color-text-secondary);
 }
 
-.StatusValue {
-  word-break: break-word;
-  font-family: Monaco, ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 12px;
-}
-
-.Problem {
-  margin: 8px 4px;
-  padding: 8px 10px;
-  border-radius: 6px;
-  background: var(--mb-color-background-error, hsl(0deg 76% 97%));
-  color: var(--mb-color-error, #e35050);
-  font-size: 12px;
-}
-
+.Problem,
 .Warning {
   margin: 8px 4px;
   padding: 8px 10px;
   border-radius: 6px;
-  background: var(--mb-color-background-warning, hsl(45deg 100% 96%));
-  color: var(--mb-color-text-primary, #4c5773);
   font-size: 12px;
+}
+
+.Problem {
+  background: var(--mb-color-background-error);
+  color: var(--mb-color-error);
+}
+
+.Warning {
+  background: var(--mb-color-background-warning);
+  color: var(--mb-color-text-primary);
 }
 
 /* Collapsed by default, like a DevTools console entry: the headline is always
@@ -186,19 +163,30 @@
   cursor: pointer;
 }
 
+.StatusValue,
+.EntryMessage,
+.EntryDetail {
+  word-break: break-word;
+  font-family: Monaco, ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+}
+
+.EntryMessage {
+  white-space: pre-wrap;
+  color: var(--mb-color-text-primary);
+}
+
 .EntryDetail {
   margin-top: 4px;
   padding-left: 10px;
-  border-left: 2px solid var(--mb-color-border, #eeecec);
+  border-left: 2px solid var(--mb-color-border);
   white-space: pre-wrap;
-  word-break: break-word;
-  font-family: Monaco, ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 11px;
-  color: var(--mb-color-text-secondary, #696e7b);
+  color: var(--mb-color-text-secondary);
 }
 
 .EntryFailed {
-  border-left: 3px solid var(--mb-color-error, #e35050);
+  border-left: 3px solid var(--mb-color-error);
 }
 
 .Filter {
@@ -206,37 +194,32 @@
   align-items: center;
   gap: 6px;
   margin: 0 8px 4px;
-  color: var(--mb-color-text-secondary, #696e7b);
+  color: var(--mb-color-text-secondary);
   font-size: 12px;
   cursor: pointer;
 }
 
+.EntryHint,
+.Empty {
+  color: var(--mb-color-text-secondary);
+}
+
 .EntryHint {
   margin-top: 4px;
-  color: var(--mb-color-text-secondary, #696e7b);
   font-size: 12px;
 }
 
 .Empty {
   padding: 12px;
-  color: var(--mb-color-text-secondary, #696e7b);
 }
 
 .Entry {
   padding: 8px 10px;
-  border-bottom: 1px solid var(--mb-color-border, #eeecec);
+  border-bottom: 1px solid var(--mb-color-border);
 }
 
 .EntryTime {
-  color: var(--mb-color-text-tertiary, #949aab);
+  color: var(--mb-color-text-tertiary);
   font-size: 11px;
   margin-bottom: 2px;
-}
-
-.EntryMessage {
-  white-space: pre-wrap;
-  word-break: break-word;
-  font-family: Monaco, ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 12px;
-  color: var(--mb-color-text-primary, #4c5773);
 }
