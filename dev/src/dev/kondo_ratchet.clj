@@ -258,37 +258,19 @@
   "Does the form at `i` in masked source `s` read as a vector? Metadata is stepped over, so `^:tag [x]`
   counts.
 
-  A reader conditional counts only when *every* branch is a vector, since we can't know which platform
-  is being read: `#?(:clj [x] :cljs \"doc\")` is an argument vector in Clojure and a docstring in
-  ClojureScript, and if it's a docstring then the map after it is a real attr map whose ignore we'd
-  otherwise drop. Splicing conditionals are read one level deeper, since `#?@(:clj [\"doc\"])` emits the
-  docstring rather than the vector holding it."
+  A reader conditional never does, whatever its branches hold. What one emits depends on the platform
+  it's read for, which isn't knowable here: branches can disagree, an unmatched one emits nothing, and
+  `#?@` splices its contents rather than the collection holding them. Every way of guessing risks
+  reading a docstring as the argument vector and dropping the real ignore in the attr map behind it,
+  while guessing the other way at worst counts a body map that we could have ruled out -- an entry in
+  the budget and a comment, not a suppression that escapes."
   [^String s ^long i]
   (loop [j i]
     (let [c (get s j)]
       (cond
         (= \[ c) true
-
         (= \^ c) (recur (skip-blanks s (form-end s (skip-blanks s (inc j)))))
-
-        (and (= \# c) (= \? (get s (inc j))))
-        (let [splice?   (= \@ (get s (+ j 2)))
-              list-open (skip-blanks s (+ j (if splice? 3 2)))
-              ;; the forms in a conditional alternate feature keyword, value, feature keyword, value
-              branches  (when (= \( (get s list-open))
-                          (take-nth 2 (rest (forms-in s list-open (form-end s list-open)))))
-              emitted   (fn [{:keys [start]}]
-                          (if splice?
-                            ;; what a branch splices in is its collection's first form, if it has one
-                            (let [inner (skip-blanks s (inc (long start)))]
-                              (when-not (contains? #{\] \) \}} (get s inner))
-                                inner))
-                            start))]
-          (boolean (and (seq branches)
-                        (every? #(when-let [start (emitted %)] (vector-form? s start))
-                                branches))))
-
-        :else false))))
+        :else    false))))
 
 (defn- attr-map-context?
   "Is the map opening at `opener` in masked source `s` somewhere an ignore key would suppress anything,
