@@ -3,23 +3,17 @@ import path from "node:path";
 
 import { load as parseYaml } from "js-yaml";
 
-// A namespace import stays single-line so the disable covers the reported line.
-// eslint-disable-next-line metabase/no-external-references-for-sdk-package-code
-import * as sandboxAllowedHosts from "metabase-enterprise/data_apps/sandbox/allowed-hosts";
-
 import { DATA_APP_MANIFEST_FILE_NAME } from "../constants/paths";
 import type { DataAppManifestStatus } from "../types/manifest-status";
 
-const { isValidAllowedHostEntry, normalizeAllowedHostEntry } =
-  sandboxAllowedHosts;
+// Deliberately not a validator. The rules for a manifest — slug shape, reserved
+// slugs, required fields, what counts as an allowed_hosts entry — live in the
+// backend's `parse-app-config`, and a second copy here would drift into telling
+// authors something the sync disagrees with. This reports what the file says,
+// plus the two things the backend cannot see: what is on this machine's disk,
+// and what the dev server booted with.
 
-// Keep in sync with the backend's `slug-pattern` / `reserved-slugs`.
-const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-const RESERVED_SLUGS = new Set(["repo-status"]);
-
-// The backend stringifies, so `name: 2024` imports fine as "2024". Coerce the
-// same way rather than reporting an error the sync wouldn't raise.
-const asTrimmedString = (value: unknown): string | null => {
+const asDisplayString = (value: unknown): string | null => {
   if (
     typeof value !== "string" &&
     typeof value !== "number" &&
@@ -33,20 +27,16 @@ const asTrimmedString = (value: unknown): string | null => {
   return trimmed.length > 0 ? trimmed : null;
 };
 
-const normalizePath = (value: string): string => value.replace(/^\.\//, "");
-
-const hasPathTraversal = (value: string): boolean =>
-  value.split("/").includes("..");
-
-// Normalized and sorted before comparing: the startup list is raw YAML, so a
-// padded or reordered entry would otherwise demand a restart that changes nothing
-// — permanently, since restarting can't make the two match.
+/**
+ * Both lists are the manifest's `allowed_hosts` as written — the booted one was
+ * read the same way — so comparing them needs no notion of a *valid* entry, only
+ * that padding and ordering shouldn't demand a restart that changes nothing.
+ */
 const sameHosts = (left: string[], right: string[]): boolean => {
   const normalize = (hosts: string[]) =>
     hosts
       .filter((entry) => typeof entry === "string")
-      .map(normalizeAllowedHostEntry)
-      .filter(isValidAllowedHostEntry)
+      .map((entry) => entry.trim().toLowerCase())
       .sort();
 
   const [a, b] = [normalize(left), normalize(right)];
@@ -69,21 +59,13 @@ export function validateDataAppManifest(
     restartRequired: false,
   };
 
-  const slug = path.basename(appRoot);
-
-  if (!SLUG_PATTERN.test(slug)) {
-    status.errors.push(
-      `The app directory's name ("${slug}") is its slug, so it must be lowercase letters, numbers, and dashes.`,
-    );
-  } else if (RESERVED_SLUGS.has(slug)) {
-    status.errors.push(`"${slug}" is a reserved slug — rename the directory.`);
-  }
-
   const manifestPath = path.join(appRoot, DATA_APP_MANIFEST_FILE_NAME);
+
   if (!fs.existsSync(manifestPath)) {
     status.errors.push(
       `No ${DATA_APP_MANIFEST_FILE_NAME} found — this app will not sync.`,
     );
+
     return status;
   }
 
@@ -96,6 +78,7 @@ export function validateDataAppManifest(
         error instanceof Error ? error.message : String(error)
       }`,
     );
+
     return status;
   }
 
@@ -104,54 +87,26 @@ export function validateDataAppManifest(
       ? Reflect.get(parsed, key)
       : undefined;
 
-  status.name = asTrimmedString(manifestValue("name"));
+  status.name = asDisplayString(manifestValue("name"));
+  status.bundlePath = asDisplayString(manifestValue("path"));
 
-  if (status.name == null) {
-    status.errors.push(`${DATA_APP_MANIFEST_FILE_NAME}: "name" is required.`);
-  }
+  if (status.bundlePath != null) {
+    status.bundlePathExists = fs.existsSync(
+      path.join(appRoot, status.bundlePath),
+    );
 
-  const bundlePath = asTrimmedString(manifestValue("path"));
-
-  if (bundlePath == null) {
-    status.errors.push(`${DATA_APP_MANIFEST_FILE_NAME}: "path" is required.`);
-  } else {
-    status.bundlePath = normalizePath(bundlePath);
-
-    if (hasPathTraversal(status.bundlePath)) {
-      status.errors.push(
-        `${DATA_APP_MANIFEST_FILE_NAME}: "path" must not contain "..".`,
+    if (!status.bundlePathExists) {
+      status.warnings.push(
+        `"${status.bundlePath}" does not exist — run \`npm run build\` before committing, or sync will fail.`,
       );
-    } else {
-      status.bundlePathExists = fs.existsSync(
-        path.join(appRoot, status.bundlePath),
-      );
-
-      if (!status.bundlePathExists) {
-        status.warnings.push(
-          `"${status.bundlePath}" does not exist — run \`npm run build\` before committing, or sync will fail.`,
-        );
-      }
     }
   }
 
   const rawHosts = manifestValue("allowed_hosts");
-  if (rawHosts != null && !Array.isArray(rawHosts)) {
-    status.errors.push(
-      `${DATA_APP_MANIFEST_FILE_NAME}: "allowed_hosts" must be a list.`,
-    );
-  } else if (Array.isArray(rawHosts)) {
-    for (const entry of rawHosts) {
-      const host = asTrimmedString(entry);
 
-      if (host == null || !isValidAllowedHostEntry(host)) {
-        status.errors.push(
-          `"${String(entry)}" is not a valid allowed_hosts entry — use an origin like https://api.example.com or https://*.example.com.`,
-        );
-      } else {
-        status.allowedHosts.push(normalizeAllowedHostEntry(host));
-      }
-    }
-  }
+  status.allowedHosts = Array.isArray(rawHosts)
+    ? rawHosts.map((entry) => String(entry))
+    : [];
 
   status.restartRequired = !sameHosts(status.allowedHosts, startupAllowedHosts);
 

@@ -1,50 +1,11 @@
 import {
   type SandboxRealm,
   isHostAllowed,
-  isValidAllowedHostEntry,
   makeSandboxFetch,
   makeSandboxXhr,
 } from "./allowed-hosts";
 
 const u = (href: string) => new URL(href);
-
-describe("isValidAllowedHostEntry — backend parity", () => {
-  // The WHATWG URL parser accepts these; the backend's `allowed-host-re` does
-  // not. Accepting them here would green-light a manifest that 400s on sync,
-  // which defeats the point of validating locally.
-  it.each([
-    "https://internal_api.acme.com",
-    "https://[::1]",
-    "https://münchen.de",
-    "https://api.example.com.",
-    "https://api.example.com/v1",
-    "ftp://example.com",
-  ])("rejects %s, which remote-sync would reject", (entry) => {
-    expect(isValidAllowedHostEntry(entry)).toBe(false);
-  });
-
-  it.each([
-    "https://api.example.com",
-    "https://*.internal.acme.com",
-    "http://localhost:3000",
-    // normalized first, as the backend does
-    "  HTTPS://API.EXAMPLE.COM/  ",
-  ])("accepts %s", (entry) => {
-    expect(isValidAllowedHostEntry(entry)).toBe(true);
-  });
-
-  it("does not change what the sandbox allows at runtime", () => {
-    // This validator is advisory — it reports what remote-sync would reject. An
-    // app already running with such a host must keep its egress, so tightening
-    // validation must never be "unified" into `isHostAllowed`.
-    const entry = "https://internal_api.acme.com";
-
-    expect(isValidAllowedHostEntry(entry)).toBe(false);
-    expect(
-      isHostAllowed(u("https://internal_api.acme.com/data"), [entry]),
-    ).toBe(true);
-  });
-});
 
 describe("isHostAllowed", () => {
   it("matches an exact host (ignoring path)", () => {
@@ -159,11 +120,11 @@ describe("makeSandboxFetch", () => {
     )!;
 
     await expect(sandboxFetch(`${origin}/api/user/current`)).rejects.toThrow(
-      /Metabase origin/,
+      /reachable only via the SDK/,
     );
     // A relative URL resolves to the Metabase origin too.
     await expect(sandboxFetch("/api/user/current")).rejects.toThrow(
-      /Metabase origin/,
+      /reachable only via the SDK/,
     );
     expect(realFetch).not.toHaveBeenCalled();
   });
@@ -201,10 +162,10 @@ describe("makeSandboxXhr", () => {
     )!;
     const xhr = new SandboxXhr();
     expect(() => xhr.open("GET", `${mbOrigin}/api/user/current`)).toThrow(
-      /Metabase origin/,
+      /reachable only via the SDK/,
     );
     expect(() => xhr.open("GET", "/api/user/current")).toThrow(
-      /Metabase origin/,
+      /reachable only via the SDK/,
     );
   });
 });

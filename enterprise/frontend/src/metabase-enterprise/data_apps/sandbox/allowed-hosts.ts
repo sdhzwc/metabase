@@ -100,34 +100,6 @@ function originMatches(url: URL, origin: AllowedOrigin): boolean {
     : host === origin.host;
 }
 
-// The backend's `allowed-host-re` (`data_apps/config.clj`), transcribed. The
-// WHATWG URL parser this module matches with is *more* permissive than that
-// grammar — it accepts underscores, IPv6 literals, IDN, trailing dots — so an
-// entry can parse cleanly here and still be rejected with a 400 on sync. Checked
-// explicitly rather than inferred from URL parsing, since the two disagree.
-const BACKEND_ALLOWED_HOST_RE =
-  /^https?:\/\/(\*\.)?[a-z0-9-]+(\.[a-z0-9-]+)*(:\d+)?$/i;
-
-/**
- * Whether an `allowed_hosts` entry is a valid origin-only value *and* one the
- * backend will accept. An entry this rejects would fail remote-sync import, so
- * the dev manifest validator uses it for sync-parity checks. Applies the
- * backend's normalization first (trim, lowercase, drop trailing slashes).
- */
-export function isValidAllowedHostEntry(entry: string): boolean {
-  const normalized = normalizeAllowedHostEntry(entry);
-
-  return (
-    BACKEND_ALLOWED_HOST_RE.test(normalized) &&
-    parseAllowedOrigin(normalized) !== null
-  );
-}
-
-/** The backend's `normalized-allowed-host`: trim, lowercase, drop trailing slashes. */
-export function normalizeAllowedHostEntry(entry: string): string {
-  return entry.trim().toLowerCase().replace(/\/+$/, "");
-}
-
 export function isHostAllowed(url: URL, allowedHosts: string[]): boolean {
   return allowedHosts.some((entry) => {
     const origin = parseAllowedOrigin(entry);
