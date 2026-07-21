@@ -22,6 +22,7 @@ import {
   type DataAppDiagnosticPayload,
   type DataAppDiagnosticsMessage,
   type DataAppDiagnosticsReport,
+  type DevConnectionStatus,
   truncateDiagnosticText,
 } from "../diagnostics-channel";
 
@@ -106,7 +107,7 @@ export function dataAppSandboxDevPlugin(
 
   // Mirror of the page's diagnostics, so tools without a browser can read it.
   let diagnosticEntries: DataAppDiagnosticPayload[] = [];
-  let diagnosticConnection: unknown = null;
+  let diagnosticConnection: DevConnectionStatus | null = null;
   // Validated here, not reported by the page: the dev server is what reads
   // `data_app.yaml`, so round-tripping it through the client only added a race
   // where the feed could report "not validated yet" for a perfectly valid file.

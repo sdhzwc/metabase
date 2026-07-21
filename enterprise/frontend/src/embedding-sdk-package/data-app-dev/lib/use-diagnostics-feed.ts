@@ -10,10 +10,11 @@ import {
   DATA_APP_DIAGNOSTICS_URL,
   type DataAppDiagnosticPayload,
   type DataAppDiagnosticsReport,
+  type DevConnectionStatus,
 } from "../diagnostics-channel";
+import type { DataAppManifestStatus } from "../manifest-status";
 
-/** How often the toolbar re-reads the feed. */
-const POLL_MS = 1000;
+const REFETCH_POLL_MS = 1000;
 
 /**
  * Why the feed has no fresh data. `unreachable` is a dead or restarting dev
@@ -26,14 +27,12 @@ export type DiagnosticsFeedProblem =
 
 export interface DiagnosticsFeed {
   entries: DataAppDiagnosticPayload[];
-  connection: unknown | null;
-  manifest: unknown | null;
-  /** Connected preview tabs, per the dev server. */
+  connection: DevConnectionStatus | null;
+  manifest: DataAppManifestStatus | null;
   clients: number;
   lastReportAt: number | null;
   lastRebuildAt: number | null;
   problem: DiagnosticsFeedProblem | null;
-  /** False until the first response lands, so callers don't read zeroes as facts. */
   loaded: boolean;
   clear: () => void;
 }
@@ -42,7 +41,7 @@ const EMPTY: DataAppDiagnosticPayload[] = [];
 
 export const useDiagnosticsFeed = (
   url: string = DATA_APP_DIAGNOSTICS_URL,
-  pollMs: number = POLL_MS,
+  pollMs: number = REFETCH_POLL_MS,
 ): DiagnosticsFeed => {
   const [entries, setEntries] = useState<DataAppDiagnosticPayload[]>(EMPTY);
   const [report, setReport] = useState<DataAppDiagnosticsReport | null>(null);

@@ -16,7 +16,10 @@
 
 import type { SandboxBlockedEvent } from "metabase-enterprise/data_apps/sandbox/distortions";
 
-import { truncateDiagnosticText } from "../../diagnostics-channel";
+import {
+  type DevConnectionStatus,
+  truncateDiagnosticText,
+} from "../../diagnostics-channel";
 
 export type DevDiagnosticEvent =
   | { kind: "error"; message: string }
@@ -46,17 +49,6 @@ export type DevDiagnosticEntry = {
   id: number;
   time: number;
 } & DevDiagnosticEvent;
-
-export interface DevConnectionStatus {
-  checkedAt: number;
-  metabaseUrl: string;
-  reachable: boolean;
-  /** `null` while unknown — e.g. the instance wasn't reachable to check. */
-  apiKeyValid: boolean | null;
-  metabaseVersion: string | null;
-  sdkVersion: string | null;
-  error?: string;
-}
 
 const MAX_ENTRIES = 200;
 

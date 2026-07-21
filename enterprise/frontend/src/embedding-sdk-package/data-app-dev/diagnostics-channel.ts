@@ -9,6 +9,19 @@
  * strings rather than raw event fields, so both readers get identical guidance.
  */
 
+import type { DataAppManifestStatus } from "./manifest-status";
+
+/** The dev-connection probe result the page reports and the feed serves. */
+export interface DevConnectionStatus {
+  checkedAt: number;
+  metabaseUrl: string;
+  reachable: boolean;
+  apiKeyValid: boolean | null;
+  metabaseVersion: string | null;
+  sdkVersion: string | null;
+  error?: string;
+}
+
 /** Client → server HMR event carrying newly captured diagnostics. */
 export const DATA_APP_DIAGNOSTICS_EVENT = "data-app:diagnostics";
 
@@ -72,15 +85,15 @@ export interface DataAppDiagnosticsMessage {
    */
   session: string;
   entries: DataAppDiagnosticEntry[];
-  connection: unknown | null;
+  connection: DevConnectionStatus | null;
 }
 
 /** What the dev server serves at {@link DATA_APP_DIAGNOSTICS_URL}. */
 export interface DataAppDiagnosticsReport {
   entries: DataAppDiagnosticPayload[];
-  connection: unknown | null;
+  connection: DevConnectionStatus | null;
   /** Validated by the dev server, available before any client connects. */
-  manifest: unknown | null;
+  manifest: DataAppManifestStatus | null;
   /**
    * Connected dev-preview tabs. Zero means nothing has run, so an empty
    * `entries` says nothing about the app's health — the distinction between
