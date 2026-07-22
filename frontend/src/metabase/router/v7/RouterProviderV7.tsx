@@ -29,10 +29,8 @@ export function V7RouterTree({ children }: PropsWithChildren): JSX.Element {
 }
 
 /**
- * react-router v7 hosting the app, declarative mode (Phase 3.1). Replaces the v3
- * `<Router>` + `useRouterHistory` + `syncHistoryWithStore` stack behind the
- * `use-v7-router` flag. Hosted on a blocking history so `setRouteLeaveHook`
- * cancels navigation the way it does on v3.
+ * react-router v7 hosting the app, declarative mode. Hosted on a blocking
+ * history so `setRouteLeaveHook` cancels navigation the way it did on v3.
  */
 export function RouterProviderV7({ children }: PropsWithChildren): JSX.Element {
   // `v5Compat` makes the history notify its listeners on push/replace, which is
@@ -56,7 +54,9 @@ export function createMemoryTestHistory(initialRoute: string) {
   // history@3 resolved a relative initial entry against the root; v7 keeps it
   // relative, and a location without a leading slash then matches no route. Specs
   // written against v3 pass both forms, so normalize.
-  const entry = initialRoute.startsWith("/") ? initialRoute : `/${initialRoute}`;
+  const entry = initialRoute.startsWith("/")
+    ? initialRoute
+    : `/${initialRoute}`;
   return withBlocking(
     createMemoryHistory({ initialEntries: [entry], v5Compat: true }),
   );
@@ -72,16 +72,18 @@ export type MemoryTestHistory = ReturnType<typeof createMemoryTestHistory>;
 export function RouterProviderV7Memory({
   children,
   initialRoute,
+  basename,
   history: providedHistory,
 }: PropsWithChildren<{
   initialRoute: string;
+  basename?: string;
   history?: MemoryTestHistory;
 }>): JSX.Element {
   const [history] = useState(
     () => providedHistory ?? createMemoryTestHistory(initialRoute),
   );
   return (
-    <HistoryRouter history={history}>
+    <HistoryRouter history={history} basename={basename}>
       <V7RouterTree>{children}</V7RouterTree>
     </HistoryRouter>
   );
