@@ -104,7 +104,7 @@
 
 (def ^:private direct-providers
   "Providers that can be used directly (not via the metabase/ proxy prefix)."
-  #{"anthropic" "azure" "bedrock" "openai" "openrouter"})
+  #{"anthropic" "azure" "bailian" "bedrock" "deepseek" "kimi" "openai" "openrouter" "xiaomi"})
 
 (def ^:private default-anthropic-llm-metabot-model
   "Default Anthropic model used for Metabot when no explicit model is selected."
@@ -113,6 +113,18 @@
 (def ^:private default-bedrock-llm-metabot-model
   "Default Bedrock model used for Metabot when no explicit model is selected."
   "anthropic.claude-opus-4-8")
+
+(def ^:private default-bailian-llm-metabot-model
+  "Default Alibaba Cloud Bailian model used for Metabot when no explicit model is selected."
+  "qwen-plus")
+
+(def ^:private default-deepseek-llm-metabot-model
+  "Default DeepSeek model used for Metabot when no explicit model is selected."
+  "deepseek-v4-pro")
+
+(def ^:private default-kimi-llm-metabot-model
+  "Default Kimi model used for Metabot when no explicit model is selected."
+  "kimi-k3")
 
 (def ^:private default-openai-llm-metabot-model
   "Default OpenAI model used for Metabot when no explicit model is selected."
@@ -124,6 +136,10 @@
   unlike the Anthropic API's hyphenated IDs (`claude-sonnet-4-6`)."
   "anthropic/claude-sonnet-4.6")
 
+(def ^:private default-xiaomi-llm-metabot-model
+  "Default Xiaomi MiMo model used for Metabot when no explicit model is selected."
+  "mimo-v2.5-pro")
+
 (def default-llm-metabot-provider
   "Default provider/model used for Metabot when no explicit model is selected."
   (str "anthropic/" default-anthropic-llm-metabot-model))
@@ -134,9 +150,13 @@
   Values match the shape expected in the request body for each provider: direct providers use a bare model ID, while the
   managed `metabase` provider uses the proxied `provider/model` form."
   {"anthropic"                            default-anthropic-llm-metabot-model
+   "bailian"                              default-bailian-llm-metabot-model
    "bedrock"                              default-bedrock-llm-metabot-model
+   "deepseek"                             default-deepseek-llm-metabot-model
+   "kimi"                                 default-kimi-llm-metabot-model
    "openai"                               default-openai-llm-metabot-model
    "openrouter"                           default-openrouter-llm-metabot-model
+   "xiaomi"                               default-xiaomi-llm-metabot-model
    provider-util/metabase-provider-prefix default-llm-metabot-provider})
 
 (def default-metabase-llm-metabot-provider
@@ -293,13 +313,17 @@
                        base-url (non-blank (llm.settings/llm-azure-api-base-url))]
                    (when (and api-key base-url)
                      {:api-key api-key :base-url base-url}))
+    "bailian"    (configured-api-key-credentials (llm.settings/llm-bailian-api-key))
     "bedrock"    (when (llm.settings/llm-bedrock-configured?)
                    {:access-key-id     (non-blank (llm.settings/llm-bedrock-access-key-id))
                     :secret-access-key (non-blank (llm.settings/llm-bedrock-secret-access-key))
                     :session-token     (non-blank (llm.settings/llm-bedrock-session-token))
                     :region            (non-blank (llm.settings/llm-bedrock-region))})
+    "deepseek"   (configured-api-key-credentials (llm.settings/llm-deepseek-api-key))
+    "kimi"       (configured-api-key-credentials (llm.settings/llm-kimi-api-key))
     "openai"     (configured-api-key-credentials (llm.settings/llm-openai-api-key))
     "openrouter" (configured-api-key-credentials (llm.settings/llm-openrouter-api-key))
+    "xiaomi"     (configured-api-key-credentials (llm.settings/llm-xiaomi-api-key))
     nil))
 
 (defn provider-credentials-complete?

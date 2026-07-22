@@ -1,4 +1,14 @@
-bun run precommit
+#!/usr/bin/env sh
+set -e
+
+if command -v bun >/dev/null 2>&1; then
+  bun run precommit
+elif command -v mise >/dev/null 2>&1; then
+  mise exec -- bun run precommit
+else
+  echo "bun not found. Install Bun or make mise available in PATH." >&2
+  exit 127
+fi
 
 # Run the formatter
 # Note that this is stubbed in for now until we can gobally resolve some formatting issues such as what is described

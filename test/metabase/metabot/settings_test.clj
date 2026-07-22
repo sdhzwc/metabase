@@ -183,6 +183,26 @@
     (mt/with-temporary-setting-values [llm-metabot-provider "openrouter/anthropic/claude-haiku-4-5"]
       (is (= "openrouter/anthropic/claude-haiku-4-5" (metabot.settings/llm-metabot-provider))))))
 
+(deftest validate-metabot-provider-accepts-valid-direct-deepseek-test
+  (testing "accepts valid direct deepseek provider string"
+    (mt/with-temporary-setting-values [llm-metabot-provider "deepseek/deepseek-v4-pro"]
+      (is (= "deepseek/deepseek-v4-pro" (metabot.settings/llm-metabot-provider))))))
+
+(deftest validate-metabot-provider-accepts-valid-direct-kimi-test
+  (testing "accepts valid direct kimi provider string"
+    (mt/with-temporary-setting-values [llm-metabot-provider "kimi/kimi-k3"]
+      (is (= "kimi/kimi-k3" (metabot.settings/llm-metabot-provider))))))
+
+(deftest validate-metabot-provider-accepts-valid-direct-bailian-test
+  (testing "accepts valid direct bailian provider string"
+    (mt/with-temporary-setting-values [llm-metabot-provider "bailian/qwen-plus"]
+      (is (= "bailian/qwen-plus" (metabot.settings/llm-metabot-provider))))))
+
+(deftest validate-metabot-provider-accepts-valid-direct-xiaomi-test
+  (testing "accepts valid direct xiaomi provider string"
+    (mt/with-temporary-setting-values [llm-metabot-provider "xiaomi/mimo-v2.5-pro"]
+      (is (= "xiaomi/mimo-v2.5-pro" (metabot.settings/llm-metabot-provider))))))
+
 (deftest validate-metabot-provider-accepts-allowed-metabase-managed-provider-and-model-test
   (testing "accepts allow-listed metabase managed provider/model"
     (mt/with-premium-features #{:metabase-ai-managed}
@@ -353,5 +373,17 @@
     (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-ant-valid"]
       (is (= {:api-key "sk-ant-valid"}
              (metabot.settings/configured-provider-credentials "anthropic"))))
+    (mt/with-temporary-setting-values [llm-deepseek-api-key "deepseek-valid"]
+      (is (= {:api-key "deepseek-valid"}
+             (metabot.settings/configured-provider-credentials "deepseek"))))
+    (mt/with-temporary-setting-values [llm.settings/llm-kimi-api-key "kimi-valid"]
+      (is (= {:api-key "kimi-valid"}
+             (metabot.settings/configured-provider-credentials "kimi"))))
+    (mt/with-temporary-setting-values [llm.settings/llm-bailian-api-key "bailian-valid"]
+      (is (= {:api-key "bailian-valid"}
+             (metabot.settings/configured-provider-credentials "bailian"))))
+    (mt/with-temporary-setting-values [llm-xiaomi-api-key "sk-xiaomi-valid"]
+      (is (= {:api-key "sk-xiaomi-valid"}
+             (metabot.settings/configured-provider-credentials "xiaomi"))))
     (mt/with-temporary-setting-values [llm-anthropic-api-key nil]
       (is (nil? (metabot.settings/configured-provider-credentials "anthropic"))))))

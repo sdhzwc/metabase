@@ -112,6 +112,98 @@
             {:name "id", :id test-uuid, :display-name "ID", :type :number}
             [{:type :category, :target [:variable [:template-tag {:id test-uuid}]], :value "9223372036854775808"}])))))
 
+(deftest ^:parallel current-user-template-tag-value-test
+  (testing "SQL template tags can reference the current user"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (is (= (mt/user->id :crowberto)
+             (value-for-tag {:name "current_user_id", :display-name "Current User ID", :type :number} nil)))
+      (is (= "crowberto@metabase.com"
+             (value-for-tag {:name "current_user_email", :display-name "Current User Email", :type :text}
+                            [{:type   :category
+                              :target [:variable [:template-tag "current_user_email"]]
+                              :value  "override@example.com"}])))
+      (is (= "Crowberto"
+             (value-for-tag {:name "current_user_first_name", :display-name "Current User First Name", :type :text} nil)))
+      (is (= "Corv"
+             (value-for-tag {:name "current_user_last_name", :display-name "Current User Last Name", :type :text} nil)))
+      (is (= "Crowberto Corv"
+             (value-for-tag {:name "current_user_common_name", :display-name "Current User Common Name", :type :text} nil)))
+      (is (= true
+             (value-for-tag {:name "current_user_is_superuser", :display-name "Current User Is Superuser", :type :boolean} nil))))))
+
+(deftest ^:parallel current-user-template-tag-value-without-current-user-test
+  (testing "SQL current user template tags require a current user"
+    (is (thrown-with-msg?
+         ExceptionInfo
+         #"No current user found"
+         (value-for-tag {:name "current_user_id", :display-name "Current User ID", :type :number} nil)))))
+
+(deftest ^:parallel variable-date-dynamic-default-value-test
+  (testing "Raw date variables can use dynamic single-day default values"
+    (mt/with-clock #t "2016-06-07T12:13:55Z"
+      (is (= (lib/parsed-date-param "2016-06-07")
+             (value-for-tag
+              {:name "date", :display-name "Date", :type :date, :default "thisday"}
+              nil)))
+      (is (= (lib/parsed-date-param "2016-06-06")
+             (value-for-tag
+              {:name "date", :display-name "Date", :type :date, :default "past1days"}
+              nil)))
+      (is (= (lib/parsed-date-param "2016-06-05")
+             (value-for-tag
+              {:name "date", :display-name "Date", :type :date, :default "past1days-from-1days"}
+              nil))))))
+
+(deftest ^:parallel variable-date-dynamic-template-default-value-test
+  (testing "Raw date variables can use dynamic date template default values"
+    (mt/with-clock #t "2016-06-07T12:13:55Z"
+      (is (= (lib/parsed-date-param "2016-06-26")
+             (value-for-tag
+              {:name "date", :display-name "Date", :type :date, :default "date-template:%Y%m26"}
+              nil)))
+      (is (= (lib/parsed-date-param "2016-06-01")
+             (value-for-tag
+              {:name "date", :display-name "Date", :type :date, :default "date-template:%Y-%m-01"}
+              nil)))
+      (is (= (lib/parsed-date-param "2016-06-27")
+             (value-for-tag
+              {:name "date", :display-name "Date", :type :date, :default "date-template:%Y%m26 + 1 day"}
+              nil)))
+      (is (= (lib/parsed-date-param "2016-05-28")
+             (value-for-tag
+              {:name "date", :display-name "Date", :type :date, :default "date-template:%Y%m26 - 1 month + 2 days"}
+              nil)))
+      (is (= (lib/parsed-date-param "2015-06-14")
+             (value-for-tag
+              {:name "date", :display-name "Date", :type :date, :default "date-template:%Y-%m-%d+1week-1year"}
+              nil))))))
+
+(deftest ^:parallel variable-date-invalid-dynamic-template-default-value-test
+  (testing "Raw date variables reject dynamic date templates that do not produce a valid single date"
+    (mt/with-clock #t "2016-02-07T12:13:55Z"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"invalid date"
+           (value-for-tag
+            {:name "date", :display-name "Date", :type :date, :default "date-template:%Y%m31"}
+            nil)))
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Invalid dynamic date template"
+           (value-for-tag
+            {:name "date", :display-name "Date", :type :date, :default "date-template:%Y%m%d + 1 hour"}
+            nil))))))
+
+(deftest ^:parallel variable-date-dynamic-range-value-test
+  (testing "Raw date variables reject dynamic ranges that do not resolve to a single day"
+    (mt/with-clock #t "2016-06-07T12:13:55Z"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"single date"
+           (value-for-tag
+            {:name "date", :display-name "Date", :type :date, :default "past7days"}
+            nil))))))
+
 (deftest ^:parallel variable-multiple-values-test
   (testing "Allows multiple bindings of the same tag"
     (testing "if only one has a value set"

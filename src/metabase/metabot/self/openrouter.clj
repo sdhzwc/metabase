@@ -218,98 +218,105 @@
 
   Chat Completions has no explicit start/stop events per content block like
   Claude or OpenAI Responses do — we infer transitions from the delta shape.
-  Parallel tool calls arrive with different `index` values; when a new index
-  appears the previous tool is complete."
+  Tool call argument deltas are buffered by `tool_calls[index]` until the
+  provider reports `finish_reason=tool_calls`; some OpenAI-compatible providers
+  repeat `id`/`name` on every argument chunk or interleave multiple tool calls."
   []
   (fn [rf]
-    (let [current-type (volatile! nil) ;; :text | :function_call | nil
-          current-id   (volatile! nil) ;; active chunk id (text-id or tool call_id)
-          message-id   (volatile! nil)
-          model-name   (volatile! nil)
-          payload      (volatile! {})  ;; carried across start/delta/end, same as openai.clj
-          close!       (fn [result]
-                         (u/prog1 (rf result (merge {:type (case @current-type
-                                                             :text          :text-end
-                                                             :function_call :tool-input-available)}
-                                                    @payload))
-                           (vreset! current-type nil)
-                           (vreset! current-id nil)
-                           (vreset! payload {})))]
+    (let [text-id     (volatile! nil)
+          message-id  (volatile! nil)
+          model-name  (volatile! nil)
+          tool-calls  (volatile! {})
+          tool-order  (volatile! [])
+          close-text! (fn [result]
+                        (u/prog1 (rf result {:type :text-end :id @text-id})
+                          (vreset! text-id nil)))
+          valid-tool-call-id (fn [id]
+                               (when-not (str/blank? id)
+                                 id))
+          tool-key    (fn [tool-call]
+                        (or (:index tool-call) (:id tool-call) 0))
+          append-tool-call! (fn [tool-call]
+                              (let [k         (tool-key tool-call)
+                                    f         (:function tool-call)
+                                    arguments (:arguments f)]
+                                (when-not (contains? @tool-calls k)
+                                  (vswap! tool-order conj k))
+                                (vswap! tool-calls update k
+                                        (fn [tool-call*]
+                                          (cond-> (or tool-call* {:arguments []})
+                                            (valid-tool-call-id (:id tool-call)) (assoc :id (:id tool-call))
+                                            (:name f)          (assoc :name (:name f))
+                                            (some? arguments)  (update :arguments conj arguments))))))
+          flush-tool-call (fn [result {:keys [id name arguments]}]
+                            (let [tool-call-id (or (valid-tool-call-id id) (core/mkid))
+                                  arguments    (str/join arguments)]
+                              (cond-> (rf result {:type       :tool-input-start
+                                                  :toolCallId tool-call-id
+                                                  :toolName   name})
+                                (not (str/blank? arguments))
+                                (rf {:type           :tool-input-delta
+                                     :toolCallId     tool-call-id
+                                     :inputTextDelta arguments})
+                                true
+                                (rf {:type       :tool-input-available
+                                     :toolCallId tool-call-id
+                                     :toolName   name}))))
+          flush-tools! (fn [result]
+                         (u/prog1 (reduce (fn [result k]
+                                            (if-let [{:keys [name] :as tool-call} (get @tool-calls k)]
+                                              (if name
+                                                (flush-tool-call result tool-call)
+                                                result)
+                                              result))
+                                          result
+                                          @tool-order)
+                           (vreset! tool-calls {})
+                           (vreset! tool-order [])))]
       (fn
         ([result]
          (cond-> result
-           @current-type (close!)
-           true          (rf)))
+           @text-id         (close-text!)
+           (seq @tool-order) (flush-tools!)
+           true             (rf)))
 
         ([result {:keys [id model choices usage] :as _chunk}]
          (let [choice        (first choices)
                delta         (:delta choice)
                finish-reason (:finish_reason choice)
-               tool-call     (first (:tool_calls delta))
-               ;; Determine what kind of content this chunk carries.
                ;; Empty-string content (common between tool calls) is ignored
                ;; to avoid spurious text blocks that would close open tools.
-               chunk-type    (cond
-                               (not-empty (:content delta)) :text
-                               (some? tool-call)            :function_call
-                               :else                        nil)
-               ;; For new tool calls, the id comes from the chunk; for deltas
-               ;; on the same tool, we keep current-id.
-               chunk-id      (or (:id tool-call) @current-id (core/mkid))]
+               content       (not-empty (:content delta))
+               tool-calls*   (seq (:tool_calls delta))]
            (cond-> result
-             ;; Emit :start on first chunk
-             (and id (not @message-id))                       (-> (rf {:type :start :messageId id})
-                                                                  (u/prog1
-                                                                    (vreset! message-id id)
-                                                                    (vreset! model-name model)))
-             ;; Close previous block when type changes, or when a new tool
-             ;; call arrives (different id = different tool in parallel)
-             (and @current-type
-                  (or (and chunk-type
-                           (not= chunk-type @current-type))
-                      (and (= chunk-type :function_call)
-                           (not= chunk-id @current-id))))     (close!)
-             ;; Start a new text block
-             (and (= chunk-type :text)
-                  (not= @current-type :text))                 (-> (u/prog1
-                                                                    (let [tid (core/mkid)]
-                                                                      (vreset! current-type :text)
-                                                                      (vreset! current-id tid)
-                                                                      (vreset! payload {:id tid})))
-                                                                  (rf (merge {:type :text-start} @payload)))
-             ;; Text delta
-             (and (= chunk-type :text)
-                  (some? (:content delta)))                   (rf {:type  :text-delta
-                                                                   :id    @current-id
-                                                                   :delta (:content delta)})
-             ;; Start a new tool call block
-             (and (= chunk-type :function_call)
-                  (:id tool-call)
-                  (:name (:function tool-call)))              (-> (u/prog1
-                                                                    (vreset! current-type :function_call)
-                                                                    (vreset! current-id (:id tool-call))
-                                                                    (vreset! payload {:toolCallId (:id tool-call)
-                                                                                      :toolName   (:name (:function tool-call))}))
-                                                                  (rf (merge {:type :tool-input-start} @payload))
-                                                                  ;; Emit initial arguments if present
-                                                                  (cond-> (not (str/blank? (:arguments (:function tool-call))))
-                                                                    (rf {:type           :tool-input-delta
-                                                                         :toolCallId     (:id tool-call)
-                                                                         :inputTextDelta (:arguments (:function tool-call))})))
-             ;; Tool argument delta (continuation of existing tool call)
-             (and (= chunk-type :function_call)
-                  (not (:id tool-call))
-                  (some? (:arguments (:function tool-call)))) (rf {:type           :tool-input-delta
-                                                                   :toolCallId     (:toolCallId @payload)
-                                                                   :inputTextDelta (:arguments (:function tool-call))})
-             ;; Finish reason — close whatever is open
-             (some? finish-reason)                            (cond->
-                                                               @current-type (close!))
-             ;; Usage (often on a separate final chunk with empty choices)
-             (some? usage)                                    (rf {:type  :usage
-                                                                   :usage (openrouter-usage->aisdk-usage usage)
-                                                                   :id    @message-id
-                                                                   :model @model-name}))))))))
+             (and id (not @message-id)) (-> (rf {:type :start :messageId id})
+                                            (u/prog1
+                                              (vreset! message-id id)
+                                              (vreset! model-name model)))
+
+             (and tool-calls* @text-id) (close-text!)
+
+             tool-calls* (u/prog1
+                           (run! append-tool-call! tool-calls*))
+
+             (and content (seq @tool-order)) (flush-tools!)
+
+             (and content (not @text-id)) (-> (u/prog1
+                                                (vreset! text-id (core/mkid)))
+                                              (rf {:type :text-start :id @text-id}))
+
+             content (rf {:type  :text-delta
+                          :id    @text-id
+                          :delta content})
+
+             finish-reason (cond->
+                            @text-id          (close-text!)
+                            (seq @tool-order) (flush-tools!))
+
+             (some? usage) (rf {:type  :usage
+                                :usage (openrouter-usage->aisdk-usage usage)
+                                :id    @message-id
+                                :model @model-name}))))))))
 
 ;;; HTTP request
 

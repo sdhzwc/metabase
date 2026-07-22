@@ -76,8 +76,12 @@ export function AIProviderConfigurationForm({
 
   const { details: providerApiKeyDetails } = useAdminSettings([
     "llm-anthropic-api-key",
+    "llm-bailian-api-key",
+    "llm-deepseek-api-key",
+    "llm-kimi-api-key",
     "llm-openai-api-key",
     "llm-openrouter-api-key",
+    "llm-xiaomi-api-key",
   ] as const);
 
   const disconnectProvider = useCallback(async () => {
@@ -110,7 +114,7 @@ export function AIProviderConfigurationForm({
 
     try {
       if (connectedProvider === "bedrock" || connectedProvider === "azure") {
-        // Bedrock and Azure key material spans several settings; an explicit
+        // Bedrock and Azure provider key material spans several settings; an explicit
         // `credentials: null` clears them all in one call. It runs before the provider
         // is deselected so a failure can't leave saved keys behind.
         await updateMetabotSettings({
@@ -269,15 +273,24 @@ export function AIProviderConfigurationForm({
               isEnvSetting={isEnvSetting}
             />
           ))
-          .with("anthropic", "openai", "openrouter", (selectedProvider) => (
-            <ApiKeyProviderFields
-              key={selectedProvider}
-              selectedProvider={selectedProvider}
-              connectedModel={connectedModel}
-              isCurrentConfigured={isCurrentConfigured}
-              isEnvSetting={isEnvSetting}
-            />
-          ))
+          .with(
+            "anthropic",
+            "bailian",
+            "deepseek",
+            "kimi",
+            "openai",
+            "openrouter",
+            "xiaomi",
+            (selectedProvider) => (
+              <ApiKeyProviderFields
+                key={selectedProvider}
+                selectedProvider={selectedProvider}
+                connectedModel={connectedModel}
+                isCurrentConfigured={isCurrentConfigured}
+                isEnvSetting={isEnvSetting}
+              />
+            ),
+          )
           .with(P.nullish, () => null)
           .exhaustive()}
 

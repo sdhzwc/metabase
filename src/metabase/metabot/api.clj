@@ -456,8 +456,12 @@
   [provider]
   (case provider
     "anthropic"  :llm-anthropic-api-key
+    "bailian"    :llm-bailian-api-key
+    "deepseek"   :llm-deepseek-api-key
+    "kimi"       :llm-kimi-api-key
     "openai"     :llm-openai-api-key
-    "openrouter" :llm-openrouter-api-key))
+    "openrouter" :llm-openrouter-api-key
+    "xiaomi"     :llm-xiaomi-api-key))
 
 (defn- non-blank-string
   [value]
@@ -475,9 +479,8 @@
 (defn- provider-client-error?
   "Whether a provider api-error is a client-side 4xx we should surface rather than treat as an
   outage. Covers rejected or missing credentials (401/403) and a request the provider refused
-  outright (e.g. a custom base URL pointing at the wrong surface, which 400s). `rethrow-api-error!`
-  tags these with `:status`; other callers throw with `:status-code`. Provider 5xx and network
-  failures are left to propagate as 500s so outages aren't reported as client errors."
+  outright. `rethrow-api-error!` tags these with `:status`; other callers throw with `:status-code`.
+  Provider 5xx and network failures are left to propagate as 500s so outages aren't reported as client errors."
   [error]
   (let [{:keys [api-error status status-code]} (ex-data error)
         status (or status status-code)]
@@ -512,6 +515,21 @@
     (str/starts-with? id "openai.")    "OpenAI"
     :else                              nil))
 
+(defn- bailian-model-group
+  [{:keys [id]}]
+  (when (str/starts-with? id "qwen")
+    "Qwen"))
+
+(defn- deepseek-model-group
+  [{:keys [id]}]
+  (when (str/starts-with? id "deepseek-")
+    "DeepSeek"))
+
+(defn- kimi-model-group
+  [{:keys [id]}]
+  (when (str/starts-with? id "kimi-")
+    "Kimi"))
+
 (defn- openai-model-group
   "Group an OpenAI model by version family for the picker."
   [{:keys [id]}]
@@ -532,13 +550,22 @@
         first
         title-case-token)))
 
+(defn- xiaomi-model-group
+  [{:keys [id]}]
+  (when (str/starts-with? id "mimo-")
+    "MiMo"))
+
 (defn- decorate-provider-model
   [provider model]
   (case provider
     "anthropic"  (assoc model :group (anthropic-model-group model))
+    "bailian"    (assoc model :group (bailian-model-group model))
     "bedrock"    (assoc model :group (bedrock-model-group model))
+    "deepseek"   (assoc model :group (deepseek-model-group model))
+    "kimi"       (assoc model :group (kimi-model-group model))
     "openai"     (assoc model :group (openai-model-group model))
     "openrouter" (assoc model :group (openrouter-model-group model))
+    "xiaomi"     (assoc model :group (xiaomi-model-group model))
     model))
 
 (defn- normalize-metabase-model
@@ -555,7 +582,7 @@
                            (map normalize-metabase-model models)
                            models)
         decorated-models (map #(decorate-provider-model provider %) models)]
-    (if (contains? #{"anthropic" "bedrock" "openai" "openrouter"} provider)
+    (if (contains? #{"anthropic" "bailian" "bedrock" "deepseek" "kimi" "openai" "openrouter" "xiaomi"} provider)
       (let [grouped-models (group-by :group decorated-models)]
         (->> grouped-models
              keys
@@ -793,7 +820,7 @@
                             (check-not-env-shadowed! :llm-metabot-provider))
         ;; Azure connect validation needs the candidate model's wire family; credential-only
         ;; rotations on a connected Azure provider fall back to the saved model.
-        validation-model  (when (= provider "azure")
+        validation-model  (when (= "azure" provider)
                             (or model
                                 (when-not provider-changed?
                                   (provider-util/provider-and-model->model (metabot.settings/llm-metabot-provider)))))

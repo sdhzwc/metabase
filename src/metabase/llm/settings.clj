@@ -32,6 +32,21 @@
       (throw (ex-info (str deferred-message) {:status-code 400})))
     (setting/set-value-of-type! :string setting-key trimmed)))
 
+(defn- set-prefixed-api-key-one-of!
+  [setting-key prefixes deferred-message new-value]
+  (let [trimmed (trimmed-string new-value)]
+    (when (and trimmed (not-any? #(str/starts-with? trimmed %) prefixes))
+      (throw (ex-info (str deferred-message) {:status-code 400})))
+    (setting/set-value-of-type! :string setting-key trimmed)))
+
+(defn normalize-llm-base-url
+  "Trim whitespace and trailing slashes from an admin-entered LLM base URL; blank values become nil.
+  The URL is otherwise persisted exactly as entered — admin-entered URLs are not silently rewritten."
+  [value]
+  (some-> (trimmed-string value)
+          (str/replace #"/+$" "")
+          not-empty))
+
 ;;; ------------------------------------------------- Anthropic -------------------------------------------------
 
 (defsetting llm-anthropic-api-key
@@ -134,6 +149,97 @@
                              (deferred-tru "Invalid OpenRouter API key format. Key must start with ''sk-or-v1-''."))
   :doc              false)
 
+;;; ------------------------------------------------- DeepSeek --------------------------------------------------
+
+(defsetting llm-deepseek-api-base-url
+  (deferred-tru "The DeepSeek API base URL.")
+  :encryption  :no
+  :visibility  :settings-manager
+  :default     "https://api.deepseek.com"
+  :export?     false
+  :doc         false
+  :setter      (fn [new-value]
+                 (setting/set-value-of-type! :string
+                                             :llm-deepseek-api-base-url
+                                             (normalize-llm-base-url new-value))))
+
+(defsetting llm-deepseek-api-key
+  (deferred-tru "The DeepSeek API Key.")
+  :sensitive?  true
+  :visibility  :settings-manager
+  :export?     false
+  :setter      (partial set-trimmed-string! :llm-deepseek-api-key)
+  :doc         false)
+
+;;; --------------------------------------------------- Kimi ---------------------------------------------------
+
+(defsetting llm-kimi-api-base-url
+  (deferred-tru "The Kimi API base URL.")
+  :encryption  :no
+  :visibility  :settings-manager
+  :default     "https://api.moonshot.cn/v1"
+  :export?     false
+  :doc         false
+  :setter      (fn [new-value]
+                 (setting/set-value-of-type! :string
+                                             :llm-kimi-api-base-url
+                                             (normalize-llm-base-url new-value))))
+
+(defsetting llm-kimi-api-key
+  (deferred-tru "The Kimi API Key.")
+  :sensitive?  true
+  :visibility  :settings-manager
+  :export?     false
+  :setter      (partial set-trimmed-string! :llm-kimi-api-key)
+  :doc         false)
+
+;;; -------------------------------------------- Alibaba Cloud Bailian -------------------------------------------
+
+(defsetting llm-bailian-api-base-url
+  (deferred-tru "The Alibaba Cloud Bailian API base URL.")
+  :encryption  :no
+  :visibility  :settings-manager
+  :default     "https://dashscope.aliyuncs.com/compatible-mode/v1"
+  :export?     false
+  :doc         false
+  :setter      (fn [new-value]
+                 (setting/set-value-of-type! :string
+                                             :llm-bailian-api-base-url
+                                             (normalize-llm-base-url new-value))))
+
+(defsetting llm-bailian-api-key
+  (deferred-tru "The Alibaba Cloud Bailian API Key.")
+  :sensitive?  true
+  :visibility  :settings-manager
+  :export?     false
+  :setter      (partial set-trimmed-string! :llm-bailian-api-key)
+  :doc         false)
+
+;;; ------------------------------------------------ Xiaomi MiMo ------------------------------------------------
+
+(defsetting llm-xiaomi-api-base-url
+  (deferred-tru "The Xiaomi MiMo API base URL.")
+  :encryption  :no
+  :visibility  :settings-manager
+  :default     "https://api.xiaomimimo.com/v1"
+  :export?     false
+  :doc         false
+  :setter      (fn [new-value]
+                 (setting/set-value-of-type! :string
+                                             :llm-xiaomi-api-base-url
+                                             (normalize-llm-base-url new-value))))
+
+(defsetting llm-xiaomi-api-key
+  (deferred-tru "The Xiaomi MiMo API Key.")
+  :sensitive?  true
+  :visibility  :settings-manager
+  :export?     false
+  :setter      (partial set-prefixed-api-key-one-of!
+                        :llm-xiaomi-api-key
+                        ["sk-" "tp-"]
+                        (deferred-tru "Invalid Xiaomi MiMo API key format. Key must start with ''sk-'' or ''tp-''."))
+  :doc         false)
+
 ;;; ----------------------------------------------- Amazon Bedrock ----------------------------------------------
 
 (defsetting llm-bedrock-access-key-id
@@ -196,14 +302,6 @@
   :export?     false
   :doc         false
   :setter      (partial set-trimmed-string! :llm-azure-api-key))
-
-(defn normalize-llm-base-url
-  "Trim whitespace and trailing slashes from an admin-entered LLM base URL; blank values become nil.
-  The URL is otherwise persisted exactly as entered — admin-entered URLs are not silently rewritten."
-  [value]
-  (some-> (trimmed-string value)
-          (str/replace #"/+$" "")
-          not-empty))
 
 (defsetting llm-azure-api-base-url
   (deferred-tru "The base URL of the Azure resource''s OpenAI- or Anthropic-compatible surface, e.g. https://<resource>.services.ai.azure.com/openai.")

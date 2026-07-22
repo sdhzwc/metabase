@@ -19,9 +19,16 @@ import type {
 import * as Lib from "metabase-lib";
 
 export {
+  DYNAMIC_DATE_TEMPLATE_PREFIX,
+  deserializeDynamicDateTemplate,
   formatDate,
+  getDynamicDateTemplateDate,
   getDateFilterDisplayName,
+  getSingleDateDefaultDate,
+  getSingleDateDefaultLabels,
+  serializeDynamicDateTemplate,
   type DateFilterDisplayOpts,
+  type SingleDateDefaultLabels,
 } from "metabase/querying/common/utils/dates";
 
 export function isDatePickerUnit(unit: string): unit is DatePickerUnit {
@@ -147,6 +154,10 @@ export function getDateFilterClause(
       return getMonthYearFilterClause(column, value);
     case "quarter":
       return getQuarterYearFilterClause(column, value);
+    case "dynamic-template":
+      throw new Error(
+        "Dynamic date templates are only supported for parameters",
+      );
   }
 }
 

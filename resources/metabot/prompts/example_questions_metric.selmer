@@ -10,6 +10,8 @@ Default time dimension: {{ default_time_dimension.llm_name }} (type: {{ default_
 
 This metric supports grouping and filtering by the following fields, categorized by type. Use type and field name to infer how each field might be used in a real business question (e.g., as a dimension, time filter, or status flag).
 
+Target language for the generated questions: {{target_language}}. Generate every question in this language. Keep metric and field names as source context, but write the natural-language question text for users in the target language.
+
 ### Dimensions
 {% for col in dimensions %}
 - {{ col.llm_name }} (type: {{ col.type }}){% if col.llm_description %}: {{ col.llm_description }}{% endif %}

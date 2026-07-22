@@ -92,6 +92,16 @@ function getLocale(language = ""): string {
   }
 }
 
+export function isSimplifiedChineseLocale(locale?: string) {
+  const normalizedLocale = locale?.toLowerCase().replace("_", "-");
+
+  return (
+    normalizedLocale === "zh" ||
+    normalizedLocale?.startsWith("zh-cn") ||
+    normalizedLocale?.startsWith("zh-hans")
+  );
+}
+
 function getStartOfWeekDay(
   startOfWeekDayName: DayOfWeekId | null | undefined,
 ): number | undefined {

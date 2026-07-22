@@ -285,6 +285,7 @@ export const ParameterValueWidget = ({
                 dashboardId={dashboardId}
                 placeholder={translatedPlaceholder}
                 isPopoverOpen={isOpen}
+                isEditing={isEditing}
               />
             </div>
             {getActionIcon()}

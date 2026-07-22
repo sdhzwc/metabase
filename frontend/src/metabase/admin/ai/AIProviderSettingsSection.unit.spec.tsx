@@ -88,6 +88,51 @@ const DEFAULT_RESPONSES: Record<MetabotProvider, MetabotSettingsResponse> = {
       },
     ],
   },
+  bailian: {
+    value: "bailian/qwen-plus",
+    models: [
+      {
+        id: "qwen-flash",
+        display_name: "Qwen Flash",
+        group: "Qwen",
+      },
+      {
+        id: "qwen-plus",
+        display_name: "Qwen Plus",
+        group: "Qwen",
+      },
+    ],
+  },
+  deepseek: {
+    value: "deepseek/deepseek-v4-pro",
+    models: [
+      {
+        id: "deepseek-v4-flash",
+        display_name: "DeepSeek V4 Flash",
+        group: "DeepSeek",
+      },
+      {
+        id: "deepseek-v4-pro",
+        display_name: "DeepSeek V4 Pro",
+        group: "DeepSeek",
+      },
+    ],
+  },
+  kimi: {
+    value: "kimi/kimi-k3",
+    models: [
+      {
+        id: "kimi-k2.6",
+        display_name: "Kimi K2.6",
+        group: "Kimi",
+      },
+      {
+        id: "kimi-k3",
+        display_name: "Kimi K3",
+        group: "Kimi",
+      },
+    ],
+  },
   openai: {
     value: "openai/gpt-5.4",
     models: [
@@ -102,6 +147,21 @@ const DEFAULT_RESPONSES: Record<MetabotProvider, MetabotSettingsResponse> = {
         id: "openai/gpt-5.4-mini",
         display_name: "OpenAI: GPT-5.4 Mini",
         group: "OpenAI",
+      },
+    ],
+  },
+  xiaomi: {
+    value: "xiaomi/mimo-v2.5-pro",
+    models: [
+      {
+        id: "mimo-v2.5-pro",
+        display_name: "MiMo v2.5 Pro",
+        group: "MiMo",
+      },
+      {
+        id: "mimo-v2.5",
+        display_name: "MiMo v2.5",
+        group: "MiMo",
       },
     ],
   },
@@ -123,8 +183,12 @@ type MetabotSettingKey =
   | "llm-anthropic-api-key"
   | "llm-azure-api-key"
   | "llm-azure-api-base-url"
+  | "llm-bailian-api-key"
+  | "llm-deepseek-api-key"
+  | "llm-kimi-api-key"
   | "llm-openai-api-key"
   | "llm-openrouter-api-key"
+  | "llm-xiaomi-api-key"
   | "llm-bedrock-access-key-id"
   | "llm-bedrock-secret-access-key"
   | "llm-bedrock-region"
@@ -215,9 +279,13 @@ async function setup({
   > = {
     anthropic: "**********45",
     azure: null,
+    bailian: null,
     bedrock: null,
+    deepseek: null,
+    kimi: null,
     openai: null,
     openrouter: null,
+    xiaomi: null,
     ...apiKeyValues,
   };
 
@@ -272,6 +340,18 @@ async function setup({
         ? "https://my-resource.services.ai.azure.com/anthropic"
         : undefined,
     }),
+    "llm-bailian-api-key": createMockSettingDefinition({
+      key: "llm-bailian-api-key",
+      value: mergedApiKeyValues.bailian ?? undefined,
+    }),
+    "llm-deepseek-api-key": createMockSettingDefinition({
+      key: "llm-deepseek-api-key",
+      value: mergedApiKeyValues.deepseek ?? undefined,
+    }),
+    "llm-kimi-api-key": createMockSettingDefinition({
+      key: "llm-kimi-api-key",
+      value: mergedApiKeyValues.kimi ?? undefined,
+    }),
     "llm-openai-api-key": createMockSettingDefinition({
       key: "llm-openai-api-key",
       value: mergedApiKeyValues.openai ?? undefined,
@@ -279,6 +359,10 @@ async function setup({
     "llm-openrouter-api-key": createMockSettingDefinition({
       key: "llm-openrouter-api-key",
       value: mergedApiKeyValues.openrouter ?? undefined,
+    }),
+    "llm-xiaomi-api-key": createMockSettingDefinition({
+      key: "llm-xiaomi-api-key",
+      value: mergedApiKeyValues.xiaomi ?? undefined,
     }),
     "llm-bedrock-access-key-id": createMockSettingDefinition({
       key: "llm-bedrock-access-key-id",
@@ -377,12 +461,34 @@ async function setup({
     ) as MetabotSettingsUpdateBody;
 
     if ("api-key" in body) {
-      const apiKeySettingKey =
-        body.provider === "anthropic"
-          ? "llm-anthropic-api-key"
-          : body.provider === "openai"
-            ? "llm-openai-api-key"
-            : "llm-openrouter-api-key";
+      const apiKeySettingKeyByProvider: Record<
+        MetabotApiKeyProvider,
+        | "llm-anthropic-api-key"
+        | "llm-bailian-api-key"
+        | "llm-deepseek-api-key"
+        | "llm-kimi-api-key"
+        | "llm-openai-api-key"
+        | "llm-openrouter-api-key"
+        | "llm-xiaomi-api-key"
+      > = {
+        anthropic: "llm-anthropic-api-key",
+        bailian: "llm-bailian-api-key",
+        deepseek: "llm-deepseek-api-key",
+        kimi: "llm-kimi-api-key",
+        openai: "llm-openai-api-key",
+        openrouter: "llm-openrouter-api-key",
+        xiaomi: "llm-xiaomi-api-key",
+      };
+      const isMetabotApiKeyProvider = (
+        provider: MetabotProvider,
+      ): provider is MetabotApiKeyProvider =>
+        provider in apiKeySettingKeyByProvider;
+
+      if (!isMetabotApiKeyProvider(body.provider)) {
+        throw new Error(`Unexpected API key provider: ${body.provider}`);
+      }
+
+      const apiKeySettingKey = apiKeySettingKeyByProvider[body.provider];
       const maskedApiKey = body["api-key"]
         ? `**********${String(body["api-key"]).slice(-2)}`
         : undefined;
@@ -608,6 +714,42 @@ describe("AIProviderSettingsSection", () => {
     expect(openrouterOption).not.toHaveAttribute("data-combobox-disabled");
 
     expect(screen.queryByText("Coming soon")).not.toBeInTheDocument();
+  });
+
+  it("shows DeepSeek as selectable in the provider dropdown", async () => {
+    await setup({ savedProviderValue: null, isConfigured: false });
+
+    await userEvent.click(screen.getByLabelText("Provider"));
+
+    const deepseekOption = await screen.findByRole("option", {
+      name: /DeepSeek/,
+    });
+    expect(deepseekOption).toBeInTheDocument();
+    expect(deepseekOption).not.toHaveAttribute("data-combobox-disabled");
+  });
+
+  it("shows Alibaba Cloud Bailian as selectable in the provider dropdown", async () => {
+    await setup({ savedProviderValue: null, isConfigured: false });
+
+    await userEvent.click(screen.getByLabelText("Provider"));
+
+    const bailianOption = await screen.findByRole("option", {
+      name: /阿里云百炼/,
+    });
+    expect(bailianOption).toBeInTheDocument();
+    expect(bailianOption).not.toHaveAttribute("data-combobox-disabled");
+  });
+
+  it("shows Xiaomi MiMo as selectable in the provider dropdown", async () => {
+    await setup({ savedProviderValue: null, isConfigured: false });
+
+    await userEvent.click(screen.getByLabelText("Provider"));
+
+    const xiaomiOption = await screen.findByRole("option", {
+      name: /Xiaomi MiMo/,
+    });
+    expect(xiaomiOption).toBeInTheDocument();
+    expect(xiaomiOption).not.toHaveAttribute("data-combobox-disabled");
   });
 
   it("BOT-1429: keeps the form interactive while session-properties refetches in the background", async () => {
@@ -1623,6 +1765,184 @@ describe("AIProviderSettingsSection", () => {
     expect(screen.getByLabelText("Provider")).toHaveValue("");
   });
 
+  it("connects to DeepSeek by saving the API key and selecting a model", async () => {
+    await setup({
+      savedProviderValue: null,
+      isConfigured: false,
+      apiKeyValues: { deepseek: null },
+      updateResponse: {
+        value: "deepseek/deepseek-v4-pro",
+        models: DEFAULT_RESPONSES.deepseek.models,
+      },
+    });
+
+    await selectProvider("DeepSeek");
+    await userEvent.type(screen.getByLabelText("API key"), "deepseek-test-key");
+    await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.calls("path:/api/metabot/settings", {
+          method: "PUT",
+        }),
+      ).toHaveLength(1);
+    });
+
+    expect(
+      fetchMock.callHistory.lastCall("path:/api/metabot/settings", {
+        method: "PUT",
+        body: {
+          provider: "deepseek",
+          "api-key": "deepseek-test-key",
+        },
+      }),
+    ).toBeDefined();
+
+    await screen.findByLabelText("Model");
+    await openModelSelector();
+    await userEvent.click(await screen.findByText("DeepSeek V4 Pro"));
+
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.calls("path:/api/metabot/settings", {
+          method: "PUT",
+        }),
+      ).toHaveLength(2);
+    });
+
+    expect(
+      fetchMock.callHistory.lastCall("path:/api/metabot/settings", {
+        method: "PUT",
+        body: {
+          provider: "deepseek",
+          model: "deepseek-v4-pro",
+        },
+      }),
+    ).toBeDefined();
+
+    expect(
+      screen.queryByRole("button", { name: "Connect" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("disconnects DeepSeek by clearing both the provider and API key settings", async () => {
+    await setup({
+      savedProviderValue: "deepseek/deepseek-v4-pro",
+      isConfigured: true,
+      apiKeyValues: { deepseek: "**********ey" },
+    });
+
+    await screen.findByText("Connected to DeepSeek");
+    await screen.findByLabelText("API key");
+    await confirmDisconnectProvider();
+
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.called("path:/api/setting", {
+          method: "PUT",
+          body: {
+            "llm-metabot-provider": null,
+            "llm-deepseek-api-key": null,
+          },
+        }),
+      ).toBe(true);
+    });
+
+    expect(
+      await screen.findByText("Connect to an AI provider"),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Provider")).toHaveValue("");
+  });
+
+  it("connects to Alibaba Cloud Bailian by saving the API key and selecting a model", async () => {
+    await setup({
+      savedProviderValue: null,
+      isConfigured: false,
+      apiKeyValues: { bailian: null },
+      updateResponse: {
+        value: "bailian/qwen-plus",
+        models: DEFAULT_RESPONSES.bailian.models,
+      },
+    });
+
+    await selectProvider("阿里云百炼");
+    await userEvent.type(screen.getByLabelText("API key"), "bailian-test-key");
+    await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.calls("path:/api/metabot/settings", {
+          method: "PUT",
+        }),
+      ).toHaveLength(1);
+    });
+
+    expect(
+      fetchMock.callHistory.lastCall("path:/api/metabot/settings", {
+        method: "PUT",
+        body: {
+          provider: "bailian",
+          "api-key": "bailian-test-key",
+        },
+      }),
+    ).toBeDefined();
+
+    await screen.findByLabelText("Model");
+    await openModelSelector();
+    await userEvent.click(await screen.findByText("Qwen Plus"));
+
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.calls("path:/api/metabot/settings", {
+          method: "PUT",
+        }),
+      ).toHaveLength(2);
+    });
+
+    expect(
+      fetchMock.callHistory.lastCall("path:/api/metabot/settings", {
+        method: "PUT",
+        body: {
+          provider: "bailian",
+          model: "qwen-plus",
+        },
+      }),
+    ).toBeDefined();
+
+    expect(
+      screen.queryByRole("button", { name: "Connect" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("disconnects Alibaba Cloud Bailian by clearing both the provider and API key settings", async () => {
+    await setup({
+      savedProviderValue: "bailian/qwen-plus",
+      isConfigured: true,
+      apiKeyValues: { bailian: "**********ey" },
+    });
+
+    await screen.findByText("Connected to 阿里云百炼");
+    await screen.findByLabelText("API key");
+    await confirmDisconnectProvider();
+
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.called("path:/api/setting", {
+          method: "PUT",
+          body: {
+            "llm-metabot-provider": null,
+            "llm-bailian-api-key": null,
+          },
+        }),
+      ).toBe(true);
+    });
+
+    expect(
+      await screen.findByText("Connect to an AI provider"),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Provider")).toHaveValue("");
+  });
+
   it("connects to OpenRouter by saving the API key and selecting a model", async () => {
     await setup({
       savedProviderValue: null,
@@ -1704,6 +2024,95 @@ describe("AIProviderSettingsSection", () => {
           body: {
             "llm-metabot-provider": null,
             "llm-openrouter-api-key": null,
+          },
+        }),
+      ).toBe(true);
+    });
+
+    expect(
+      await screen.findByText("Connect to an AI provider"),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Provider")).toHaveValue("");
+  });
+
+  it("connects to Xiaomi MiMo by saving the API key and selecting a model", async () => {
+    await setup({
+      savedProviderValue: null,
+      isConfigured: false,
+      apiKeyValues: { xiaomi: null },
+      updateResponse: {
+        value: "xiaomi/mimo-v2.5-pro",
+        models: DEFAULT_RESPONSES.xiaomi.models,
+      },
+    });
+
+    await selectProvider("Xiaomi MiMo");
+    await userEvent.type(screen.getByLabelText("API key"), "sk-xiaomi-test");
+    await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.calls("path:/api/metabot/settings", {
+          method: "PUT",
+        }),
+      ).toHaveLength(1);
+    });
+
+    expect(
+      fetchMock.callHistory.lastCall("path:/api/metabot/settings", {
+        method: "PUT",
+        body: {
+          provider: "xiaomi",
+          "api-key": "sk-xiaomi-test",
+        },
+      }),
+    ).toBeDefined();
+
+    await screen.findByLabelText("Model");
+    await openModelSelector();
+    await userEvent.click(await screen.findByText("MiMo v2.5 Pro"));
+
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.calls("path:/api/metabot/settings", {
+          method: "PUT",
+        }),
+      ).toHaveLength(2);
+    });
+
+    expect(
+      fetchMock.callHistory.lastCall("path:/api/metabot/settings", {
+        method: "PUT",
+        body: {
+          provider: "xiaomi",
+          model: "mimo-v2.5-pro",
+        },
+      }),
+    ).toBeDefined();
+
+    expect(
+      screen.queryByRole("button", { name: "Connect" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("disconnects Xiaomi MiMo by clearing both the provider and API key settings", async () => {
+    await setup({
+      savedProviderValue: "xiaomi/mimo-v2.5-pro",
+      isConfigured: true,
+      apiKeyValues: { xiaomi: "**********st" },
+    });
+
+    await screen.findByText("Connected to Xiaomi MiMo");
+    await screen.findByLabelText("API key");
+    await confirmDisconnectProvider();
+
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.called("path:/api/setting", {
+          method: "PUT",
+          body: {
+            "llm-metabot-provider": null,
+            "llm-xiaomi-api-key": null,
           },
         }),
       ).toBe(true);

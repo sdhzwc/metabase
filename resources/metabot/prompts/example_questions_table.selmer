@@ -7,6 +7,8 @@ Description: {{table_description}}
 
 This table contains data that can be analyzed by grouping and filtering using the following fields, categorized by type. Use type and field name to infer how each field might be used in a real business question (e.g. as a metric, dimension, time filter, or status flag).
 
+Target language for the generated questions: {{target_language}}. Generate every question in this language. Keep schema, table, and field names as source context, but write the natural-language question text for users in the target language.
+
 ### Fields
 {% for col in columns %}
 - {{ col.llm_name }} (type: {{ col.type }}){% if col.llm_description %}: {{ col.llm_description }}{% endif %}

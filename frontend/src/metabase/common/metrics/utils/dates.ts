@@ -136,6 +136,10 @@ export function getDateFilterClause(
       return getMonthYearFilterClause(dimension, value);
     case "quarter":
       return getQuarterYearFilterClause(dimension, value);
+    case "dynamic-template":
+      throw new Error(
+        "Dynamic date templates are only supported for parameters",
+      );
   }
 }
 

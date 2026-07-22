@@ -14,6 +14,7 @@
    [clojure.string :as str]
    [metabase.metabot.self :as self]
    [metabase.metabot.settings :as metabot.settings]
+   [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [selmer.parser :as selmer]))
 
@@ -68,6 +69,16 @@
   (assoc col
          :llm_name (llm-name col)
          :llm_description (llm-description col)))
+
+(defn- target-language
+  "User-facing language for generated example questions, derived from the Metabase site locale."
+  []
+  (let [locale-name (i18n/site-locale-string)
+        locale      (i18n/locale locale-name)]
+    (if locale
+      (str (.getDisplayName ^java.util.Locale locale ^java.util.Locale locale)
+           " (" locale-name ")")
+      locale-name)))
 
 ;;; Output validation
 
@@ -127,6 +138,7 @@
         rendered (selmer/render template
                                 {:table_name        (:name table)
                                  :table_description (or (:description table) "")
+                                 :target_language   (target-language)
                                  :columns           (map enrich-column (:fields table))})
         response (call-llm rendered)]
     (validate-questions-response! response (:name table))
@@ -139,6 +151,7 @@
         rendered (selmer/render template
                                 {:metric_name            (:name metric)
                                  :metric_description     (or (:description metric) "")
+                                 :target_language        (target-language)
                                  :dimensions             (map enrich-column
                                                               (:queryable-dimensions metric))
                                  :default_time_dimension (some-> (:default-time-dimension metric)

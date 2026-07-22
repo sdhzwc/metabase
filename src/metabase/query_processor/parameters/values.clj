@@ -11,6 +11,8 @@
   (:refer-clojure :exclude [every? some mapv not-empty get-in])
   (:require
    [clojure.string :as str]
+   [java-time.api :as t]
+   [metabase.api.common :as api]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.parameters.parse.types :as params.types]
@@ -23,6 +25,7 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.parameters.dates :as params.dates]
    [metabase.query-processor.util.persisted-cache :as qp.persistence]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -349,6 +352,25 @@
     [_metadata-providerable tag params]
     (param-value-for-raw-value-tag tag params)))
 
+(def ^:private current-user-template-tags
+  {"current_user_id"           (fn [user] (:id user))
+   "current_user_email"        (fn [user] (:email user))
+   "current_user_first_name"   (fn [user] (:first_name user))
+   "current_user_last_name"    (fn [user] (:last_name user))
+   "current_user_common_name"  (fn [user] (:common_name user))
+   "current_user_is_superuser" (fn [user] (:is_superuser user))})
+
+(def ^:private not-current-user-template-tag ::not-current-user-template-tag)
+
+(defn- current-user-template-tag-value
+  [tag-name]
+  (if-let [f (get current-user-template-tags tag-name)]
+    (if-let [user @api/*current-user*]
+      (f user)
+      (throw (ex-info (tru "No current user found")
+                      {:type qp.error-type/invalid-parameter})))
+    not-current-user-template-tag))
+
 ;;; Parsing Values
 
 (mu/defn- parse-number :- number?
@@ -378,6 +400,89 @@
     ;; Parse each part as a number.
     (string? value)
     (u/many-or-one (mapv parse-number (str/split value #",")))))
+
+(def ^:private dynamic-date-template-prefix "date-template:")
+
+(defn- dynamic-date-template
+  [value]
+  (when (and (string? value)
+             (str/starts-with? value dynamic-date-template-prefix))
+    (subs value (count dynamic-date-template-prefix))))
+
+(defn- pad2
+  [n]
+  (format "%02d" n))
+
+(def ^:private dynamic-date-template-expression-re
+  #"(?i)^((?:(?:%[Ymd])|[0-9/-])+)((?:\s*[+-]\s*\d+\s*(?:days?|weeks?|months?|years?))*)$")
+
+(def ^:private dynamic-date-template-offset-re
+  #"(?i)([+-])\s*(\d+)\s*(days?|weeks?|months?|years?)")
+
+(defn- parse-dynamic-date-template-expression
+  [template]
+  (when-let [[_ date-template offsets] (re-matches dynamic-date-template-expression-re (str/trim template))]
+    {:date-template date-template
+     :offsets       (for [[_ operator amount unit] (re-seq dynamic-date-template-offset-re offsets)]
+                      {:operator operator
+                       :amount   (parse-long amount)
+                       :unit     (str/replace (str/lower-case unit) #"s$" "")})}))
+
+(defn- render-dynamic-date-template
+  [template]
+  (let [today (t/local-date)]
+    (-> template
+        (str/replace "%Y" (format "%04d" (.getYear today)))
+        (str/replace "%m" (pad2 (.getMonthValue today)))
+        (str/replace "%d" (pad2 (.getDayOfMonth today))))))
+
+(defn- parse-dynamic-date-template-result
+  [template result]
+  (let [[_ year month day] (or (re-matches #"(\d{4})(\d{2})(\d{2})" result)
+                               (re-matches #"(\d{4})[-/](\d{1,2})[-/](\d{1,2})" result))]
+    (if (and year month day)
+      (try
+        (t/local-date (parse-long year) (parse-long month) (parse-long day))
+        (catch Throwable _
+          (throw (ex-info (tru "Dynamic date template ''{0}'' produced an invalid date: ''{1}''" template result)
+                          {:type qp.error-type/invalid-parameter}))))
+      (throw (ex-info (tru "Dynamic date template ''{0}'' must produce a single date" template)
+                      {:type qp.error-type/invalid-parameter})))))
+
+(defn- apply-dynamic-date-template-offset
+  [^java.time.LocalDate date {:keys [operator amount unit]}]
+  (let [amount (cond-> (long amount)
+                 (= operator "-") -)]
+    (case unit
+      "day"   (.plusDays date amount)
+      "week"  (.plusWeeks date amount)
+      "month" (.plusMonths date amount)
+      "year"  (.plusYears date amount))))
+
+(defn- dynamic-date-template->date-string
+  [value]
+  (when-let [template (dynamic-date-template value)]
+    (if-let [{:keys [date-template offsets]} (parse-dynamic-date-template-expression template)]
+      (str (reduce apply-dynamic-date-template-offset
+                   (parse-dynamic-date-template-result template (render-dynamic-date-template date-template))
+                   offsets))
+      (throw (ex-info (tru "Invalid dynamic date template: ''{0}''" template)
+                      {:type qp.error-type/invalid-parameter})))))
+
+(mu/defn- value->single-date :- ::params.types/date
+  [value]
+  (let [value (or (dynamic-date-template->date-string value) value)]
+    (try
+      (lib/parsed-date-param value)
+      (catch Throwable e
+        (let [{:keys [start end]} (try
+                                    (params.dates/date-string->range value)
+                                    (catch Throwable _
+                                      (throw e)))]
+          (if (= start end)
+            (lib/parsed-date-param start)
+            (throw (ex-info (tru "Expected a single date, got date range ''{0}''" value)
+                            {:type qp.error-type/invalid-parameter}))))))))
 
 (mu/defn- parse-value-for-field-type :- :any
   "Do special parsing for value for a (presumably textual) FieldFilter (`:type` = `:dimension`) param (i.e., attempt
@@ -428,7 +533,7 @@
     (value->number value)
 
     (= param-type :date)
-    (lib/parsed-date-param value)
+    (value->single-date value)
 
     ;; Field Filters
     (and (= param-type :dimension)
@@ -453,7 +558,10 @@
    tag                   :- ::lib.schema.template-tag/template-tag
    params                :- [:maybe [:sequential ::lib.schema.parameter/parameter]]]
   (try
-    (parse-value-for-type (:type tag) (parse-tag metadata-providerable tag params))
+    (let [current-user-value (current-user-template-tag-value (:name tag))]
+      (if (= current-user-value not-current-user-template-tag)
+        (parse-value-for-type (:type tag) (parse-tag metadata-providerable tag params))
+        current-user-value))
     (catch Throwable e
       (throw (ex-info (tru "Error determining value for parameter {0}: {1}"
                            (pr-str (:name tag))

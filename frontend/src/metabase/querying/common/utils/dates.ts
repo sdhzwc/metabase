@@ -7,16 +7,41 @@ import type {
   DateFilterValue,
 } from "metabase/querying/common/types";
 import { DEFAULT_TIME_STYLE } from "metabase/utils/formatting/datetime-utils";
+import { isSimplifiedChineseLocale } from "metabase/utils/i18n";
 import type { ExcludeDateFilterUnit } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import type { DateFormattingSettings } from "metabase-types/api";
 
 export type { DateFilterDisplayOpts } from "metabase/querying/common/types";
 
+export const DYNAMIC_DATE_TEMPLATE_PREFIX = "date-template:";
+
 export function getDateFilterDisplayName(
   value: DateFilterValue,
-  { withPrefix, formattingSettings }: DateFilterDisplayOpts = {},
+  {
+    withPrefix,
+    formattingSettings,
+    singleDateShortcutLabels,
+    singleDateShortcutDates,
+    locale,
+  }: DateFilterDisplayOpts = {},
 ) {
+  const singleDateShortcutDisplayName = singleDateShortcutLabels
+    ? getSingleDateShortcutDisplayName(value, locale)
+    : null;
+
+  if (singleDateShortcutDisplayName != null) {
+    return singleDateShortcutDisplayName;
+  }
+
+  const singleDateShortcutDate = singleDateShortcutDates
+    ? getSingleDateDefaultDate(value)
+    : null;
+
+  if (singleDateShortcutDate != null) {
+    return formatDate(singleDateShortcutDate, false, formattingSettings);
+  }
+
   return match(value)
     .with(
       { type: "specific", operator: "=" },
@@ -46,6 +71,16 @@ export function getDateFilterDisplayName(
       ({ values: [startDate, endDate], hasTime }) => {
         return `${formatDate(startDate, hasTime, formattingSettings)} - ${formatDate(endDate, hasTime, formattingSettings)}`;
       },
+    )
+    .with(
+      {
+        type: "relative",
+        value: -1,
+        unit: "day",
+        offsetValue: -1,
+        offsetUnit: "day",
+      },
+      () => t`Day before yesterday`,
     )
     .with(
       { type: "relative" },
@@ -86,7 +121,259 @@ export function getDateFilterDisplayName(
     .with({ type: "quarter" }, ({ quarter, year }) => {
       return formatQuarter(quarter, year);
     })
+    .with({ type: "dynamic-template" }, ({ template }) => {
+      const date = getDynamicDateTemplateDate(template);
+      return date != null
+        ? formatDate(date, false, formattingSettings)
+        : template;
+    })
     .exhaustive();
+}
+
+export type SingleDateDefaultLabels = {
+  today: string;
+  yesterday: string;
+  dayBeforeYesterday: string;
+  customDynamicDate: string;
+  customFixedDate: string;
+  dynamicDateTemplate: string;
+  invalidDynamicDateTemplate: string;
+  apply: string;
+};
+
+export function getSingleDateDefaultLabels(
+  locale?: string,
+): SingleDateDefaultLabels {
+  if (isSimplifiedChineseLocale(locale)) {
+    return {
+      today: "今日",
+      yesterday: "昨日",
+      dayBeforeYesterday: "前天",
+      customDynamicDate: "自定义动态日期",
+      customFixedDate: "自定义固定日期",
+      dynamicDateTemplate: "动态日期模板",
+      invalidDynamicDateTemplate: "请输入能生成有效单日期的模板",
+      apply: "应用",
+    };
+  }
+
+  return {
+    today: t`Today`,
+    yesterday: t`Yesterday`,
+    dayBeforeYesterday: t`Day before yesterday`,
+    customDynamicDate: t`Custom dynamic date`,
+    customFixedDate: t`Custom fixed date`,
+    dynamicDateTemplate: t`Dynamic date template`,
+    invalidDynamicDateTemplate: t`Enter a template that produces a valid single date`,
+    apply: t`Apply`,
+  };
+}
+
+export function getSingleDateDefaultDate(value: DateFilterValue) {
+  return match(value)
+    .with({ type: "dynamic-template" }, ({ template }) =>
+      getDynamicDateTemplateDate(template),
+    )
+    .with(
+      {
+        type: "relative",
+        value: -1,
+        unit: "day",
+        offsetValue: -1,
+        offsetUnit: "day",
+      },
+      () => dayjs().subtract(2, "day").startOf("day").toDate(),
+    )
+    .with(
+      {
+        type: "relative",
+        value: 0,
+        unit: "day",
+      },
+      () => dayjs().startOf("day").toDate(),
+    )
+    .with(
+      {
+        type: "relative",
+        value: -1,
+        unit: "day",
+      },
+      () => dayjs().subtract(1, "day").startOf("day").toDate(),
+    )
+    .otherwise(() => null);
+}
+
+function getSingleDateShortcutDisplayName(
+  value: DateFilterValue,
+  locale?: string,
+) {
+  const labels = getSingleDateDefaultLabels(locale);
+
+  return match(value)
+    .with({ type: "dynamic-template" }, ({ template }) => template)
+    .with(
+      {
+        type: "relative",
+        value: -1,
+        unit: "day",
+        offsetValue: -1,
+        offsetUnit: "day",
+      },
+      () => labels.dayBeforeYesterday,
+    )
+    .with(
+      {
+        type: "relative",
+        value: 0,
+        unit: "day",
+      },
+      () => labels.today,
+    )
+    .with(
+      {
+        type: "relative",
+        value: -1,
+        unit: "day",
+      },
+      () => labels.yesterday,
+    )
+    .otherwise(() => null);
+}
+
+export function serializeDynamicDateTemplate(template: string) {
+  return `${DYNAMIC_DATE_TEMPLATE_PREFIX}${template.trim()}`;
+}
+
+export function deserializeDynamicDateTemplate(value: string) {
+  return value.startsWith(DYNAMIC_DATE_TEMPLATE_PREFIX)
+    ? value.slice(DYNAMIC_DATE_TEMPLATE_PREFIX.length)
+    : null;
+}
+
+export function getDynamicDateTemplateDate(template: string) {
+  const expression = parseDynamicDateTemplateExpression(template);
+  if (expression == null) {
+    return null;
+  }
+
+  const renderedTemplate = renderDynamicDateTemplate(expression.template);
+  const date =
+    renderedTemplate != null
+      ? parseDynamicDateTemplate(renderedTemplate)
+      : null;
+
+  return date != null
+    ? applyDynamicDateTemplateOffsets(date, expression.offsets)
+    : null;
+}
+
+type DynamicDateTemplateOffsetUnit = "day" | "week" | "month" | "year";
+
+type DynamicDateTemplateOffset = {
+  direction: 1 | -1;
+  amount: number;
+  unit: DynamicDateTemplateOffsetUnit;
+};
+
+type DynamicDateTemplateExpression = {
+  template: string;
+  offsets: DynamicDateTemplateOffset[];
+};
+
+const DYNAMIC_DATE_TEMPLATE_EXPRESSION_REGEX =
+  /^((?:%[Ymd]|[0-9/-])+)((?:\s*[+-]\s*\d+\s*(?:days?|weeks?|months?|years?))*)$/i;
+
+const DYNAMIC_DATE_TEMPLATE_OFFSET_REGEX =
+  /([+-])\s*(\d+)\s*(days?|weeks?|months?|years?)/gi;
+
+function parseDynamicDateTemplateExpression(
+  template: string,
+): DynamicDateTemplateExpression | null {
+  const match = template.trim().match(DYNAMIC_DATE_TEMPLATE_EXPRESSION_REGEX);
+  if (match == null) {
+    return null;
+  }
+
+  const [, dateTemplate, offsetsText] = match;
+  const offsets = Array.from(
+    offsetsText.matchAll(DYNAMIC_DATE_TEMPLATE_OFFSET_REGEX),
+    ([, operator, amountText, unitText]) => ({
+      direction: getDynamicDateTemplateOffsetDirection(operator),
+      amount: Number(amountText),
+      unit: normalizeDynamicDateTemplateOffsetUnit(unitText),
+    }),
+  );
+
+  return { template: dateTemplate, offsets };
+}
+
+function getDynamicDateTemplateOffsetDirection(operator: string): 1 | -1 {
+  return operator === "-" ? -1 : 1;
+}
+
+function normalizeDynamicDateTemplateOffsetUnit(
+  unit: string,
+): DynamicDateTemplateOffsetUnit {
+  switch (unit.toLowerCase().replace(/s$/, "")) {
+    case "day":
+      return "day";
+    case "week":
+      return "week";
+    case "month":
+      return "month";
+    case "year":
+      return "year";
+    default:
+      throw new Error(`Unsupported dynamic date template offset unit: ${unit}`);
+  }
+}
+
+function renderDynamicDateTemplate(template: string) {
+  const today = dayjs();
+  const trimmedTemplate = template.trim();
+
+  if (!/^(?:%[Ymd]|[0-9/-])+$/.test(trimmedTemplate)) {
+    return null;
+  }
+
+  return trimmedTemplate
+    .replaceAll("%Y", today.format("YYYY"))
+    .replaceAll("%m", today.format("MM"))
+    .replaceAll("%d", today.format("DD"));
+}
+
+function parseDynamicDateTemplate(renderedTemplate: string) {
+  const parts =
+    renderedTemplate.match(/^(\d{4})(\d{2})(\d{2})$/) ??
+    renderedTemplate.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
+
+  if (parts == null) {
+    return null;
+  }
+
+  const [, yearText, monthText, dayText] = parts;
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  const date = new Date(year, month - 1, day);
+
+  return date.getFullYear() === year &&
+    date.getMonth() === month - 1 &&
+    date.getDate() === day
+    ? date
+    : null;
+}
+
+function applyDynamicDateTemplateOffsets(
+  date: Date,
+  offsets: DynamicDateTemplateOffset[],
+) {
+  return offsets.reduce((currentDate, { direction, amount, unit }) => {
+    return dayjs(currentDate)
+      .add(direction * amount, unit)
+      .startOf("day")
+      .toDate();
+  }, date);
 }
 
 export function formatDate(

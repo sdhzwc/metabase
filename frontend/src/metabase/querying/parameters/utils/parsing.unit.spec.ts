@@ -186,6 +186,13 @@ describe("date parameters", () => {
       },
     },
     {
+      value: "date-template:%Y%m26 + 1 month - 2 days",
+      expectedValue: {
+        type: "dynamic-template",
+        template: "%Y%m26 + 1 month - 2 days",
+      },
+    },
+    {
       value: "~2020-12-31",
       expectedValue: {
         type: "specific",

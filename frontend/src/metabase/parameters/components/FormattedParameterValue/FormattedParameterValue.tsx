@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { useSetting } from "metabase/common/hooks";
+import { useLocale, useSetting } from "metabase/common/hooks";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import { ParameterFieldWidgetValue } from "metabase/parameters/components/widgets/ParameterFieldWidget/ParameterFieldWidgetValue/ParameterFieldWidgetValue";
 import { formatParameterValue } from "metabase/parameters/utils/formatting";
@@ -33,6 +33,7 @@ export type FormattedParameterValueProps = {
   dashboardId?: DashboardId;
   placeholder?: string;
   isPopoverOpen?: boolean;
+  isEditing?: boolean;
   dataTestId?: string;
 };
 
@@ -43,9 +44,15 @@ function FormattedParameterValue({
   dashboardId,
   placeholder,
   isPopoverOpen = false,
+  isEditing = false,
 }: FormattedParameterValueProps) {
   const tc = useTranslateContent();
+  const { locale } = useLocale();
   const formattingSettings = useSetting("custom-formatting");
+  const formattingOptions = {
+    singleDateShortcutLabels: isEditing,
+    locale,
+  };
 
   if (parameterHasNoDisplayValue(value)) {
     return (
@@ -81,14 +88,24 @@ function FormattedParameterValue({
     if (label) {
       return (
         <span>
-          {formatParameterValue(tc(label), parameter, formattingSettings)}
+          {formatParameterValue(
+            tc(label),
+            parameter,
+            formattingSettings,
+            formattingOptions,
+          )}
         </span>
       );
     }
 
     return (
       <span>
-        {formatParameterValue(tc(value), parameter, formattingSettings)}
+        {formatParameterValue(
+          tc(value),
+          parameter,
+          formattingSettings,
+          formattingOptions,
+        )}
       </span>
     );
   };

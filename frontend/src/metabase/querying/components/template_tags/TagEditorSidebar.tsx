@@ -3,9 +3,12 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { SidebarContent } from "metabase/common/components/SidebarContent";
-import { Box, Tabs } from "metabase/ui";
+import { useLocale } from "metabase/common/hooks";
+import { Badge, Box, Flex, Tabs, Text } from "metabase/ui";
+import { isSimplifiedChineseLocale } from "metabase/utils/i18n";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
+import { isCurrentUserTemplateTagName } from "metabase-lib/v1/parameters/utils/template-tags";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   DatabaseId,
@@ -21,6 +24,7 @@ import type {
 
 import { TagEditorHelp } from "./TagEditorHelp";
 import { TagEditorParam } from "./TagEditorParam";
+import TagEditorParamS from "./TagEditorParam.module.css";
 
 type TabId = "settings" | "help";
 
@@ -148,23 +152,65 @@ const SettingsPane = ({
 }: SettingsPaneProps) => {
   return tags.map((tag) => (
     <div key={tag.id}>
-      <TagEditorParam
-        tag={tag}
-        key={tag.name}
-        parameter={parametersById[tag.id]}
-        embeddedParameterVisibility={
-          parametersById[tag.id]
-            ? getEmbeddedParameterVisibility(parametersById[tag.id].slug)
-            : null
-        }
-        database={database}
-        databases={databases}
-        originalQuestion={originalQuestion}
-        setTemplateTag={setTemplateTag}
-        setTemplateTagConfig={setTemplateTagConfig}
-        setParameterValue={setParameterValue}
-        parametersAreUserVisible={parametersAreUserVisible}
-      />
+      {isCurrentUserTemplateTagName(tag.name) ? (
+        <SystemTemplateTagInfo tag={tag} />
+      ) : (
+        <TagEditorParam
+          tag={tag}
+          key={tag.name}
+          parameter={parametersById[tag.id]}
+          embeddedParameterVisibility={
+            parametersById[tag.id]
+              ? getEmbeddedParameterVisibility(parametersById[tag.id].slug)
+              : null
+          }
+          database={database}
+          databases={databases}
+          originalQuestion={originalQuestion}
+          setTemplateTag={setTemplateTag}
+          setTemplateTagConfig={setTemplateTagConfig}
+          setParameterValue={setParameterValue}
+          parametersAreUserVisible={parametersAreUserVisible}
+        />
+      )}
     </div>
   ));
 };
+
+const SystemTemplateTagInfo = ({ tag }: { tag: TemplateTag }) => {
+  const { locale } = useLocale();
+  const copy = getSystemTemplateTagInfoCopy(locale);
+
+  return (
+    <Box
+      className={TagEditorParamS.TagContainer}
+      data-testid={`tag-editor-system-variable-${tag.name}`}
+    >
+      <Flex align="center" gap="sm" mb="sm">
+        <Text c="brand" fw={900} size="lg">
+          {tag.name}
+        </Text>
+        <Badge color="brand" size="sm" variant="light">
+          {copy.badge}
+        </Badge>
+      </Flex>
+      <Text c="text-secondary" size="sm">
+        {copy.description}
+      </Text>
+    </Box>
+  );
+};
+
+function getSystemTemplateTagInfoCopy(locale?: string) {
+  if (isSimplifiedChineseLocale(locale)) {
+    return {
+      badge: "系统变量",
+      description: "由当前登录用户信息自动填充，无法手动设置或覆盖。",
+    };
+  }
+
+  return {
+    badge: t`System built-in variable`,
+    description: t`This variable is automatically filled from the current signed-in user and cannot be manually set or overridden.`,
+  };
+}

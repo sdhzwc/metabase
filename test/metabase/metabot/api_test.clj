@@ -367,6 +367,58 @@
              (mt/user-http-request :crowberto :get 200 "metabot/settings"
                                    :provider "openai"))))))
 
+(deftest settings-get-groups-xiaomi-models-test
+  (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "xiaomi/mimo-v2.5-pro"
+                                     llm.settings/llm-xiaomi-api-key       "sk-valid"]
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider {:keys [credentials]}]
+                                                           (is (= {:api-key "sk-valid"} credentials))
+                                                           {:models [{:id "mimo-v2.5"     :display_name "MiMo v2.5"}
+                                                                     {:id "mimo-v2.5-pro" :display_name "MiMo v2.5 Pro"}]})]
+      (is (= {:value  (metabot.settings/llm-metabot-provider)
+              :models [{:id "mimo-v2.5"     :display_name "MiMo v2.5"     :group "MiMo"}
+                       {:id "mimo-v2.5-pro" :display_name "MiMo v2.5 Pro" :group "MiMo"}]}
+             (mt/user-http-request :crowberto :get 200 "metabot/settings"
+                                   :provider "xiaomi"))))))
+
+(deftest settings-get-groups-kimi-models-test
+  (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "kimi/kimi-k3"
+                                     llm.settings/llm-kimi-api-key         "kimi-valid"]
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider {:keys [credentials]}]
+                                                           (is (= {:api-key "kimi-valid"} credentials))
+                                                           {:models [{:id "kimi-k2.6" :display_name "Kimi K2.6"}
+                                                                     {:id "kimi-k3"   :display_name "Kimi K3"}]})]
+      (is (= {:value  (metabot.settings/llm-metabot-provider)
+              :models [{:id "kimi-k2.6" :display_name "Kimi K2.6" :group "Kimi"}
+                       {:id "kimi-k3"   :display_name "Kimi K3"   :group "Kimi"}]}
+             (mt/user-http-request :crowberto :get 200 "metabot/settings"
+                                   :provider "kimi"))))))
+
+(deftest settings-get-groups-bailian-models-test
+  (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "bailian/qwen-plus"
+                                     llm.settings/llm-bailian-api-key      "bailian-valid"]
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider {:keys [credentials]}]
+                                                           (is (= {:api-key "bailian-valid"} credentials))
+                                                           {:models [{:id "qwen-flash" :display_name "Qwen Flash"}
+                                                                     {:id "qwen-plus"  :display_name "Qwen Plus"}]})]
+      (is (= {:value  (metabot.settings/llm-metabot-provider)
+              :models [{:id "qwen-flash" :display_name "Qwen Flash" :group "Qwen"}
+                       {:id "qwen-plus"  :display_name "Qwen Plus"  :group "Qwen"}]}
+             (mt/user-http-request :crowberto :get 200 "metabot/settings"
+                                   :provider "bailian"))))))
+
+(deftest settings-get-groups-deepseek-models-test
+  (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "deepseek/deepseek-v4-pro"
+                                     llm.settings/llm-deepseek-api-key     "deepseek-valid"]
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider {:keys [credentials]}]
+                                                           (is (= {:api-key "deepseek-valid"} credentials))
+                                                           {:models [{:id "deepseek-v4-flash" :display_name "DeepSeek V4 Flash"}
+                                                                     {:id "deepseek-v4-pro"   :display_name "DeepSeek V4 Pro"}]})]
+      (is (= {:value  (metabot.settings/llm-metabot-provider)
+              :models [{:id "deepseek-v4-flash" :display_name "DeepSeek V4 Flash" :group "DeepSeek"}
+                       {:id "deepseek-v4-pro"   :display_name "DeepSeek V4 Pro"   :group "DeepSeek"}]}
+             (mt/user-http-request :crowberto :get 200 "metabot/settings"
+                                   :provider "deepseek"))))))
+
 (deftest settings-get-returns-metabase-models-without-api-key-test
   (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "metabase/anthropic/claude-sonnet-4-6"]
     (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn

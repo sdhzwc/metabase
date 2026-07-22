@@ -173,6 +173,73 @@ describe("metabase/parameters/utils/formatting", () => {
       },
     );
 
+    it("should format a single date shortcut value as a concrete date", () => {
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date(2026, 6, 22, 12, 30));
+
+      try {
+        const parameter = createMockUiParameter({ type: "date/single" });
+
+        expect(formatParameterValue("thisday", parameter)).toEqual(
+          "July 22, 2026",
+        );
+        expect(formatParameterValue("past1days", parameter)).toEqual(
+          "July 21, 2026",
+        );
+        expect(formatParameterValue("past1days-from-1days", parameter)).toEqual(
+          "July 20, 2026",
+        );
+        expect(
+          formatParameterValue(
+            "date-template:%Y%m26 + 1 month - 2 days",
+            parameter,
+          ),
+        ).toEqual("August 24, 2026");
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it("should format a single date shortcut value as a label in editing contexts", () => {
+      const parameter = createMockUiParameter({ type: "date/single" });
+
+      expect(
+        formatParameterValue("thisday", parameter, undefined, {
+          singleDateShortcutLabels: true,
+          locale: "zh-CN",
+        }),
+      ).toEqual("今日");
+      expect(
+        formatParameterValue("past1days", parameter, undefined, {
+          singleDateShortcutLabels: true,
+          locale: "zh-CN",
+        }),
+      ).toEqual("昨日");
+      expect(
+        formatParameterValue("past1days-from-1days", parameter, undefined, {
+          singleDateShortcutLabels: true,
+          locale: "zh-CN",
+        }),
+      ).toEqual("前天");
+      expect(
+        formatParameterValue("date-template:%Y%m26", parameter, undefined, {
+          singleDateShortcutLabels: true,
+          locale: "zh-CN",
+        }),
+      ).toEqual("%Y%m26");
+      expect(
+        formatParameterValue(
+          "date-template:%Y%m26 + 1 month - 2 days",
+          parameter,
+          undefined,
+          {
+            singleDateShortcutLabels: true,
+            locale: "zh-CN",
+          },
+        ),
+      ).toEqual("%Y%m26 + 1 month - 2 days");
+    });
+
     it("should not remap a field filter parameter connected to more than one field", () => {
       const parameter = createMockUiParameter({
         type: "number/=",

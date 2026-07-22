@@ -5,7 +5,8 @@
    [metabase.metabot.example-question-generator :as native-generator]
    [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.test-util :as test-util]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util.i18n :as i18n]))
 
 (set! *warn-on-reflection* true)
 
@@ -105,6 +106,25 @@
            (native-generator/generate-example-questions
             {:tables [{:name "T1" :fields [{:name "a" :type "number"}]}]
              :metrics []}))))))
+
+(deftest generate-example-questions-uses-site-locale-test
+  (testing "rendered prompts tell the LLM to generate questions in the site language"
+    (let [rendered-prompts (atom [])]
+      (binding [i18n/*site-locale-override* "zh"]
+        (mt/with-dynamic-fn-redefs [native-generator/call-llm
+                                    (fn [rendered-prompt]
+                                      (swap! rendered-prompts conj rendered-prompt)
+                                      {:questions ["中文问题"]})]
+          (native-generator/generate-example-questions
+           {:tables  [{:name "Orders"
+                       :description "Customer orders"
+                       :fields [{:name "total" :type "number"}]}]
+            :metrics [{:name "Revenue"
+                       :description "Total revenue"
+                       :queryable-dimensions [{:name "region" :type "string"}]}]})))
+      (is (= 2 (count @rendered-prompts)))
+      (is (every? #(re-find #"Target language for the generated questions: 中文 \(zh\)" %)
+                  @rendered-prompts)))))
 
 (deftest generate-example-questions-routes-through-openrouter-test
   (testing "generate-example-questions routes LLM calls through openrouter when provider is openrouter/*"

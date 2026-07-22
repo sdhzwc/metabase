@@ -6,7 +6,10 @@ import type {
 } from "metabase-lib/v1/parameters/types";
 import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 import { getParameterTargetField } from "metabase-lib/v1/parameters/utils/targets";
-import { getParametersFromCard } from "metabase-lib/v1/parameters/utils/template-tags";
+import {
+  getParametersFromCard,
+  isCurrentUserParameter,
+} from "metabase-lib/v1/parameters/utils/template-tags";
 import type { Card, Parameter, ParameterTarget } from "metabase-types/api";
 import { isDimensionTarget } from "metabase-types/guards";
 
@@ -21,9 +24,12 @@ export function getCardUiParameters(
     return [];
   }
 
+  const userVisibleParameters = parameters.filter(
+    (parameter) => !isCurrentUserParameter(parameter),
+  );
   const valuePopulatedParameters: Parameter[] | ParameterWithTarget[] =
     getValuePopulatedParameters({
-      parameters,
+      parameters: userVisibleParameters,
       values: parameterValues,
       collectionPreview,
     });

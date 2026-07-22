@@ -1,6 +1,11 @@
 import dayjs from "dayjs";
 
 import type { DateFilterValue } from "metabase/querying/common/types";
+import {
+  deserializeDynamicDateTemplate,
+  getDynamicDateTemplateDate,
+  serializeDynamicDateTemplate,
+} from "metabase/querying/common/utils/dates";
 import { isDatePickerTruncationUnit } from "metabase/querying/filters/utils/dates";
 import { parseNumber } from "metabase/utils/number";
 import { isNotNull } from "metabase/utils/types";
@@ -134,6 +139,25 @@ const MONTHS = [
 ];
 
 const DATE_FILTER_SERIALIZERS: DateFilterSerializer[] = [
+  // dynamic date template, `date-template:%Y%m26`
+  {
+    regex: /^date-template:(.+)$/,
+    serialize: (value) => {
+      if (value.type === "dynamic-template") {
+        return serializeDynamicDateTemplate(value.template);
+      }
+    },
+    deserialize: (match) => {
+      const value = match[0];
+      const template = deserializeDynamicDateTemplate(value);
+      if (template != null && getDynamicDateTemplateDate(template) != null) {
+        return {
+          type: "dynamic-template",
+          template,
+        };
+      }
+    },
+  },
   // entire month, `2020-04`
   {
     regex: /^([0-9]{4})-([0-9]{2})$/,

@@ -15,11 +15,15 @@
    [metabase.api.common :as api]
    [metabase.metabot.provider-util :as provider-util]
    [metabase.metabot.self.azure :as azure]
+   [metabase.metabot.self.bailian :as bailian]
    [metabase.metabot.self.bedrock :as bedrock]
    [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.core :as core]
+   [metabase.metabot.self.deepseek :as deepseek]
+   [metabase.metabot.self.kimi :as kimi]
    [metabase.metabot.self.openai :as openai]
    [metabase.metabot.self.openrouter :as openrouter]
+   [metabase.metabot.self.xiaomi :as xiaomi]
    [metabase.metabot.usage :as usage]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -32,9 +36,13 @@
   (case provider
     "anthropic"  claude/claude
     "azure"      azure/azure
+    "bailian"    bailian/bailian
     "bedrock"    bedrock/bedrock
+    "deepseek"   deepseek/deepseek
+    "kimi"       kimi/kimi
     "openai"     openai/openai
     "openrouter" openrouter/openrouter
+    "xiaomi"     xiaomi/xiaomi
     (throw (ex-info (str "Unknown LLM provider: " provider)
                     {:provider provider}))))
 
@@ -43,9 +51,13 @@
   (case provider
     "anthropic"  claude/list-models
     "azure"      azure/list-models
+    "bailian"    bailian/list-models
     "bedrock"    bedrock/list-models
+    "deepseek"   deepseek/list-models
+    "kimi"       kimi/list-models
     "openai"     openai/list-models
     "openrouter" openrouter/list-models
+    "xiaomi"     xiaomi/list-models
     (throw (ex-info (str "Unknown LLM provider: " provider)
                     {:provider provider}))))
 

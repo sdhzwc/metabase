@@ -166,9 +166,13 @@ export type MetabotProvider =
   | "metabase"
   | "anthropic"
   | "azure"
+  | "bailian"
   | "bedrock"
+  | "deepseek"
+  | "kimi"
   | "openai"
-  | "openrouter";
+  | "openrouter"
+  | "xiaomi";
 
 export interface BedrockCredentials {
   "access-key-id"?: string | null;
@@ -183,7 +187,7 @@ export interface AzureCredentials {
 }
 
 /** One permissive map mirroring the backend's request schema: Bedrock sends AWS key
- * material, Azure sends an API key and base URL. */
+ * material, and Azure sends an API key and base URL. */
 export interface MetabotCredentials
   extends BedrockCredentials, AzureCredentials {}
 

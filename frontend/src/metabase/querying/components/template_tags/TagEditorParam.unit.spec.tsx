@@ -499,6 +499,124 @@ describe("TagEditorParam", () => {
   });
 
   describe("tag required", () => {
+    it("should allow a single date variable to use a relative default value", async () => {
+      const tag = createMockTemplateTag({ type: "date" });
+      const { setTemplateTag, setParameterValue } = setup({ tag });
+
+      await userEvent.click(
+        screen.getByTestId("parameter-value-widget-target"),
+      );
+      await userEvent.click(await screen.findByText("Yesterday"));
+
+      expect(setTemplateTag).toHaveBeenCalledWith({
+        ...tag,
+        default: "past1days",
+      });
+      expect(setParameterValue).toHaveBeenCalledWith(tag.id, "past1days");
+    });
+
+    it("should only show single-date dynamic defaults for a single date variable", async () => {
+      const tag = createMockTemplateTag({ type: "date" });
+      const { setTemplateTag, setParameterValue } = setup({ tag });
+
+      await userEvent.click(
+        screen.getByTestId("parameter-value-widget-target"),
+      );
+
+      expect(screen.getByRole("button", { name: "Today" })).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Yesterday" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Day before yesterday" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Custom dynamic date" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Custom fixed date" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Add filter" }),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText("Previous week")).not.toBeInTheDocument();
+      expect(screen.queryByText("Previous 7 days")).not.toBeInTheDocument();
+      expect(screen.queryByText("Previous 30 days")).not.toBeInTheDocument();
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Day before yesterday" }),
+      );
+
+      expect(setTemplateTag).toHaveBeenCalledWith({
+        ...tag,
+        default: "past1days-from-1days",
+      });
+      expect(setParameterValue).toHaveBeenCalledWith(
+        tag.id,
+        "past1days-from-1days",
+      );
+    });
+
+    it("should show a calendar after selecting the custom fixed date option", async () => {
+      const tag = createMockTemplateTag({ type: "date" });
+      setup({ tag });
+
+      await userEvent.click(
+        screen.getByTestId("parameter-value-widget-target"),
+      );
+      await userEvent.click(
+        screen.getByRole("button", { name: "Custom fixed date" }),
+      );
+
+      expect(
+        screen.getByRole("button", { name: "Add filter" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Today" }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Yesterday" }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Day before yesterday" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should allow a single date variable to use a dynamic date template default value", async () => {
+      const tag = createMockTemplateTag({ type: "date" });
+      const { setTemplateTag, setParameterValue } = setup({ tag });
+
+      await userEvent.click(
+        screen.getByTestId("parameter-value-widget-target"),
+      );
+      await userEvent.click(
+        screen.getByRole("button", { name: "Custom dynamic date" }),
+      );
+
+      expect(screen.getByLabelText("Dynamic date template")).toHaveValue(
+        "%Y%m%d",
+      );
+      expect(
+        screen.queryByRole("button", { name: "Today" }),
+      ).not.toBeInTheDocument();
+
+      await userEvent.clear(screen.getByLabelText("Dynamic date template"));
+      await userEvent.type(
+        screen.getByLabelText("Dynamic date template"),
+        "%Y%m26 + 1 month - 2 days",
+      );
+      await userEvent.click(screen.getByRole("button", { name: "Apply" }));
+
+      expect(setTemplateTag).toHaveBeenCalledWith({
+        ...tag,
+        default: "date-template:%Y%m26 + 1 month - 2 days",
+      });
+      expect(setParameterValue).toHaveBeenCalledWith(
+        tag.id,
+        "date-template:%Y%m26 + 1 month - 2 days",
+      );
+    });
+
     it("should be able to make the tag required", async () => {
       const tag = createMockTemplateTag();
       const { setTemplateTag } = setup({ tag });

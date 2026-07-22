@@ -14152,6 +14152,12 @@ msgstr ""
 msgid "Yesterday"
 msgstr ""
 
+msgid "Day before yesterday"
+msgstr ""
+
+msgid "Custom fixed date"
+msgstr ""
+
 #: frontend/src/metabase/monitor/tools/components/TaskRunStartedAtPicker/TaskRunDatePicker.tsx:61
 #: frontend/src/metabase/querying/common/components/DatePicker/DateShortcutPicker/constants.ts:34
 #: frontend/src/metabase/transforms/pages/JobRunListPage/JobRunListPage.tsx:281
@@ -21773,6 +21779,10 @@ msgstr ""
 
 #: frontend/src/metabase/metabot/components/AIProviderConfigurationForm/utils.ts:51
 msgid "Enter your Azure API key"
+msgstr ""
+
+#: frontend/src/metabase/metabot/components/AIProviderConfigurationForm/utils.ts:68
+msgid "Enter your Alibaba Cloud Bailian API key"
 msgstr ""
 
 #: frontend/src/metabase/metabot/components/MetabotAsk/MetabotGreeting.tsx:32
@@ -46346,4 +46356,12 @@ msgstr ""
 
 #: resources/automagic_dashboards/table/TransactionTable/ByCountry.yaml
 msgid "Top 10 countries by sales"
+msgstr ""
+
+#: frontend/src/metabase/querying/components/template_tags/TagEditorSidebar.tsx
+msgid "System built-in variable"
+msgstr ""
+
+#: frontend/src/metabase/querying/components/template_tags/TagEditorSidebar.tsx
+msgid "This variable is automatically filled from the current signed-in user and cannot be manually set or overridden."
 msgstr ""

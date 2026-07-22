@@ -44,6 +44,37 @@ function getParameterTarget(tag: TemplateTag): ParameterTarget {
     : ["variable", ["template-tag", tag.name]];
 }
 
+const CURRENT_USER_TEMPLATE_TAG_NAMES = new Set([
+  "current_user_id",
+  "current_user_email",
+  "current_user_first_name",
+  "current_user_last_name",
+  "current_user_common_name",
+  "current_user_is_superuser",
+]);
+
+export function isCurrentUserTemplateTagName(name: string | undefined) {
+  return name != null && CURRENT_USER_TEMPLATE_TAG_NAMES.has(name);
+}
+
+function targetTemplateTagName(target: ParameterTarget | undefined) {
+  const targetReference = target?.[1];
+  return Array.isArray(targetReference) &&
+    targetReference[0] === "template-tag" &&
+    typeof targetReference[1] === "string"
+    ? targetReference[1]
+    : undefined;
+}
+
+export function isCurrentUserParameter(
+  parameter: Pick<Parameter, "slug" | "target">,
+) {
+  return (
+    isCurrentUserTemplateTagName(parameter.slug) ||
+    isCurrentUserTemplateTagName(targetTemplateTagName(parameter.target))
+  );
+}
+
 export function getTemplateTagParameter(
   tag: TemplateTag,
   oldParameter?: Partial<Parameter>,
@@ -80,6 +111,7 @@ export function getTemplateTagParameters(
         tag.type !== "card" &&
         tag.type !== "table" &&
         tag.type !== "snippet" &&
+        !isCurrentUserTemplateTagName(tag.name) &&
         ((tag.type !== "dimension" && tag.type !== "temporal-unit") ||
           tag.dimension != null ||
           (tag["widget-type"] && tag["widget-type"] !== "none")),

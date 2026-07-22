@@ -48,6 +48,37 @@ To set a SQL variable to a value, you can either:
 - Enter a value into the [filter widget](./filter-widgets.md), and re-run the question.
 - Add a parameter to the URL and load the page.
 
+### Use current user variables in SQL
+
+Metabase provides built-in variables for the person currently running a native SQL question. You can use these variables to filter rows or return user information without asking people to enter those values in a filter widget.
+
+For example:
+
+{% raw %}
+
+```sql
+select *
+from orders
+where creator_id = {{current_user_id}}
+```
+
+{% endraw %}
+
+Available current user variables:
+
+| Variable                                             | Value                                | Type    |
+| ---------------------------------------------------- | ------------------------------------ | ------- |
+| `{% raw %}{{current_user_id}}{% endraw %}`           | Current user's ID                    | Number  |
+| `{% raw %}{{current_user_email}}{% endraw %}`        | Current user's email address         | Text    |
+| `{% raw %}{{current_user_first_name}}{% endraw %}`   | Current user's first name            | Text    |
+| `{% raw %}{{current_user_last_name}}{% endraw %}`    | Current user's last name             | Text    |
+| `{% raw %}{{current_user_common_name}}{% endraw %}`  | Current user's display name          | Text    |
+| `{% raw %}{{current_user_is_superuser}}{% endraw %}` | Whether the current user is an admin | Boolean |
+
+Metabase fills these variables from the active login session when it runs the query. Values passed through a filter widget or URL parameter won't override these built-in variables.
+
+These variables require a current Metabase user. Queries that use them won't run in contexts where Metabase doesn't have a logged-in user for the request.
+
 ### Setting a parameter via URL
 
 To add a value to the URL, follow this syntax:

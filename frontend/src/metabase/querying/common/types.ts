@@ -88,14 +88,23 @@ export type QuarterYearPickerValue = {
   quarter: number;
 };
 
+export type DynamicDateTemplateValue = {
+  type: "dynamic-template";
+  template: string;
+};
+
 export type DateFilterValue =
   | DatePickerValue
   | MonthYearPickerValue
-  | QuarterYearPickerValue;
+  | QuarterYearPickerValue
+  | DynamicDateTemplateValue;
 
 export type BooleanFilterValue = "true" | "false" | "is-null" | "not-null";
 
 export type DateFilterDisplayOpts = {
   withPrefix?: boolean;
   formattingSettings?: DateFormattingSettings;
+  singleDateShortcutLabels?: boolean;
+  singleDateShortcutDates?: boolean;
+  locale?: string;
 };

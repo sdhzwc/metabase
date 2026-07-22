@@ -1,6 +1,7 @@
 import {
   getTemplateTagParameters,
   getTemplateTags,
+  isCurrentUserParameter,
 } from "metabase-lib/v1/parameters/utils/template-tags";
 import { createMockTemplateTag } from "metabase-types/api/mocks";
 
@@ -278,6 +279,58 @@ describe("parameters/utils/cards", () => {
           isMultiSelect: false,
         },
       ]);
+    });
+
+    it("should exclude current user built-in template tags", () => {
+      const tags = [
+        createMockTemplateTag({
+          type: "text",
+          id: "1",
+          name: "current_user_email",
+          "display-name": "Current User Email",
+        }),
+        createMockTemplateTag({
+          type: "number",
+          id: "2",
+          name: "current_user_id",
+          "display-name": "Current User ID",
+        }),
+        createMockTemplateTag({
+          type: "text",
+          id: "3",
+          name: "account_email",
+          "display-name": "Account Email",
+        }),
+      ];
+
+      expect(getTemplateTagParameters(tags)).toEqual([
+        expect.objectContaining({
+          id: "3",
+          slug: "account_email",
+          target: ["variable", ["template-tag", "account_email"]],
+        }),
+      ]);
+    });
+
+    it("recognizes previously-saved current user parameters", () => {
+      expect(
+        isCurrentUserParameter({
+          slug: "renamed_parameter",
+          target: ["variable", ["template-tag", "current_user_email"]],
+        }),
+      ).toBe(true);
+      expect(
+        isCurrentUserParameter({
+          slug: "current_user_email",
+          target: ["variable", ["template-tag", "renamed_parameter"]],
+        }),
+      ).toBe(true);
+      expect(
+        isCurrentUserParameter({
+          slug: "account_email",
+          target: ["variable", ["template-tag", "account_email"]],
+        }),
+      ).toBe(false);
     });
   });
 });

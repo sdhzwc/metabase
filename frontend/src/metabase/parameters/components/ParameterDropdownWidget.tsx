@@ -8,6 +8,7 @@ import { DateMonthYearWidget } from "metabase/querying/parameters/components/Dat
 import { DateQuarterYearWidget } from "metabase/querying/parameters/components/DateQuarterYearWidget";
 import { DateRangeWidget } from "metabase/querying/parameters/components/DateRangeWidget";
 import { DateRelativeWidget } from "metabase/querying/parameters/components/DateRelativeWidget";
+import { DateSingleDefaultWidget } from "metabase/querying/parameters/components/DateSingleDefaultWidget";
 import { DateSingleWidget } from "metabase/querying/parameters/components/DateSingleWidget";
 import type {
   FieldFilterUiParameter,
@@ -65,6 +66,19 @@ export const ParameterDropdownWidget = ({
   };
 
   if (isDateParameter(parameter)) {
+    if (parameter.type === "date/single" && isEditing) {
+      return (
+        <DateSingleDefaultWidget
+          value={value}
+          submitButtonLabel={value ? t`Update filter` : t`Add filter`}
+          onChange={(value) => {
+            setValue?.(value);
+            onPopoverClose?.();
+          }}
+        />
+      );
+    }
+
     const DateWidget = {
       "date/single": DateSingleWidget,
       "date/range": DateRangeWidget,

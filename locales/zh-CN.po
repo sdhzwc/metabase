@@ -13555,6 +13555,12 @@ msgstr "今天"
 msgid "Yesterday"
 msgstr "昨天"
 
+msgid "Day before yesterday"
+msgstr "前天"
+
+msgid "Custom fixed date"
+msgstr "自定义固定日期"
+
 #: frontend/src/metabase/monitor/tools/components/TaskRunStartedAtPicker/TaskRunDatePicker.tsx:61
 #: frontend/src/metabase/querying/common/components/DatePicker/DateShortcutPicker/constants.ts:34
 #: frontend/src/metabase/transforms/pages/JobRunListPage/JobRunListPage.tsx:282
@@ -20613,6 +20619,10 @@ msgstr "可用模型将使用已配置的凭证从所选提供方获取。"
 #: frontend/src/metabase/metabot/components/AIProviderConfigurationForm/utils.ts:51
 msgid "Enter your Azure API key"
 msgstr "输入你的 Azure API key"
+
+#: frontend/src/metabase/metabot/components/AIProviderConfigurationForm/utils.ts:68
+msgid "Enter your Alibaba Cloud Bailian API key"
+msgstr "输入你的阿里云百炼 API key"
 
 #: frontend/src/metabase/metabot/components/MetabotAsk/MetabotGreeting.tsx:32
 msgid "What would you like to know?"
@@ -43080,3 +43090,10 @@ msgstr "按国家/地区的用户获取"
 msgid "Top 10 countries by sales"
 msgstr "销量最高的 10 个国家/地区"
 
+#: frontend/src/metabase/querying/components/template_tags/TagEditorSidebar.tsx
+msgid "System built-in variable"
+msgstr "系统变量"
+
+#: frontend/src/metabase/querying/components/template_tags/TagEditorSidebar.tsx
+msgid "This variable is automatically filled from the current signed-in user and cannot be manually set or overridden."
+msgstr "由当前登录用户信息自动填充，无法手动设置或覆盖。"

@@ -12,6 +12,8 @@ import {
   formatDate,
   getDateFilterClause,
   getDateFilterDisplayName,
+  getDynamicDateTemplateDate,
+  getSingleDateDefaultLabels,
 } from "./dates";
 
 type DateFilterClauseCase = {
@@ -235,6 +237,16 @@ describe("getDateFilterDisplayName", () => {
       displayName: "Yesterday",
     },
     {
+      value: {
+        type: "relative",
+        value: -1,
+        unit: "day",
+        offsetValue: -1,
+        offsetUnit: "day",
+      },
+      displayName: "Day before yesterday",
+    },
+    {
       value: { type: "relative", value: -2, unit: "year" },
       displayName: "Previous 2 years",
     },
@@ -369,6 +381,70 @@ describe("getDateFilterDisplayName", () => {
       ).toEqual(displayName);
     },
   );
+});
+
+describe("getSingleDateDefaultLabels", () => {
+  it("should use short Simplified Chinese labels for single date default options", () => {
+    expect(getSingleDateDefaultLabels("zh-CN")).toEqual({
+      today: "今日",
+      yesterday: "昨日",
+      dayBeforeYesterday: "前天",
+      customDynamicDate: "自定义动态日期",
+      customFixedDate: "自定义固定日期",
+      dynamicDateTemplate: "动态日期模板",
+      invalidDynamicDateTemplate: "请输入能生成有效单日期的模板",
+      apply: "应用",
+    });
+  });
+
+  it("should show selected single date defaults as concrete dates", () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date(2026, 6, 22, 12, 30));
+
+    try {
+      expect(
+        getDateFilterDisplayName(
+          {
+            type: "relative",
+            value: -1,
+            unit: "day",
+            offsetValue: -1,
+            offsetUnit: "day",
+          },
+          {
+            singleDateShortcutDates: true,
+          },
+        ),
+      ).toBe("July 20, 2026");
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+});
+
+describe("getDynamicDateTemplateDate", () => {
+  it("should apply date template offsets", () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date(2026, 6, 22, 12, 30));
+
+    try {
+      expect(getDynamicDateTemplateDate("%Y%m26 + 1 day")).toEqual(
+        new Date(2026, 6, 27),
+      );
+      expect(getDynamicDateTemplateDate("%Y%m26 - 1 month + 2 days")).toEqual(
+        new Date(2026, 5, 28),
+      );
+      expect(getDynamicDateTemplateDate("%Y-%m-%d+1week-1year")).toEqual(
+        new Date(2025, 6, 29),
+      );
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it("should reject unsupported dynamic date template offsets", () => {
+    expect(getDynamicDateTemplateDate("%Y%m%d + 1 hour")).toBeNull();
+  });
 });
 
 describe("formatDate", () => {

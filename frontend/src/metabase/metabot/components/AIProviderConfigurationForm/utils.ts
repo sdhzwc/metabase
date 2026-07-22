@@ -61,6 +61,30 @@ export function getProviderOptions(
           "https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html",
       },
     },
+    bailian: {
+      value: "bailian",
+      label: "阿里云百炼",
+      apiKey: {
+        placeholder: t`Enter your Alibaba Cloud Bailian API key`,
+        addKeyUrl: "https://bailian.console.aliyun.com",
+      },
+    },
+    deepseek: {
+      value: "deepseek",
+      label: "DeepSeek",
+      apiKey: {
+        placeholder: t`Enter your DeepSeek API key`,
+        addKeyUrl: "https://platform.deepseek.com/api_keys",
+      },
+    },
+    kimi: {
+      value: "kimi",
+      label: "Kimi",
+      apiKey: {
+        placeholder: t`Enter your Kimi API key`,
+        addKeyUrl: "https://platform.kimi.com/console/api-keys",
+      },
+    },
     openai: {
       value: "openai",
       label: "OpenAI",
@@ -77,6 +101,14 @@ export function getProviderOptions(
         addKeyUrl: "https://openrouter.ai/keys",
       },
     },
+    xiaomi: {
+      value: "xiaomi",
+      label: "Xiaomi MiMo",
+      apiKey: {
+        placeholder: "sk-... / tp-...",
+        addKeyUrl: "https://mimo.mi.com",
+      },
+    },
   };
 }
 
@@ -88,27 +120,52 @@ export type MetabotApiKeyProvider = Exclude<
 export function isMetabotProvider(
   value: string | null | undefined,
 ): value is MetabotProvider {
-  return !!value && value in getProviderOptions(true);
+  return (
+    value === "anthropic" ||
+    value === "azure" ||
+    value === "bailian" ||
+    value === "bedrock" ||
+    value === "deepseek" ||
+    value === "kimi" ||
+    value === "metabase" ||
+    value === "openai" ||
+    value === "openrouter" ||
+    value === "xiaomi"
+  );
 }
 
 export function isAvailableProvider(provider: MetabotProvider): boolean {
   return (
     provider === "anthropic" ||
     provider === "azure" ||
+    provider === "bailian" ||
     provider === "bedrock" ||
+    provider === "deepseek" ||
+    provider === "kimi" ||
     provider === "metabase" ||
     provider === "openai" ||
-    provider === "openrouter"
+    provider === "openrouter" ||
+    provider === "xiaomi"
   );
 }
 
 export const API_KEY_SETTING_BY_PROVIDER: Record<
   MetabotApiKeyProvider,
-  "llm-anthropic-api-key" | "llm-openai-api-key" | "llm-openrouter-api-key"
+  | "llm-anthropic-api-key"
+  | "llm-bailian-api-key"
+  | "llm-deepseek-api-key"
+  | "llm-kimi-api-key"
+  | "llm-openai-api-key"
+  | "llm-openrouter-api-key"
+  | "llm-xiaomi-api-key"
 > = {
   anthropic: "llm-anthropic-api-key",
+  bailian: "llm-bailian-api-key",
+  deepseek: "llm-deepseek-api-key",
+  kimi: "llm-kimi-api-key",
   openai: "llm-openai-api-key",
   openrouter: "llm-openrouter-api-key",
+  xiaomi: "llm-xiaomi-api-key",
 };
 
 export const AZURE_MODEL_FAMILIES = [

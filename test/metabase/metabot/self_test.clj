@@ -658,6 +658,27 @@
                         :ok)))))
         (is (= 2 @calls))))))
 
+(defn- tool-argument-chunks
+  [tool-name raw]
+  [{:type :tool-input-start :toolCallId "c1" :toolName tool-name}
+   {:type :tool-input-delta :toolCallId "c1" :inputTextDelta raw}
+   {:type :tool-input-available :toolCallId "c1" :toolName tool-name}])
+
+(deftest parse-tool-arguments-repairs-missing-closing-delimiters-test
+  (testing "repairs a Bailian-style construct_notebook_query argument with a missing final brace"
+    (let [raw       "{\"query\":{\"lib/type\":\"mbql/query\",\"stages\":[],\"title\":\"销售订单按区域趋势图\",\"visualization\":{\"chart_type\":\"line\"}}"
+          arguments (#'self.core/parse-tool-arguments (tool-argument-chunks "construct_notebook_query" raw))]
+      (is (= {:query         {:lib/type "mbql/query"
+                              :stages   []}
+              :title         "销售订单按区域趋势图"
+              :visualization {:chart_type "line"}}
+             arguments)))))
+
+(deftest parse-tool-arguments-keeps-unrepairable-json-as-raw-arguments-test
+  (testing "unrepairable JSON still returns the raw-arguments sentinel"
+    (is (= {:_raw_arguments "{not valid json"}
+           (#'self.core/parse-tool-arguments (tool-argument-chunks "json" "{not valid json"))))))
+
 (defn- malformed-tool-input-response
   "A reducible LLM stream whose forced tool call streams invalid JSON, so
   `parse-tool-arguments` yields the `{:_raw_arguments ...}` sentinel."

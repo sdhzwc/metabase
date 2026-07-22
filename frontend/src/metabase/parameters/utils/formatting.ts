@@ -22,6 +22,11 @@ import type {
 
 import { formatDateValue } from "./date-formatting";
 
+type FormatParameterValueOptions = {
+  singleDateShortcutLabels?: boolean;
+  locale?: string;
+};
+
 function inferValueType(parameter: UiParameter) {
   const type = getParameterType(parameter);
   if (type === "number") {
@@ -46,6 +51,7 @@ export function formatParameterValue(
   rawValue: string | number | number[] | ParameterValue,
   parameter: UiParameter,
   formattingSettings?: FormattingSettings,
+  options: FormatParameterValueOptions = {},
 ) {
   if (Array.isArray(rawValue) && rawValue.length > 1) {
     return renderNumberOfSelections(rawValue.length);
@@ -58,6 +64,7 @@ export function formatParameterValue(
       parameter,
       String(value),
       formattingSettings?.["type/Temporal"],
+      options,
     );
   }
 

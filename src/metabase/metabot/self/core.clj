@@ -120,18 +120,88 @@
 
 ;;; AISDK5
 
+(defn- append-missing-json-closing-delimiters
+  "Append missing closing braces/brackets for otherwise well-formed JSON.
+  Returns nil when the string has mismatched delimiters."
+  [s]
+  (loop [[ch & more] s
+         stack       '()
+         in-string?  false
+         escaped?    false]
+    (cond
+      (nil? ch)
+      (when-not in-string?
+        (str s (apply str (map {\{ \}
+                                \[ \]}
+                               stack))))
+
+      escaped?
+      (recur more stack in-string? false)
+
+      (and in-string? (= ch \\))
+      (recur more stack in-string? true)
+
+      (= ch \")
+      (recur more stack (not in-string?) false)
+
+      in-string?
+      (recur more stack in-string? false)
+
+      (or (= ch \{) (= ch \[))
+      (recur more (conj stack ch) in-string? false)
+
+      (= ch \})
+      (when (= (first stack) \{)
+        (recur more (rest stack) in-string? false))
+
+      (= ch \])
+      (when (= (first stack) \[)
+        (recur more (rest stack) in-string? false))
+
+      :else
+      (recur more stack in-string? false))))
+
+(defn- decode-tool-arguments-json
+  [raw]
+  (try
+    (json/decode+kw raw)
+    (catch Exception original-error
+      (if-let [repaired (append-missing-json-closing-delimiters raw)]
+        (try
+          (json/decode+kw repaired)
+          (catch Exception _
+            (throw original-error)))
+        (throw original-error)))))
+
+(defn- normalize-construct-notebook-query-arguments
+  [arguments]
+  (let [query (:query arguments)]
+    (if (map? query)
+      (let [hoisted-keys [:title :visualization]]
+        (-> arguments
+            (as-> args (merge (select-keys query hoisted-keys) args))
+            (update :query #(apply dissoc % hoisted-keys))))
+      arguments)))
+
+(defn- normalize-tool-arguments
+  [tool-name arguments]
+  (case tool-name
+    "construct_notebook_query" (normalize-construct-notebook-query-arguments arguments)
+    arguments))
+
 (defn- parse-tool-arguments
   "Parse concatenated tool input deltas as JSON.
   Falls back to returning the raw string wrapped in a map when parsing fails,
   e.g. when the LLM produces malformed JSON in tool call arguments."
   [chunks]
   (let [raw (->> (map :inputTextDelta chunks)
-                 (str/join ""))]
+                 (str/join ""))
+        tool-name (:toolName (first chunks))]
     (try
-      (json/decode+kw raw)
+      (normalize-tool-arguments tool-name (decode-tool-arguments-json raw))
       (catch Exception e
         (log/warn "Failed to parse tool arguments as JSON, passing raw string"
-                  {:tool    (:toolName (first chunks))
+                  {:tool    tool-name
                    :error   (.getMessage e)
                    :raw-len (count raw)})
         ;; Return a map with a sentinel key so the tool sees an error via schema validation
