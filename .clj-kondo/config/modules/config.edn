@@ -2017,6 +2017,7 @@
            metabase.search.core
            metabase.search.engine
            metabase.search.in-place.scoring
+           metabase.search.index-health
            metabase.search.ingestion
            metabase.search.init
            metabase.search.scoring
@@ -2031,6 +2032,7 @@
            collections
            config
            events
+           health-inspector
            lib
            lib-be
            models
