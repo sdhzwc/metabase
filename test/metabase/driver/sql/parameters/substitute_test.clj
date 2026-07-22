@@ -617,7 +617,16 @@
                                                                   :type         "date"}}}
                        :parameters [{:type   :date/single
                                      :target [:variable [:template-tag "created_at"]]
-                                     :value  "thisday"}]}))))))
+                                     :value  "thisday"}]})))
+      (is (= {:query  "SELECT * FROM orders WHERE created_at > ?;"
+              :params [#t "2016-06-05"]}
+             (expand* {:native     {:query         "SELECT * FROM orders WHERE created_at > {{created_at}};"
+                                    :template-tags {"created_at" {:name         "created_at"
+                                                                  :display-name "Created At"
+                                                                  :type         "date"}}}
+                       :parameters [{:type   :date/single
+                                     :target [:variable [:template-tag "created_at"]]
+                                     :value  "past1days-from-1days"}]}))))))
 
 (deftest ^:parallel expand-variables-test-6
   (testing "specified param (text)"

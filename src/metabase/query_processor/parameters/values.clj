@@ -472,17 +472,13 @@
 (mu/defn- value->single-date :- ::params.types/date
   [value]
   (let [value (or (dynamic-date-template->date-string value) value)]
-    (try
-      (lib/parsed-date-param value)
-      (catch Throwable e
-        (let [{:keys [start end]} (try
-                                    (params.dates/date-string->range value)
-                                    (catch Throwable _
-                                      (throw e)))]
-          (if (= start end)
-            (lib/parsed-date-param start)
-            (throw (ex-info (tru "Expected a single date, got date range ''{0}''" value)
-                            {:type qp.error-type/invalid-parameter}))))))))
+    (if (string? value)
+      (let [{:keys [start end]} (params.dates/date-string->range value)]
+        (if (= start end)
+          (lib/parsed-date-param start)
+          (throw (ex-info (tru "Expected a single date, got date range ''{0}''" value)
+                          {:type qp.error-type/invalid-parameter}))))
+      (lib/parsed-date-param value))))
 
 (mu/defn- parse-value-for-field-type :- :any
   "Do special parsing for value for a (presumably textual) FieldFilter (`:type` = `:dimension`) param (i.e., attempt
