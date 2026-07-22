@@ -525,31 +525,32 @@
   additionally attempt handle special cases based on the base type of the Field, for example, parsing params for UUID
   base type Fields as UUIDs."
   [param-type :- ::lib.schema.template-tag/type value]
-  (cond
-    (= value lib/parsed-param-no-value-placeholder)
-    value
+  (let [param-type (keyword param-type)]
+    (cond
+      (= value lib/parsed-param-no-value-placeholder)
+      value
 
-    (= param-type :number)
-    (value->number value)
+      (= param-type :number)
+      (value->number value)
 
-    (= param-type :date)
-    (value->single-date value)
+      (= param-type :date)
+      (value->single-date value)
 
-    ;; Field Filters
-    (and (= param-type :dimension)
-         (= (get-in value [:value :type]) :number))
-    (update-in value [:value :value] value->number)
+      ;; Field Filters
+      (and (= param-type :dimension)
+           (= (get-in value [:value :type]) :number))
+      (update-in value [:value :value] value->number)
 
-    (sequential? value)
-    (mapv (partial parse-value-for-type param-type) value)
+      (sequential? value)
+      (mapv (partial parse-value-for-type param-type) value)
 
-    ;; Field Filters with "special" base types
-    (and (= param-type :dimension)
-         (get-in value [:field :base-type]))
-    (update-filter-for-field-type value)
+      ;; Field Filters with "special" base types
+      (and (= param-type :dimension)
+           (get-in value [:field :base-type]))
+      (update-filter-for-field-type value)
 
-    :else
-    value))
+      :else
+      value)))
 
 (mu/defn- value-for-tag :- ::parsed-param-value
   "Given a map `tag` (a value in the `:template-tags` dictionary) return the corresponding value from the `params`

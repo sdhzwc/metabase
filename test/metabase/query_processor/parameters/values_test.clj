@@ -145,6 +145,14 @@
              (value-for-tag
               {:name "date", :display-name "Date", :type :date, :default "thisday"}
               nil)))
+      (is (= (lib/parsed-date-param "2016-06-07")
+             (value-for-tag
+              {:name "date", :display-name "Date", :type "date", :default "thisday"}
+              nil)))
+      (is (= (lib/parsed-date-param "2016-06-07")
+             (value-for-tag
+              {:name "date", :display-name "Date", :type "date"}
+              [{:type :date/single, :target [:variable [:template-tag "date"]], :value "thisday"}])))
       (is (= (lib/parsed-date-param "2016-06-06")
              (value-for-tag
               {:name "date", :display-name "Date", :type :date, :default "past1days"}

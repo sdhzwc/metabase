@@ -606,6 +606,19 @@
                                                                   :default      "thisday"}}}
                        :parameters []}))))))
 
+(deftest ^:parallel expand-variables-test-5c
+  (testing "specified param (dynamic date/single with string tag type)"
+    (mt/with-clock #t "2016-06-07T12:13:55Z"
+      (is (= {:query  "SELECT * FROM orders WHERE created_at > ?;"
+              :params [#t "2016-06-07"]}
+             (expand* {:native     {:query         "SELECT * FROM orders WHERE created_at > {{created_at}};"
+                                    :template-tags {"created_at" {:name         "created_at"
+                                                                  :display-name "Created At"
+                                                                  :type         "date"}}}
+                       :parameters [{:type   :date/single
+                                     :target [:variable [:template-tag "created_at"]]
+                                     :value  "thisday"}]}))))))
+
 (deftest ^:parallel expand-variables-test-6
   (testing "specified param (text)"
     (is (= {:query  "SELECT * FROM products WHERE category = ?;"
