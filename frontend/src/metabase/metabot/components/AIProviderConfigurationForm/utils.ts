@@ -63,7 +63,7 @@ export function getProviderOptions(
     },
     bailian: {
       value: "bailian",
-      label: "阿里云百炼",
+      label: "Qwen",
       apiKey: {
         placeholder: t`Enter your Alibaba Cloud Bailian API key`,
         addKeyUrl: "https://bailian.console.aliyun.com",

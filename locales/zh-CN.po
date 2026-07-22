@@ -20622,7 +20622,7 @@ msgstr "输入你的 Azure API key"
 
 #: frontend/src/metabase/metabot/components/AIProviderConfigurationForm/utils.ts:68
 msgid "Enter your Alibaba Cloud Bailian API key"
-msgstr "输入你的阿里云百炼 API key"
+msgstr "输入你的Qwen API key"
 
 #: frontend/src/metabase/metabot/components/MetabotAsk/MetabotGreeting.tsx:32
 msgid "What would you like to know?"

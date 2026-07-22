@@ -49,8 +49,12 @@
 (deftest ^:parallel resolve-adapter-test
   (testing "resolves known providers to adapter functions"
     (is (fn? (#'self/resolve-adapter "anthropic")))
+    (is (fn? (#'self/resolve-adapter "bailian")))
+    (is (fn? (#'self/resolve-adapter "deepseek")))
+    (is (fn? (#'self/resolve-adapter "kimi")))
     (is (fn? (#'self/resolve-adapter "openai")))
-    (is (fn? (#'self/resolve-adapter "openrouter"))))
+    (is (fn? (#'self/resolve-adapter "openrouter")))
+    (is (fn? (#'self/resolve-adapter "xiaomi"))))
   (testing "throws for unknown provider"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unknown LLM provider"
                           (#'self/resolve-adapter "unknown")))))

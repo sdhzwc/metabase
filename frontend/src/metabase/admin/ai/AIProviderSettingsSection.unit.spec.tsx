@@ -734,7 +734,7 @@ describe("AIProviderSettingsSection", () => {
     await userEvent.click(screen.getByLabelText("Provider"));
 
     const bailianOption = await screen.findByRole("option", {
-      name: /阿里云百炼/,
+      name: /Qwen/,
     });
     expect(bailianOption).toBeInTheDocument();
     expect(bailianOption).not.toHaveAttribute("data-combobox-disabled");
@@ -1865,7 +1865,7 @@ describe("AIProviderSettingsSection", () => {
       },
     });
 
-    await selectProvider("阿里云百炼");
+    await selectProvider("Qwen");
     await userEvent.type(screen.getByLabelText("API key"), "bailian-test-key");
     await userEvent.click(screen.getByRole("button", { name: "Connect" }));
 
@@ -1921,7 +1921,7 @@ describe("AIProviderSettingsSection", () => {
       apiKeyValues: { bailian: "**********ey" },
     });
 
-    await screen.findByText("Connected to 阿里云百炼");
+    await screen.findByText("Connected to Qwen");
     await screen.findByLabelText("API key");
     await confirmDisconnectProvider();
 
