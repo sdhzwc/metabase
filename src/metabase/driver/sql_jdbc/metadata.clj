@@ -10,6 +10,18 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- result-set-metadata->columns
+  [driver ^java.sql.ResultSetMetaData rsmeta]
+  (when rsmeta
+    (mapv (fn [i]
+            (let [database-type (.getColumnTypeName rsmeta i)]
+              {:lib/type      :metadata/column
+               :name          (.getColumnLabel rsmeta i)
+               :database-type database-type
+               :base-type     (or (sql-jdbc.sync.interface/database-type->base-type driver (keyword database-type))
+                                  :type/*)}))
+          (range 1 (inc (.getColumnCount rsmeta))))))
+
 (mu/defn query-result-metadata :- [:sequential driver-api/schema.metadata.column]
   "Default implementation of [[metabase.driver/query-result-metadata]] for JDBC-based drivers. Gets metadata without
   actually running a query."
@@ -30,12 +42,7 @@
     nil
     (fn [^java.sql.Connection conn]
       (with-open [stmt (sql-jdbc.execute/prepared-statement driver conn sql params)]
-        (let [rsmeta (.getMetaData stmt)]
-          (mapv (fn [i]
-                  (let [database-type (.getColumnTypeName rsmeta i)]
-                    {:lib/type      :metadata/column
-                     :name          (.getColumnLabel rsmeta i)
-                     :database-type database-type
-                     :base-type     (or (sql-jdbc.sync.interface/database-type->base-type driver (keyword database-type))
-                                        :type/*)}))
-                (range 1 (inc (.getColumnCount rsmeta))))))))))
+        (or (result-set-metadata->columns driver (.getMetaData stmt))
+            (with-open [rs (sql-jdbc.execute/execute-prepared-statement! driver stmt)]
+              (result-set-metadata->columns driver (.getMetaData rs)))
+            []))))))
