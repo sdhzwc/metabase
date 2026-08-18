@@ -185,7 +185,13 @@ function PinnedItemCard({
       className={className}
       onClick={onClick}
     >
-      {to ? <Link to={to}>{card}</Link> : card}
+      {to ? (
+        <Link to={to} target="_blank" rel="noreferrer">
+          {card}
+        </Link>
+      ) : (
+        card
+      )}
     </Box>
   );
 }

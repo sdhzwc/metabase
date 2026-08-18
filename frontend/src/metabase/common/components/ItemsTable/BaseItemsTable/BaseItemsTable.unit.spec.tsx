@@ -90,6 +90,15 @@ describe("BaseItemsTable", () => {
     expect(screen.getByText(lastEditedAt)).toBeInTheDocument();
   });
 
+  it("opens item links in a new tab", () => {
+    setup();
+
+    expect(screen.getByRole("link", { name: /My Item/ })).toHaveAttribute(
+      "target",
+      "_blank",
+    );
+  });
+
   it("displays last edit time on hover", async () => {
     setup();
     const lastEditedAt = dayjs(timestamp).format("MMMM D, YYYY");

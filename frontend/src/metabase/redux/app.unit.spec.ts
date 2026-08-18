@@ -2,6 +2,7 @@ import appReducer, {
   closeNavbar,
   isNavbarOpenForPathname,
   openNavbar,
+  openUrl,
   resetErrorPage,
   setErrorPage,
   toggleNavbar,
@@ -135,5 +136,42 @@ describe("isNavbarOpenForPathname", () => {
     ["/collection/1", false, false],
   ])("pathname %s with prevState %s => %s", (pathname, prevState, expected) => {
     expect(isNavbarOpenForPathname(pathname, prevState)).toBe(expected);
+  });
+});
+
+describe("openUrl", () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it("opens in a new tab when blank is requested", () => {
+    const dispatch = jest.fn();
+    const clickedTargets: string[] = [];
+    const originalCreateElement = document.createElement.bind(document);
+
+    jest
+      .spyOn(document, "createElement")
+      .mockImplementation((tagName, options) => {
+        const element = originalCreateElement(tagName, options);
+
+        if (tagName === "a") {
+          jest
+            .spyOn(
+              // Cast is necessary because TypeScript cannot narrow `element` based on `tagName`.
+              element as HTMLAnchorElement,
+              "click",
+            )
+            .mockImplementation(function (this: HTMLAnchorElement) {
+              clickedTargets.push(this.target);
+            });
+        }
+
+        return element;
+      });
+
+    openUrl("/question/1", { blank: true })(dispatch);
+
+    expect(clickedTargets).toEqual(["_blank"]);
+    expect(dispatch).not.toHaveBeenCalled();
   });
 });

@@ -53,7 +53,12 @@ const ItemLinkComponent = ({
   }
 
   return (
-    <ItemLink to={modelToUrl(item)} onClick={() => onClick?.(item)}>
+    <ItemLink
+      to={modelToUrl(item)}
+      target="_blank"
+      rel="noreferrer"
+      onClick={() => onClick?.(item)}
+    >
       {children}
     </ItemLink>
   );

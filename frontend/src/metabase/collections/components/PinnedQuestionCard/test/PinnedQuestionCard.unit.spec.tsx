@@ -16,6 +16,17 @@ describe("PinnedQuestionCard", () => {
       1,
     );
   });
+
+  it("opens the item in a new tab", async () => {
+    setup({ collection_preview: false });
+
+    await screen.findByText("Question");
+
+    expect(screen.getByRole("link", { name: "Question" })).toHaveAttribute(
+      "target",
+      "_blank",
+    );
+  });
 });
 
 describe("description", () => {

@@ -107,6 +107,12 @@ describe("PinnedItemCard", () => {
     expect(screen.getByText(defaultItem.description)).toBeInTheDocument();
   });
 
+  it("opens the item in a new tab", () => {
+    setup();
+
+    expect(screen.getByRole("link")).toHaveAttribute("target", "_blank");
+  });
+
   it("should show a default description if there is no item description", () => {
     setup({ item: getCollectionItem({ description: "" }) });
     expect(screen.getByText("A dashboard")).toBeInTheDocument();

@@ -45,13 +45,15 @@ export function resetErrorPage() {
   };
 }
 
-export const openUrl = (url: string) => (dispatch: Dispatch) => {
-  if (shouldOpenInBlankWindow(url)) {
-    openInBlankWindow(url);
-  } else {
-    dispatch(push(url));
-  }
-};
+export const openUrl =
+  (url: string, options?: Parameters<typeof shouldOpenInBlankWindow>[1]) =>
+  (dispatch: Dispatch) => {
+    if (shouldOpenInBlankWindow(url, options)) {
+      openInBlankWindow(url);
+    } else {
+      dispatch(push(url));
+    }
+  };
 
 const errorPage = handleActions(
   {

@@ -74,7 +74,7 @@ export const navigateToNewCardFromDashboard = createThunkAction(
         });
 
         if (url) {
-          dispatch(openUrl(url));
+          dispatch(openUrl(url, { blank: true }));
         }
       }
 

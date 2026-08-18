@@ -81,6 +81,8 @@ const PinnedQuestionCard = ({
   return (
     <CardRoot
       to={modelToUrl(item)}
+      target="_blank"
+      rel="noreferrer"
       isPreview={isPreview}
       className={cx(CS.hoverChild, CS.hoverVisibility)}
     >
