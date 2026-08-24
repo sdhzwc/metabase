@@ -4,6 +4,7 @@ import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
 import { isTableDisplay } from "metabase/dashboard/utils";
+import { Switch } from "metabase/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   ArbitraryCustomDestinationClickBehavior,
@@ -69,7 +70,16 @@ export function LinkOptions({
 
   const handleSelectLinkType = useCallback(
     (type: CustomDestinationClickBehaviorLinkType) =>
-      updateSettings({ type: clickBehavior.type, linkType: type }),
+      updateSettings({ ...clickBehavior, linkType: type }),
+    [clickBehavior, updateSettings],
+  );
+
+  const handleBlankChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) =>
+      updateSettings({
+        ...clickBehavior,
+        blank: event.currentTarget.checked,
+      }),
     [clickBehavior, updateSettings],
   );
 
@@ -88,6 +98,14 @@ export function LinkOptions({
           />
         ) : null}
       </div>
+      {hasSelectedLinkType && (
+        <Switch
+          checked={clickBehavior.blank === true}
+          label={t`Open in new tab`}
+          mt="md"
+          onChange={handleBlankChange}
+        />
+      )}
       <div className={CS.mt1}>
         {hasSelectedLinkType && clickBehavior.linkType !== "url" && (
           <div>

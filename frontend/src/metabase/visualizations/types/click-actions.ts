@@ -100,6 +100,7 @@ export type PopoverClickAction = ClickActionBase & {
 };
 
 type UrlClickActionBase = {
+  blank?: boolean;
   ignoreSiteUrl?: boolean;
   url: () => string;
 };

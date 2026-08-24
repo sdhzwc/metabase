@@ -65,7 +65,7 @@ export function CustomURLPicker({
 
   const handleReset = useCallback(() => {
     updateSettings({
-      type: clickBehavior.type,
+      ...clickBehavior,
       // @ts-expect-error allow resetting
       linkType: null,
     });

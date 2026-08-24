@@ -8,6 +8,10 @@ import Question from "metabase-lib/v1/Question";
 import { performAction } from "./action";
 
 describe("performAction", () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   it('should redirect using router if a "relative" url has been passed', () => {
     MetabaseSettings.set("site-url", "http://localhost");
     const action: UrlClickAction = {
@@ -42,6 +46,51 @@ describe("performAction", () => {
       },
       type: "@@router/CALL_HISTORY_METHOD",
     });
+  });
+
+  it("should open url actions in a new tab when blank is requested", () => {
+    MetabaseSettings.set("site-url", "http://localhost");
+    const clickedTargets: string[] = [];
+    const originalCreateElement = document.createElement.bind(document);
+    const action: UrlClickAction = {
+      blank: true,
+      buttonType: "horizontal",
+      name: "automatic-insights",
+      section: "auto",
+      url: jest.fn(() => "/question/1"),
+    };
+
+    jest
+      .spyOn(document, "createElement")
+      .mockImplementation((tagName, options) => {
+        const element = originalCreateElement(tagName, options);
+
+        if (tagName === "a") {
+          jest
+            .spyOn(
+              // Cast is necessary because TypeScript cannot narrow `element` based on `tagName`.
+              element as HTMLAnchorElement,
+              "click",
+            )
+            .mockImplementation(function (this: HTMLAnchorElement) {
+              clickedTargets.push(this.target);
+            });
+        }
+
+        return element;
+      });
+
+    const extraProps = {
+      dispatch: jest.fn(),
+      onChangeCardAndRun: jest.fn(),
+      onUpdateQuestion: jest.fn(),
+    };
+
+    expect(performAction(action, extraProps)).toBe(true);
+
+    expect(action.url).toHaveBeenCalledTimes(1);
+    expect(clickedTargets).toEqual(["_blank"]);
+    expect(extraProps.dispatch).not.toHaveBeenCalled();
   });
 
   describe.each([

@@ -72,6 +72,7 @@ export type EntityCustomDestinationClickBehavior =
 export interface DashboardCustomDestinationClickBehavior {
   type: "link";
   linkType: "dashboard";
+  blank?: boolean;
   targetId?: DashboardId;
   /**
    * tabId will be undefined when user edits click behavior that
@@ -85,6 +86,7 @@ export interface DashboardCustomDestinationClickBehavior {
 export interface QuestionCustomDestinationClickBehavior {
   type: "link";
   linkType: "question";
+  blank?: boolean;
   targetId?: CardId;
   parameterMapping?: ClickBehaviorParameterMapping;
   linkTextTemplate?: string;
@@ -93,6 +95,7 @@ export interface QuestionCustomDestinationClickBehavior {
 export interface ArbitraryCustomDestinationClickBehavior {
   type: "link";
   linkType: "url";
+  blank?: boolean;
   linkTemplate: string;
   linkTextTemplate?: string;
 }

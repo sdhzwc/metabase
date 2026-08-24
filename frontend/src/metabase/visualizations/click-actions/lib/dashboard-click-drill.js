@@ -37,7 +37,7 @@ export function getDashboardDrillType(clicked) {
     if (linkType === "url") {
       return "link-url";
     } else if (linkType === "dashboard") {
-      if (extraData.dashboard.id === targetId) {
+      if (extraData.dashboard.id === targetId && clickBehavior.blank !== true) {
         return "dashboard-reset";
       } else {
         return "dashboard-url";
@@ -55,6 +55,12 @@ export function getDashboardDrillTab(clicked) {
   const { tabId } = getClickBehaviorData(clicked, clickBehavior);
 
   return tabId;
+}
+
+export function shouldOpenDashboardDrillInNewTab(clicked) {
+  const clickBehavior = getClickBehavior(clicked);
+
+  return clickBehavior?.blank === true;
 }
 
 export function getDashboardDrillParameters(clicked) {

@@ -42,6 +42,7 @@ export function performAction(
 
   if ("url" in action) {
     const url = action.url();
+    const blank = action.blank;
     const ignoreSiteUrl = action.ignoreSiteUrl;
     if (url) {
       openUrl(url, {
@@ -52,6 +53,7 @@ export function performAction(
             dispatch(push(location));
           }
         },
+        blank,
         ignoreSiteUrl,
       });
       didPerform = true;

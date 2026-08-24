@@ -96,6 +96,74 @@ describe("DashboardClickAction", () => {
     });
   });
 
+  it("opens dashboard link click behaviors in a new tab when configured", () => {
+    const actions = DashboardClickAction({
+      question: {},
+      clicked: {
+        column: metricColumn,
+        extraData: {
+          dashboard: { id: 1 },
+          dashboards: {
+            2: { parameters: [] },
+          },
+        },
+      },
+      settings: buildSettings({
+        columns: {
+          count: {
+            type: "link",
+            linkType: "dashboard",
+            blank: true,
+            targetId: 2,
+            parameterMapping: {},
+          },
+        },
+      }),
+    });
+
+    expect(actions).toHaveLength(1);
+    expect(actions[0]).toMatchObject({
+      name: "click_behavior",
+      defaultAlways: true,
+      blank: true,
+    });
+  });
+
+  it("opens same-dashboard link click behaviors in a new tab when configured", () => {
+    const actions = DashboardClickAction({
+      question: {},
+      clicked: {
+        column: metricColumn,
+        extraData: {
+          dashboard: { id: 1 },
+          dashboards: {
+            1: { parameters: [] },
+          },
+        },
+      },
+      settings: buildSettings({
+        columns: {
+          count: {
+            type: "link",
+            linkType: "dashboard",
+            blank: true,
+            targetId: 1,
+            parameterMapping: {},
+          },
+        },
+      }),
+    });
+
+    expect(actions).toHaveLength(1);
+    expect(actions[0]).toMatchObject({
+      name: "click_behavior",
+      defaultAlways: true,
+      blank: true,
+      url: expect.any(Function),
+    });
+    expect(actions[0].action).toBeUndefined();
+  });
+
   it("returns no action when no click behavior is configured for the clicked target", () => {
     const actions = DashboardClickAction({
       question: {},

@@ -7,6 +7,7 @@ import {
   getDashboardDrillTab,
   getDashboardDrillType,
   getDashboardDrillUrl,
+  shouldOpenDashboardDrillInNewTab,
 } from "metabase/visualizations/click-actions/lib/dashboard-click-drill";
 import type {
   AlwaysDefaultClickAction,
@@ -46,19 +47,23 @@ function getAction(
   // Unjustified type cast. FIXME
   const setParameterValue = clicked.extraData
     ?.setParameterValue as SetParameterValue;
+  const blank = shouldOpenDashboardDrillInNewTab(clicked);
 
   switch (type) {
     case "link-url":
       return {
+        blank,
         ignoreSiteUrl: true,
         url: () => getDashboardDrillLinkUrl(clicked),
       };
     case "question-url":
       return {
+        blank,
         url: () => getDashboardDrillQuestionUrl(question, clicked),
       };
     case "dashboard-url":
       return {
+        blank,
         url: () => getDashboardDrillUrl(clicked),
       };
     case "dashboard-filter":
