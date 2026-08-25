@@ -1031,6 +1031,9 @@
 (def ^:private normal-collections-first-sort-clause
   [:type :asc :nulls-first])
 
+(def ^:private normalized-name-sort-expr
+  [:lower [:trim :name]])
+
 (defn children-sort-clause
   "Given the client side sort-info, return sort clause to effect this. `db-type` is necessary due to complications from
   treatment of nulls in the different app db types."
@@ -1041,20 +1044,20 @@
         [[(official-collections-first-sort-clause sort-info)]
          [normal-collections-first-sort-clause]
          (case ((juxt :sort-column :sort-direction) sort-info)
-           [nil nil]               [[:%lower.name :asc]]
-           [:name :asc]            [[:%lower.name :asc]]
-           [:name :desc]           [[:%lower.name :desc]]
+           [nil nil]               [[normalized-name-sort-expr :asc]]
+           [:name :asc]            [[normalized-name-sort-expr :asc]]
+           [:name :desc]           [[normalized-name-sort-expr :desc]]
            [:last-edited-at :asc]  [(if (= db-type :mysql)
                                       [:%isnull.last_edit_timestamp]
                                       [:last_edit_timestamp :nulls-last])
                                     [:last_edit_timestamp :asc]
-                                    [:%lower.name :asc]]
+                                    [normalized-name-sort-expr :asc]]
            [:last-edited-at :desc] [(case db-type
                                       :mysql    [:%isnull.last_edit_timestamp]
                                       :postgres [:last_edit_timestamp :desc-nulls-last]
                                       :h2       nil)
                                     [:last_edit_timestamp :desc]
-                                    [:%lower.name :asc]]
+                                    [normalized-name-sort-expr :asc]]
            [:last-edited-by :asc]  [(if (= db-type :mysql)
                                       [:%isnull.last_edit_last_name]
                                       [:last_edit_last_name :nulls-last])
@@ -1063,7 +1066,7 @@
                                       [:%isnull.last_edit_first_name]
                                       [:last_edit_first_name :nulls-last])
                                     [:last_edit_first_name :asc]
-                                    [:%lower.name :asc]]
+                                    [normalized-name-sort-expr :asc]]
            [:last-edited-by :desc] [(case db-type
                                       :mysql    [:%isnull.last_edit_last_name]
                                       :postgres [:last_edit_last_name :desc-nulls-last]
@@ -1074,11 +1077,11 @@
                                       :postgres [:last_edit_last_name :desc-nulls-last]
                                       :h2       nil)
                                     [:last_edit_first_name :desc]
-                                    [:%lower.name :asc]]
-           [:model :asc]           [[:model_ranking :asc]  [:%lower.name :asc]]
-           [:model :desc]          [[:model_ranking :desc] [:%lower.name :asc]]
-           [:description :asc]     [[:%lower.description :asc :nulls-last] [:%lower.name :asc]]
-           [:description :desc]    [[:%lower.description :desc :nulls-last] [:%lower.name :asc]])
+                                    [normalized-name-sort-expr :asc]]
+           [:model :asc]           [[:model_ranking :asc]  [normalized-name-sort-expr :asc]]
+           [:model :desc]          [[:model_ranking :desc] [normalized-name-sort-expr :asc]]
+           [:description :asc]     [[:%lower.description :asc :nulls-last] [normalized-name-sort-expr :asc]]
+           [:description :desc]    [[:%lower.description :desc :nulls-last] [normalized-name-sort-expr :asc]])
          ;; add a fallback sort order so paging is still deterministic even if collection have the same name or
          ;; whatever
          [[:id :asc]]]))

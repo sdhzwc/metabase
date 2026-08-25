@@ -52,11 +52,13 @@ const ItemLinkComponent = ({
     return <ItemButton onClick={() => onClick?.(item)}>{children}</ItemButton>;
   }
 
+  const opensInNewTab = item.model !== "collection";
+
   return (
     <ItemLink
       to={modelToUrl(item)}
-      target="_blank"
-      rel="noreferrer"
+      target={opensInNewTab ? "_blank" : undefined}
+      rel={opensInNewTab ? "noreferrer" : undefined}
       onClick={() => onClick?.(item)}
     >
       {children}

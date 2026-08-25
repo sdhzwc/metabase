@@ -1115,6 +1115,19 @@
                         :data
                         (map :name))))))))))
 
+(deftest collection-items-order-by-name-ignores-surrounding-whitespace-test
+  (testing "GET /api/collection/:id/items"
+    (testing "Results ordered by name ignore leading whitespace"
+      (mt/with-temp [:model/Collection {collection-id :id} {:name "Collection with Items"}
+                     :model/Card       _ {:name " 6-Late" :collection_id collection-id}
+                     :model/Card       _ {:name "1-Early" :collection_id collection-id}
+                     :model/Card       _ {:name "2-Next" :collection_id collection-id}]
+        (is (= ["1-Early" "2-Next" " 6-Late"]
+               (->> (mt/user-http-request :rasta :get 200
+                                          (str "collection/" collection-id "/items?sort_column=name&sort_direction=asc"))
+                    :data
+                    (map :name))))))))
+
 (deftest collection-items-order-by-model-test
   (testing "GET /api/collection/:id/items"
     (testing "Results can be ordered by model"
@@ -1375,7 +1388,7 @@
     (doseq [app-db [:mysql :h2 :postgres]]
       (is (= [[:authority_level :asc :nulls-last]
               [:type :asc :nulls-first]
-              [:%lower.name :asc]
+              [[:lower [:trim :name]] :asc]
               [:id :asc]]
              (api.collection/children-sort-clause {:official-collections-first? true} app-db))))))
 
@@ -1385,7 +1398,7 @@
             [:type :asc :nulls-first]
             [:%isnull.last_edit_timestamp]
             [:last_edit_timestamp :asc]
-            [:%lower.name :asc]
+            [[:lower [:trim :name]] :asc]
             [:id :asc]]
            (api.collection/children-sort-clause {:sort-column :last-edited-at
                                                  :sort-direction :asc
@@ -1397,7 +1410,7 @@
             [:type :asc :nulls-first]
             [:last_edit_timestamp :nulls-last]
             [:last_edit_timestamp :asc]
-            [:%lower.name :asc]
+            [[:lower [:trim :name]] :asc]
             [:id :asc]]
            (api.collection/children-sort-clause {:sort-column :last-edited-at
                                                  :sort-direction :asc
@@ -1411,7 +1424,7 @@
             [:last_edit_last_name :asc]
             [:last_edit_first_name :nulls-last]
             [:last_edit_first_name :asc]
-            [:%lower.name :asc]
+            [[:lower [:trim :name]] :asc]
             [:id :asc]]
            (api.collection/children-sort-clause {:sort-column :last-edited-by
                                                  :sort-direction :asc
@@ -1425,7 +1438,7 @@
             [:last_edit_last_name :asc]
             [:%isnull.last_edit_first_name]
             [:last_edit_first_name :asc]
-            [:%lower.name :asc]
+            [[:lower [:trim :name]] :asc]
             [:id :asc]]
            (api.collection/children-sort-clause {:sort-column :last-edited-by
                                                  :sort-direction :asc
@@ -1436,7 +1449,7 @@
     (is (= [[:authority_level :asc :nulls-last]
             [:type :asc :nulls-first]
             [:model_ranking :asc]
-            [:%lower.name :asc]
+            [[:lower [:trim :name]] :asc]
             [:id :asc]]
            (api.collection/children-sort-clause {:sort-column :model
                                                  :sort-direction :asc
@@ -1447,7 +1460,7 @@
     (is (= [[:authority_level :asc :nulls-last]
             [:type :asc :nulls-first]
             [:model_ranking :desc]
-            [:%lower.name :asc]
+            [[:lower [:trim :name]] :asc]
             [:id :asc]]
            (api.collection/children-sort-clause {:sort-column :model
                                                  :sort-direction :desc
@@ -1459,7 +1472,7 @@
       (is (= [[:authority_level :asc :nulls-last]
               [:type :asc :nulls-first]
               [:%lower.description :asc :nulls-last]
-              [:%lower.name :asc]
+              [[:lower [:trim :name]] :asc]
               [:id :asc]]
              (api.collection/children-sort-clause {:sort-column :description
                                                    :sort-direction :asc
@@ -1468,7 +1481,7 @@
       (is (= [[:authority_level :asc :nulls-last]
               [:type :asc :nulls-first]
               [:%lower.description :desc :nulls-last]
-              [:%lower.name :asc]
+              [[:lower [:trim :name]] :asc]
               [:id :asc]]
              (api.collection/children-sort-clause {:sort-column :description
                                                    :sort-direction :desc

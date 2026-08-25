@@ -99,6 +99,16 @@ describe("BaseItemsTable", () => {
     );
   });
 
+  it("opens collection links in the current tab", () => {
+    setup({
+      items: [getCollectionItem({ model: "collection" })],
+    });
+
+    expect(screen.getByRole("link", { name: /My Item/ })).not.toHaveAttribute(
+      "target",
+    );
+  });
+
   it("displays last edit time on hover", async () => {
     setup();
     const lastEditedAt = dayjs(timestamp).format("MMMM D, YYYY");
