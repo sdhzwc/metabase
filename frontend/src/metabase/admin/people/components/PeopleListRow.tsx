@@ -36,7 +36,7 @@ const getNameColumnDisplayName = (user: User) => {
   const firstName = user.first_name?.trim() || "";
   const lastName = user.last_name?.trim() || "";
 
-  return [lastName, firstName].filter(Boolean).join(" ") || user.email;
+  return [firstName, lastName].filter(Boolean).join(" ") || user.email;
 };
 
 interface PeopleListRowProps {

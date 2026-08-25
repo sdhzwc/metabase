@@ -124,7 +124,7 @@ describe("people table", () => {
       ],
     });
 
-    expect(await screen.findByText("Wu Chao")).toBeInTheDocument();
+    expect(await screen.findByText("Chao Wu")).toBeInTheDocument();
     expect(await screen.findByText("Super Wu")).toBeInTheDocument();
   });
 });
