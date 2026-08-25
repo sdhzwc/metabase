@@ -107,9 +107,25 @@ describe("people table", () => {
     setup();
 
     expect(await screen.findByText("Name")).toBeInTheDocument();
+    expect(await screen.findByText("Nickname")).toBeInTheDocument();
     expect(await screen.findByText("Email")).toBeInTheDocument();
     expect(await screen.findByText("Groups")).toBeInTheDocument();
     expect(await screen.findByText("Last Login")).toBeInTheDocument();
+  });
+
+  it("should show the full name in the name column and nickname in the nickname column", async () => {
+    setup({
+      users: [
+        createMockUser({
+          first_name: "Chao",
+          last_name: "Wu",
+          nickname: "Super Wu",
+        }),
+      ],
+    });
+
+    expect(await screen.findByText("Wu Chao")).toBeInTheDocument();
+    expect(await screen.findByText("Super Wu")).toBeInTheDocument();
   });
 });
 

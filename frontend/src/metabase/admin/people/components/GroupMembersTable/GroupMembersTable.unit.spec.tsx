@@ -17,6 +17,7 @@ const createMockMember = (opts?: Partial<Member>): Member => ({
   email: "user@example.com",
   first_name: "Test",
   last_name: "User",
+  nickname: null,
   is_group_manager: false,
   is_superuser: false,
   ...opts,
@@ -61,6 +62,16 @@ const setup = ({ group }: { group: Group }) => {
 };
 
 describe("GroupMembersTable", () => {
+  it("should prefer member nickname as the displayed name", () => {
+    setup({
+      group: createMockGroupWithMembers({
+        members: [createMockMember({ nickname: "Tester" })],
+      }),
+    });
+
+    expect(screen.getByText("Tester")).toBeInTheDocument();
+  });
+
   describe("Type column (manager toggle)", () => {
     it("should show Type column for regular groups", () => {
       setup({

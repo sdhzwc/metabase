@@ -207,6 +207,9 @@
   (case date-format
     "m/d/yyyy" "m/yyyy"
     "yyyy/m/d" "yyyy/m"
+    "yyyy-mm-dd" "yyyy-mm"
+    "yyyy.mm.dd" "yyyy.mm"
+    "yyyy年m月d日" "yyyy年m月"
     ;; Default for all other styles
     "mmmm, yyyy"))
 

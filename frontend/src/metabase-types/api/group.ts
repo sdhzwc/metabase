@@ -16,6 +16,7 @@ export type Member = {
   email: string;
   first_name: string;
   last_name: string;
+  nickname: string | null;
   is_group_manager?: boolean;
   is_superuser: boolean;
 };

@@ -163,6 +163,7 @@
                                                             [:u.id :user_id]
                                                             :u.first_name
                                                             :u.last_name
+                                                            :u.nickname
                                                             :u.email
                                                             :u.is_superuser
                                                             :u.type

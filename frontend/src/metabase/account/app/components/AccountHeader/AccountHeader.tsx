@@ -46,7 +46,7 @@ export const AccountHeader = ({
     [hasPasswordChange, hasSecurityTab],
   );
 
-  const userFullName = getFullName(user);
+  const userDisplayName = user.nickname?.trim() || getFullName(user);
 
   return (
     <Flex
@@ -62,9 +62,9 @@ export const AccountHeader = ({
         <Box mb={{ base: "sm", sm: "md" }}>
           <UserAvatar user={user} className={S.avatar} />
         </Box>
-        {userFullName && (
+        {userDisplayName && (
           <Title order={2} fz="md" ta="center" mb="xs">
-            {userFullName}
+            {userDisplayName}
           </Title>
         )}
         <Title order={3} fz="md" fw="normal" ta="center" c="text-secondary">

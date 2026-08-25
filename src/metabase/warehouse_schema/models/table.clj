@@ -396,7 +396,7 @@
     tables
     (let [owner-user-ids (into #{} (keep :owner_user_id) tables)
           id->owner (when (seq owner-user-ids)
-                      (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name]
+                      (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name :nickname]
                                         :id [:in owner-user-ids]))]
       (for [table tables]
         (assoc table :owner

@@ -52,6 +52,12 @@
      "D/M/YYYY"           {:month   m-y}
      "YYYY/M/D"           {:month   [:year "/" :month-d]
                            :quarter [:year " - Q" :quarter]}
+     "YYYY-MM-DD"         {:month   [:year "-" :month-dd]
+                           :quarter [:year " - Q" :quarter]}
+     "YYYY.MM.DD"         {:month   [:year "." :month-dd]
+                           :quarter [:year " - Q" :quarter]}
+     "YYYY年M月D日"       {:month   [:year "年" :month-d "月"]
+                        :quarter [:year "年Q" :quarter]}
      "MMMM D, YYYY"       {:month   mmm-y}
      "D MMMM, YYYY"       {:month   mmm-y}
      "dddd, MMMM D, YYYY" {:week    [:month-full " " :day-of-month-d ", " :year]

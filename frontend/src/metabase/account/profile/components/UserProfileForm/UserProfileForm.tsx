@@ -20,6 +20,7 @@ import type { LocaleData, User } from "metabase-types/api";
 import type { UserProfileData } from "../../types";
 
 const SSO_PROFILE_SCHEMA = Yup.object({
+  nickname: Yup.string().nullable().default(null).max(100, Errors.maxLength),
   locale: Yup.string().nullable().default(null),
 });
 
@@ -77,6 +78,13 @@ const UserProfileForm = ({
       >
         {({ dirty }) => (
           <Form disabled={!dirty}>
+            <FormTextInput
+              name="nickname"
+              label={t`Nickname`}
+              placeholder={t`Johnny`}
+              nullable
+              mb="md"
+            />
             {!isSsoUser && (
               <>
                 <FormTextInput

@@ -1,0 +1,15 @@
+databaseChangeLog:
+  - changeSet:
+      id: v64.add-user-nickname
+      author: wuchao
+      comment: Add optional nickname to users
+      changes:
+        - addColumn:
+            tableName: core_user
+            columns:
+              - column:
+                  name: nickname
+                  type: varchar(254)
+                  remarks: Optional display nickname for the user
+                  constraints:
+                    nullable: true

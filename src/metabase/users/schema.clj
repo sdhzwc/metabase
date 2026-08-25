@@ -22,6 +22,7 @@
   [:map
    [:first_name       {:optional true} [:maybe ms/NonBlankString]]
    [:last_name        {:optional true} [:maybe ms/NonBlankString]]
+   [:nickname         {:optional true} [:maybe ms/NonBlankString]]
    [:email                             ms/Email]
    [:password         {:optional true} [:maybe ms/NonBlankString]]
    [:login_attributes {:optional true} [:maybe LoginAttributes]]

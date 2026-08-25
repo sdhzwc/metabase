@@ -76,7 +76,7 @@
                        (notification/with-skip-sending-notification (boolean tenant-id)
                          (user/create-and-invite-user!
                           (-> attributes
-                              (u/select-non-nil-keys [:first-name :last-name :email :password :login-attributes :tenant-id])
+                              (u/select-non-nil-keys [:first-name :last-name :nickname :email :password :login-attributes :tenant-id])
                               (set/rename-keys {:first-name             :first_name
                                                 :last-name              :last_name
                                                 :user-group-memberships :user_group_memberships

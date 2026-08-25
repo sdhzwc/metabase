@@ -324,6 +324,12 @@
    "D/M/YYYY" {:month "M/YYYY"}
    "YYYY/M/D" {:month "YYYY/M"
                :quarter "YYYY - [Q]Q"}
+   "YYYY-MM-DD" {:month "YYYY-MM"
+                 :quarter "YYYY - [Q]Q"}
+   "YYYY.MM.DD" {:month "YYYY.MM"
+                 :quarter "YYYY - [Q]Q"}
+   "YYYY年M月D日" {:month "YYYY年M月"
+                :quarter "YYYY年[Q]Q"}
    "MMMM D, YYYY" {:month "MMMM, YYYY"}
    "D MMMM, YYYY" {:month "MMMM, YYYY"}
    "dddd, MMMM D, YYYY" {:day "EEEE, MMMM d, YYYY"

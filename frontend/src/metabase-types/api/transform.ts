@@ -21,7 +21,7 @@ export type InspectorSectionId = string;
 
 export type TransformOwner = Pick<
   UserInfo,
-  "id" | "email" | "first_name" | "last_name"
+  "id" | "email" | "first_name" | "last_name" | "nickname"
 >;
 
 export type TransformType = "native" | "python" | "mbql";

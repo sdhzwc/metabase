@@ -19,6 +19,7 @@ export const defaultUser = createMockUser({
   id: 97,
   first_name: "Ash",
   last_name: "Ketchum",
+  nickname: "Pikachu Boy",
   email: "pikachuboy97@example.com",
   login_attributes: {},
 });

@@ -34,6 +34,7 @@ export const createMockDashboard = (opts?: Partial<Dashboard>): Dashboard => ({
     email: "admin@metabase.com",
     first_name: "John",
     last_name: "Doe",
+    nickname: null,
     timestamp: "2018-01-01",
   },
   last_used_param_values: {},

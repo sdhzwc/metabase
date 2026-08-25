@@ -38,7 +38,7 @@
   [_model k conversations]
   (mi/instances-with-hydrated-data
    conversations k
-   #(t2/select-pk->fn (fn [u] (select-keys u [:id :email :first_name :last_name]))
-                      [:model/User :id :email :first_name :last_name]
+   #(t2/select-pk->fn (fn [u] (select-keys u [:id :email :first_name :last_name :nickname]))
+                      [:model/User :id :email :first_name :last_name :nickname]
                       :id (keep :user_id conversations))
    :user_id {:default nil}))

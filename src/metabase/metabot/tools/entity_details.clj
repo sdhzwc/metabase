@@ -1,5 +1,6 @@
 (ns metabase.metabot.tools.entity-details
   (:require
+   [clojure.string :as str]
    [medley.core :as m]
    [metabase.agent-lib.representations.resolve :as repr.resolve]
    [metabase.api.common :as api]
@@ -103,15 +104,18 @@
 (defn get-current-user
   "Get information about the current user."
   [_args]
-  (if-let [{:keys [id email first_name last_name]}
+  (if-let [{:keys [id email first_name last_name nickname]}
            (or (some-> api/*current-user* deref)
-               (t2/select-one [:model/User :id :email :first_name :last_name] api/*current-user-id*))]
-    {:structured-output (merge {:id id
-                                :type :user
-                                :name (str first_name " " last_name)
-                                :email-address email}
-                               (when-some [glossary (glossary-for-context)]
-                                 {:glossary glossary}))}
+               (t2/select-one [:model/User :id :email :first_name :last_name :nickname] api/*current-user-id*))]
+    (let [name (or (some-> nickname str/trim not-empty)
+                   (not-empty (str/trim (str first_name " " last_name)))
+                   email)]
+      {:structured-output (merge {:id id
+                                  :type :user
+                                  :name name
+                                  :email-address email}
+                                 (when-some [glossary (glossary-for-context)]
+                                   {:glossary glossary}))})
     {:output "current user not found"}))
 
 (defn get-dashboard-details

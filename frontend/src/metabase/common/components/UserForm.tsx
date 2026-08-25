@@ -27,6 +27,7 @@ import type { GroupId, User, UserId } from "metabase-types/api";
 const localUserSchema = Yup.object({
   first_name: Yup.string().nullable().max(100, Errors.maxLength).default(null),
   last_name: Yup.string().nullable().max(100, Errors.maxLength).default(null),
+  nickname: Yup.string().nullable().max(100, Errors.maxLength).default(null),
   email: Yup.string().email().required(Errors.required),
 });
 
@@ -161,6 +162,14 @@ export const UserForm = ({
                 title={t`Last name`}
                 placeholder={t`Appleseed`}
                 label={t`Last name`}
+                mb="md"
+                nullable
+              />
+              <FormTextInput
+                name="nickname"
+                title={t`Nickname`}
+                placeholder={t`Johnny`}
+                label={t`Nickname`}
                 mb="md"
                 nullable
               />

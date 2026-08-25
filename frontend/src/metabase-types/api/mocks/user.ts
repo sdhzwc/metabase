@@ -8,11 +8,13 @@ import type {
 export const createMockUser = (opts?: Partial<User>): User => {
   const firstName = opts?.first_name ?? "Testy";
   const lastName = opts?.last_name ?? "Tableton";
+  const nickname = opts?.nickname ?? null;
   return {
     id: 1,
     first_name: firstName,
     last_name: lastName,
-    common_name: [firstName, lastName].filter(Boolean).join(" "),
+    nickname,
+    common_name: nickname ?? [firstName, lastName].filter(Boolean).join(" "),
     custom_homepage: null,
     email: "user@metabase.test",
     locale: null,
@@ -51,6 +53,7 @@ export const createMockUserListResult = (
   id: 1,
   first_name: "Testy",
   last_name: "Tableton",
+  nickname: null,
   common_name: "Testy Tableton",
   email: "user@metabase.test",
   personal_collection_id: 2,
@@ -61,6 +64,7 @@ export const createMockUserInfo = (opts?: Partial<UserInfo>): UserInfo => ({
   id: 1,
   first_name: "Testy",
   last_name: "Tableton",
+  nickname: null,
   common_name: `Testy Tableton`,
   email: "user@metabase.test",
   is_qbnewb: false,

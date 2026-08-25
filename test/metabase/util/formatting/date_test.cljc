@@ -190,6 +190,9 @@
         "4/7/2022"                "M/D/YYYY"           "day"
         "7/4/2022"                "D/M/YYYY"           "hour"
         "2022/4/7"                "YYYY/M/D"           "day"
+        "2022-04-07"              "YYYY-MM-DD"         "day"
+        "2022.04.07"              "YYYY.MM.DD"         "day"
+        "2022年4月7日"            "YYYY年M月D日"       "day"
         "April 7, 2022"           "MMMM D, YYYY"       "day"
         "7 April, 2022"           "D MMMM, YYYY"       "day"
         "Thursday, April 7, 2022" "dddd, MMMM D, YYYY" "day"))))
@@ -204,6 +207,12 @@
         "4/2022"        "D/M/YYYY"           "month"
         "2022/4"        "YYYY/M/D"           "month"
         "2022 - Q2"     "YYYY/M/D"           "quarter"
+        "2022-04"       "YYYY-MM-DD"         "month"
+        "2022 - Q2"     "YYYY-MM-DD"         "quarter"
+        "2022.04"       "YYYY.MM.DD"         "month"
+        "2022 - Q2"     "YYYY.MM.DD"         "quarter"
+        "2022年4月"     "YYYY年M月D日"       "month"
+        "2022年Q2"      "YYYY年M月D日"       "quarter"
         "April, 2022"   "MMMM D, YYYY"       "month"
         "April, 2022"   "D MMMM, YYYY"       "month"
         "April 7, 2022" "dddd, MMMM D, YYYY" "week"  ;; TODO is this actually right? check with existing code

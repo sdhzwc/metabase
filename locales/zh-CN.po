@@ -7004,6 +7004,12 @@ msgstr "名"
 msgid "Johnny"
 msgstr "Johnny"
 
+#: frontend/src/metabase/common/components/UserForm.tsx:170
+#: frontend/src/metabase/common/components/UserForm.tsx:172
+#: frontend/src/metabase/admin/people/components/PeopleList.tsx:151
+msgid "Nickname"
+msgstr "昵称"
+
 #: frontend/src/metabase/account/profile/components/UserProfileForm/UserProfileForm.tsx:91
 #: frontend/src/metabase/admin/people/forms/UserForm.tsx:184
 #: frontend/src/metabase/admin/people/forms/UserForm.tsx:186

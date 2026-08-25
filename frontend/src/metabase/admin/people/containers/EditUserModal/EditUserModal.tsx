@@ -30,6 +30,7 @@ export const EditUserModal = ({
     () => ({
       first_name: user?.first_name,
       last_name: user?.last_name,
+      nickname: user?.nickname,
       email: user?.email,
 
       login_attributes: user?.login_attributes || {},
@@ -48,7 +49,12 @@ export const EditUserModal = ({
     }
 
     // first name and last name keys need to be present, so they can potentially be removed
-    const defaultValues = { id: userId, first_name: null, last_name: null };
+    const defaultValues = {
+      id: userId,
+      first_name: null,
+      last_name: null,
+      nickname: null,
+    };
     const updatedUser = { ...defaultValues, ...newValues };
     await updateUser(updatedUser).unwrap();
 

@@ -37,7 +37,7 @@ export interface CommentReaction {
 
 export type MentionableUser = Pick<
   User,
-  "id" | "common_name" | "first_name" | "last_name"
+  "id" | "common_name" | "first_name" | "last_name" | "nickname"
 >;
 
 /** request types below */

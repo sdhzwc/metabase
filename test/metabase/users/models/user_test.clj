@@ -484,13 +484,23 @@
   (testing "common_name should be present depending on what is selected"
     (mt/with-temp [:model/User user {:first_name "John"
                                      :last_name  "Smith"
+                                     :nickname   "Johnny"
                                      :email      "john.smith@gmail.com"}]
+      (is (= "Johnny"
+             (:common_name (t2/select-one [:model/User :nickname :first_name :last_name] (:id user)))))
+      (is (= "Johnny"
+             (:common_name (t2/select-one :model/User (:id user)))))
       (is (= "John Smith"
              (:common_name (t2/select-one [:model/User :first_name :last_name] (:id user)))))
-      (is (= "John Smith"
-             (:common_name (t2/select-one :model/User (:id user)))))
       (is (nil? (:common_name (t2/select-one [:model/User :first_name :email] (:id user)))))
       (is (nil? (:common_name (t2/select-one [:model/User :email] (:id user)))))))
+  (testing "common_name falls back to name when nickname is blank"
+    (mt/with-temp [:model/User user {:first_name "John"
+                                     :last_name  "Smith"
+                                     :nickname   "   "
+                                     :email      "john.smith@gmail.com"}]
+      (is (= "John Smith"
+             (:common_name (t2/select-one :model/User (:id user)))))))
   (testing "common_name should be present if first_name and last_name are selected but nil and email is also selected"
     (mt/with-temp [:model/User user {:first_name nil
                                      :last_name  nil

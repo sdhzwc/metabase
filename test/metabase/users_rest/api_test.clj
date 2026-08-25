@@ -39,6 +39,7 @@
        :last_login false
        :sso_source nil
        :login_attributes nil
+       :nickname nil
        :updated_at true
        :locale nil
        :tenant_id false})
@@ -760,13 +761,15 @@
               (let [resp (mt/user-http-request :crowberto :post 200 "user"
                                                {:first_name user-name
                                                 :last_name user-name
+                                                :nickname "Nickname"
                                                 :email email
                                                 :login_attributes {:test "value"}})]
                 (is (= (merge @user-defaults
                               {:email email
                                :first_name user-name
                                :last_name user-name
-                               :common_name (str user-name " " user-name)
+                               :nickname "Nickname"
+                               :common_name "Nickname"
                                :jwt_attributes nil
                                :login_attributes {:test "value"}})
                        (-> resp
@@ -1197,6 +1200,24 @@
                     ::personal-collection-name "Blue's Personal Collection"}
                    (change-user-via-api! {:first_name "Blue"
                                           :last_name nil})))))))))
+
+(deftest update-nickname-test
+  (testing "PUT /api/user/:id"
+    (testing "Can update and clear a user's nickname"
+      (mt/with-temp [:model/User {user-id :id} {:first_name "Blue"
+                                                :last_name "Ron"
+                                                :email "blueronny-nickname@metabase.com"
+                                                :is_superuser true}]
+        (is (=? {:first_name "Blue"
+                 :last_name "Ron"
+                 :nickname "B"
+                 :common_name "B"}
+                (mt/user-http-request :crowberto :put 200 (str "user/" user-id) {:nickname "B"})))
+        (is (=? {:first_name "Blue"
+                 :last_name "Ron"
+                 :nickname nil
+                 :common_name "Blue Ron"}
+                (mt/user-http-request :crowberto :put 200 (str "user/" user-id) {:nickname nil})))))))
 
 (deftest update-sso-user-test
   (testing "PUT /api/user/:id"

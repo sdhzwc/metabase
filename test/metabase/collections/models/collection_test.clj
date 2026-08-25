@@ -29,18 +29,21 @@
 (deftest ^:parallel format-personal-collection-name-test
   (testing "test that the Personal collection name formatting outputs correct strings"
     (is (= "Meta Base's Personal Collection"
-           (collection/format-personal-collection-name "Meta" "Base" "MetaBase@metabase.com" :site)))
+           (collection/format-personal-collection-name nil "Meta" "Base" "MetaBase@metabase.com" :site)))
+    (is (= "Metabot's Personal Collection"
+           (collection/format-personal-collection-name "Metabot" "Meta" "Base" "MetaBase@metabase.com" :site)))
     (is (= "Meta's Personal Collection"
-           (collection/format-personal-collection-name "Meta" nil "MetaBase@metabase.com" :site)))
+           (collection/format-personal-collection-name nil "Meta" nil "MetaBase@metabase.com" :site)))
     (is (= "Base's Personal Collection"
-           (collection/format-personal-collection-name nil "Base" "MetaBase@metabase.com" :site)))
+           (collection/format-personal-collection-name nil nil "Base" "MetaBase@metabase.com" :site)))
     (is (= "MetaBase@metabase.com's Personal Collection"
-           (collection/format-personal-collection-name nil nil "MetaBase@metabase.com" :site)))))
+           (collection/format-personal-collection-name nil nil nil "MetaBase@metabase.com" :site)))))
 
 (deftest format-personal-collection-name-length-test
   (testing "test that an unrealistically long collection name with unicode letters is still less than the max length for a slug (metabase#33917)"
     (mt/with-temporary-setting-values [site-locale "ru"]
-      (is (<= (count (#'collection/slugify (collection/format-personal-collection-name (apply str (repeat 256 "Б"))
+      (is (<= (count (#'collection/slugify (collection/format-personal-collection-name nil
+                                                                                       (apply str (repeat 256 "Б"))
                                                                                        (apply str (repeat 256 "Б"))
                                                                                        "MetaBase@metabase.com"
                                                                                        :site)))
@@ -52,7 +55,13 @@
            (collection/user->personal-collection-name (mt/user->id :lucky) :site))))
   (testing "test that we can get the name of a user's personal collection as :user"
     (is (= "Lucky Pigeon's Personal Collection"
-           (collection/user->personal-collection-name (mt/user->id :lucky) :user)))))
+           (collection/user->personal-collection-name (mt/user->id :lucky) :user))))
+  (testing "test that the user's nickname is preferred in their personal collection name"
+    (mt/with-temp [:model/User {user-id :id} {:first_name "Meta"
+                                              :last_name  "Base"
+                                              :nickname   "Metabot"}]
+      (is (= "Metabot's Personal Collection"
+             (collection/user->personal-collection-name user-id :site))))))
 
 (deftest user->personal-collection-names-test
   (is (= {(mt/user->id :rasta) "Rasta Toucan's Personal Collection"

@@ -551,23 +551,26 @@
 
   Practically, use `user-or-site` = `:site` when insert or update the name in database,
   and `:user` when we need the name for displaying purposes"
-  [first-name last-name email user-or-site]
+  [nickname first-name last-name email user-or-site]
   {:pre [(#{:user :site} user-or-site)]}
-  (if (= :user user-or-site)
-    (cond
-      (and first-name last-name) (tru "{0} {1}''s Personal Collection" first-name last-name)
-      :else                      (tru "{0}''s Personal Collection" (or first-name last-name email)))
-    (cond
-      (and first-name last-name) (trs "{0} {1}''s Personal Collection" first-name last-name)
-      :else                      (trs "{0}''s Personal Collection" (or first-name last-name email)))))
+  (let [nickname (some-> nickname str/trim not-empty)]
+    (if (= :user user-or-site)
+      (cond
+        nickname                   (tru "{0}''s Personal Collection" nickname)
+        (and first-name last-name) (tru "{0} {1}''s Personal Collection" first-name last-name)
+        :else                      (tru "{0}''s Personal Collection" (or first-name last-name email)))
+      (cond
+        nickname                   (trs "{0}''s Personal Collection" nickname)
+        (and first-name last-name) (trs "{0} {1}''s Personal Collection" first-name last-name)
+        :else                      (trs "{0}''s Personal Collection" (or first-name last-name email))))))
 
 (mu/defn user->personal-collection-names :- ms/Map
   "Come up with a nice name for the Personal Collection for the passed `user-or-ids`.
   Returns a map of user-id -> name"
   [user-or-ids user-or-site]
   (into {} (when-let [ids (seq (filter some? (map u/the-id user-or-ids)))]
-             (t2/select-pk->fn #(format-personal-collection-name (:first_name %) (:last_name %) (:email %) user-or-site)
-                               [:model/User :first_name :last_name :email :id]
+             (t2/select-pk->fn #(format-personal-collection-name (:nickname %) (:first_name %) (:last_name %) (:email %) user-or-site)
+                               [:model/User :nickname :first_name :last_name :email :id]
                                :id [:in ids]))))
 
 (mu/defn user->personal-collection-name :- ms/NonBlankString

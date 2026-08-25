@@ -56,7 +56,7 @@
   [handlers]
   (->> handlers
        (mapcat :recipients)
-       (map #(or (not-empty (select-keys (:user %) [:id :first_name :last_name :email]))
+       (map #(or (not-empty (select-keys (:user %) [:id :first_name :last_name :nickname :email]))
                  (get-in % [:details :value])))))
 
 (defmethod notification.send/do-after-notification-sent :notification/dashboard

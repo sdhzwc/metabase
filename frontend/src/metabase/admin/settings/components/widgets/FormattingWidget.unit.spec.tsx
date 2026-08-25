@@ -60,6 +60,13 @@ describe("FormattingWidget", () => {
     expect(
       await screen.findByDisplayValue("January 31, 2018"),
     ).toBeInTheDocument();
+
+    const dateStyleInput = await screen.findByLabelText("Date style");
+    await userEvent.click(dateStyleInput);
+    expect(await screen.findByText("2018-01-31")).toBeInTheDocument();
+    expect(await screen.findByText("2018.01.31")).toBeInTheDocument();
+    expect(await screen.findByText("2018年1月31日")).toBeInTheDocument();
+
     expect(await screen.findByDisplayValue("100,000.00")).toBeInTheDocument();
     expect(await screen.findByDisplayValue("US Dollar")).toBeInTheDocument();
 

@@ -61,7 +61,7 @@
   [_model k documents]
   (mi/instances-with-hydrated-data
    documents k
-   #(-> (t2/select [:model/User :id :email :first_name :last_name] :id (keep :creator_id documents))
+   #(-> (t2/select [:model/User :id :email :first_name :last_name :nickname] :id (keep :creator_id documents))
         (map (juxt :id identity))
         (into {}))
    :creator_id {:default {}}))

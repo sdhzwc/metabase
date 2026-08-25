@@ -33,7 +33,7 @@
   [_model k feedbacks]
   (mi/instances-with-hydrated-data
    feedbacks k
-   #(t2/select-pk->fn (fn [u] (select-keys u [:id :email :first_name :last_name]))
-                      [:model/User :id :email :first_name :last_name]
+   #(t2/select-pk->fn (fn [u] (select-keys u [:id :email :first_name :last_name :nickname]))
+                      [:model/User :id :email :first_name :last_name :nickname]
                       :id (keep :user_id feedbacks))
    :user_id {:default nil}))

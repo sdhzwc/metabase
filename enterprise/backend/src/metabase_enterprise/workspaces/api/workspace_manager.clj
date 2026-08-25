@@ -47,6 +47,7 @@
    [:id          ms/PositiveInt]
    [:first_name  [:maybe :string]]
    [:last_name   [:maybe :string]]
+   [:nickname    [:maybe :string]]
    [:email       ms/NonBlankString]
    [:common_name {:optional true} [:maybe :string]]])
 
@@ -78,7 +79,7 @@
 
 (defn- present-creator [creator]
   (when creator
-    (select-keys creator [:id :first_name :last_name :email :common_name])))
+    (select-keys creator [:id :first_name :last_name :nickname :email :common_name])))
 
 (defn- present-workspace [workspace]
   (some-> workspace

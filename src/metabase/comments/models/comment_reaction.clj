@@ -1,6 +1,7 @@
 (ns metabase.comments.models.comment-reaction
   "Model for comment reactions (emoji reactions on comments)"
   (:require
+   [clojure.string :as str]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -14,7 +15,7 @@
   [_model k reactions]
   (mi/instances-with-hydrated-data
    reactions k
-   #(t2/select-pk->fn identity [:model/User :id :email :first_name :last_name]
+   #(t2/select-pk->fn identity [:model/User :id :email :first_name :last_name :nickname]
                       :id (map :user_id reactions))
    :user_id {:default {}}))
 
@@ -55,11 +56,14 @@
       (create-reaction! comment-id user-id emoji)
       {:reacted true})))
 
-(defn- format-user [{:keys [id first_name last_name]}]
+(defn- format-user [{:keys [id first_name last_name nickname]}]
   {:id   id
-   :name (if (and first_name last_name)
-           (str first_name " " last_name)
-           (or first_name last_name "Unknown User"))})
+   :name (or (some-> nickname str/trim not-empty)
+             (when (and first_name last_name)
+               (str first_name " " last_name))
+             first_name
+             last_name
+             "Unknown User")})
 
 (defn reactions-for-comments
   "Get all reactions for a list of comment IDs, grouped and formatted for API response.

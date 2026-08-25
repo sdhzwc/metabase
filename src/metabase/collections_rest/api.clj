@@ -432,6 +432,7 @@
                 [:u.email :last_edit_email]
                 [:u.first_name :last_edit_first_name]
                 [:u.last_name :last_edit_last_name]
+                [:u.nickname :last_edit_nickname]
                 [:r.timestamp :last_edit_timestamp]
                 [(h2x/literal "document") :model]]
        :from [[:document :document]]
@@ -546,6 +547,7 @@
                     [:u.email :last_edit_email]
                     [:u.first_name :last_edit_first_name]
                     [:u.last_name :last_edit_last_name]
+                    [:u.nickname :last_edit_nickname]
                     [:r.timestamp :last_edit_timestamp]
                     [:mr.status :moderated_status]]
                     (#{:question :model} card-type)
@@ -657,6 +659,7 @@
                    [:u.email :last_edit_email]
                    [:u.first_name :last_edit_first_name]
                    [:u.last_name :last_edit_last_name]
+                   [:u.nickname :last_edit_nickname]
                    [:r.timestamp :last_edit_timestamp]
                    [:mr.status :moderated_status]]
        :from      [[:report_dashboard :d]]
@@ -926,6 +929,7 @@
     (let [mapping {:last_edit_user       :id
                    :last_edit_last_name  :last_name
                    :last_edit_first_name :first_name
+                   :last_edit_nickname   :nickname
                    :last_edit_email      :email
                    :last_edit_timestamp  :timestamp}]
       (cond-> (apply dissoc row (keys mapping))
@@ -987,7 +991,7 @@
    [:dashboard_id :integer]
    [:archived_directly :boolean]
    :model :collection_position :authority_level [:personal_owner_id :integer] :location
-   :last_edit_email :last_edit_first_name :last_edit_last_name :moderated_status :icon
+   :last_edit_email :last_edit_first_name :last_edit_last_name :last_edit_nickname :moderated_status :icon
    [:last_edit_user :integer] [:last_edit_timestamp :timestamp] [:database_id :integer]
    :collection_type :type [:archived :boolean] [:last_used_at :timestamp] [:is_remote_synced :boolean] :namespace
    ;; for determining whether a model is based on a csv-uploaded table
@@ -1059,6 +1063,10 @@
                                     [:last_edit_timestamp :desc]
                                     [normalized-name-sort-expr :asc]]
            [:last-edited-by :asc]  [(if (= db-type :mysql)
+                                      [:%isnull.last_edit_nickname]
+                                      [:last_edit_nickname :nulls-last])
+                                    [:last_edit_nickname :asc]
+                                    (if (= db-type :mysql)
                                       [:%isnull.last_edit_last_name]
                                       [:last_edit_last_name :nulls-last])
                                     [:last_edit_last_name :asc]
@@ -1068,6 +1076,11 @@
                                     [:last_edit_first_name :asc]
                                     [normalized-name-sort-expr :asc]]
            [:last-edited-by :desc] [(case db-type
+                                      :mysql    [:%isnull.last_edit_nickname]
+                                      :postgres [:last_edit_nickname :desc-nulls-last]
+                                      :h2       nil)
+                                    [:last_edit_nickname :desc]
+                                    (case db-type
                                       :mysql    [:%isnull.last_edit_last_name]
                                       :postgres [:last_edit_last_name :desc-nulls-last]
                                       :h2       nil)

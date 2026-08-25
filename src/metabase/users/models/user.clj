@@ -327,17 +327,20 @@
   user)
 
 (defn add-common-name
-  "Conditionally add a `:common_name` key to `user` by combining their first and last names, or using their email if names are `nil`.
+  "Conditionally add a `:common_name` key to `user` by using their nickname, combining their first and last names,
+  or using their email if names are `nil`.
   The key will only be added if `user` contains the required keys to derive it correctly."
-  [{:keys [first_name last_name email], :as user}]
+  [{:keys [first_name last_name nickname email], :as user}]
   ;; This logic is replicated in SQL in [[metabase-enterprise.query-reference-validation.api]]. If the below logic changes,
   ;; please update the EE ns as well.
-  (let [common-name (if (or first_name last_name)
-                      (str/trim (str first_name " " last_name))
-                      email)]
+  (let [nickname    (some-> nickname str/trim not-empty)
+        full-name   (when (or first_name last_name)
+                      (str/trim (str first_name " " last_name)))
+        common-name (or nickname full-name email)]
     (cond-> user
-      (and (contains? user :first_name)
-           (contains? user :last_name)
+      (and (or (contains? user :nickname)
+               (and (contains? user :first_name)
+                    (contains? user :last_name)))
            common-name)
       (assoc :common_name common-name))))
 
@@ -347,7 +350,7 @@
 
 (def ^:private default-user-columns
   "Sequence of columns that are normally returned when fetching a User from the DB."
-  [:id :email :date_joined :first_name :last_name :last_login :is_superuser :is_data_analyst :is_qbnewb :tenant_id])
+  [:id :email :date_joined :first_name :last_name :nickname :last_login :is_superuser :is_data_analyst :is_qbnewb :tenant_id])
 
 (def admin-or-self-visible-columns
   "Sequence of columns that we can/should return for admins fetching a list of all Users, or for the current user
@@ -358,7 +361,7 @@
   "Sequence of columns that we will allow non-admin Users to see when fetching a list of Users. Why can non-admins see
   other Users at all? I honestly would prefer they couldn't, but we need to give them a list of emails to power
   Pulses."
-  [:id :email :first_name :last_name])
+  [:id :email :first_name :last_name :nickname])
 
 (def group-manager-visible-columns
   "Sequence of columns Group Managers can see when fetching a list of Users.."
@@ -548,6 +551,7 @@
   [:or
    [:like :%lower.first_name (wildcard-query query)]
    [:like :%lower.last_name  (wildcard-query query)]
+   [:like :%lower.nickname   (wildcard-query query)]
    [:like :%lower.email      (wildcard-query query)]])
 
 (defn filter-clauses

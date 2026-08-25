@@ -17,7 +17,7 @@
   (if-not (seq glossary-entries)
     glossary-entries
     (let [creator-ids (into #{} (map :creator_id) glossary-entries)
-          id->creator (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name]
+          id->creator (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name :nickname]
                                         :id [:in creator-ids])]
       (for [entry glossary-entries]
         (assoc entry :creator (get id->creator (:creator_id entry)))))))

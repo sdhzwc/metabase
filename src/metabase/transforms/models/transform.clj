@@ -297,7 +297,7 @@
   (if-not (seq transforms)
     transforms
     (let [creator-ids (into #{} (map :creator_id) transforms)
-          id->creator (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name]
+          id->creator (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name :nickname]
                                         :id [:in creator-ids])]
       (for [transform transforms]
         (assoc transform :creator (get id->creator (:creator_id transform)))))))
@@ -310,7 +310,7 @@
     transforms
     (let [owner-user-ids (into #{} (keep :owner_user_id) transforms)
           id->owner (when (seq owner-user-ids)
-                      (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name]
+                      (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name :nickname]
                                         :id [:in owner-user-ids]))]
       (for [transform transforms]
         (assoc transform :owner

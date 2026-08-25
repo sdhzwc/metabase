@@ -29,6 +29,30 @@ describe("UserProfileForm", () => {
 
     expect(await screen.findByText("Success")).toBeInTheDocument();
   });
+
+  it("should submit nickname updates", async () => {
+    const onSubmit = jest.fn().mockResolvedValue({});
+    const props = getProps({ onSubmit });
+
+    setup(props);
+
+    await userEvent.type(screen.getByLabelText("Nickname"), "Nickname");
+    await userEvent.click(screen.getByText("Update"));
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      props.user,
+      expect.objectContaining({ nickname: "Nickname" }),
+    );
+  });
+
+  it("should allow SSO users to edit nickname", () => {
+    setup(getProps({ isSsoUser: true }));
+
+    expect(screen.getByLabelText("Nickname")).toBeInTheDocument();
+    expect(screen.queryByLabelText("First name")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Last name")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Email")).not.toBeInTheDocument();
+  });
 });
 
 const getProps = (

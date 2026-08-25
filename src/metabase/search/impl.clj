@@ -112,7 +112,7 @@
   (let [user-ids             (set (flatten (for [result results]
                                              (remove nil? ((juxt :last_editor_id :creator_id) result)))))
         user-id->common-name (if (pos? (count user-ids))
-                               (t2/select-pk->fn :common_name [:model/User :id :first_name :last_name :email] :id [:in user-ids])
+                               (t2/select-pk->fn :common_name [:model/User :id :first_name :last_name :nickname :email] :id [:in user-ids])
                                {})]
     (mapv (fn [{:keys [creator_id last_editor_id] :as result}]
             (assoc result

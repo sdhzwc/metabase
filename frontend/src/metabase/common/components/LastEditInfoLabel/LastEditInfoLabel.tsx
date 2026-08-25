@@ -8,7 +8,7 @@ import { getUser } from "metabase/selectors/user";
 import type { TooltipProps } from "metabase/ui";
 import { Text, Tooltip, UnstyledButton } from "metabase/ui";
 import type { NamedUser } from "metabase/utils/user";
-import { getFullName } from "metabase/utils/user";
+import { getUserName } from "metabase/utils/user";
 import type { User } from "metabase-types/api";
 
 export type ItemWithLastEditInfo = {
@@ -38,8 +38,7 @@ function mapStateToProps(state: any, props: any) {
 }
 
 function formatEditorName(lastEditInfo: NamedUser) {
-  const name = getFullName(lastEditInfo);
-  return name || lastEditInfo.email;
+  return getUserName(lastEditInfo);
 }
 
 function LastEditInfoLabelInner({

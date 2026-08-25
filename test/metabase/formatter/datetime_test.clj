@@ -175,6 +175,9 @@
                   [["M/D/YYYY" "7/16/2020" "7-16-2020" "7.16.2020"]
                    ["D/M/YYYY" "16/7/2020" "16-7-2020" "16.7.2020"]
                    ["YYYY/M/D" "2020/7/16" "2020-7-16" "2020.7.16"]
+                   ["YYYY-MM-DD" "2020-07-16" "2020-07-16" "2020-07-16"]
+                   ["YYYY.MM.DD" "2020.07.16" "2020.07.16" "2020.07.16"]
+                   ["YYYY年M月D日" "2020年7月16日" "2020年7月16日" "2020年7月16日"]
                    [nil "July 16, 2020" "July 16, 2020" "July 16, 2020"]] ;; nil date-style does not blow up when date-separator exists
                   date-separator ["/" "-" "."]]
             (testing (str "Date style: " date-style " with '" date-separator "' correctly formats" name)

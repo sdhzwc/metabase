@@ -39,17 +39,17 @@
              [400 (tru "Not able to modify the internal user")]))
 
 (defn- updated-user-name [user-before-update changes]
-  (let [[previous current] (map #(select-keys % [:first_name :last_name]) [user-before-update changes])
+  (let [[previous current] (map #(select-keys % [:nickname :first_name :last_name]) [user-before-update changes])
         updated-names (merge previous current)]
     (when (not= previous updated-names)
       updated-names)))
 
 (defn- maybe-update-user-personal-collection-name! [user-before-update changes]
   ;; If the user name is updated, we shall also update the personal collection name (if such collection exists).
-  (when-some [{:keys [first_name last_name]} (updated-user-name user-before-update changes)]
+  (when-some [{:keys [nickname first_name last_name]} (updated-user-name user-before-update changes)]
     (when-some [collection (collection/user->existing-personal-collection (u/the-id user-before-update))]
       (let [{email :email} user-before-update
-            new-collection-name (collection/format-personal-collection-name first_name last_name email :site)]
+            new-collection-name (collection/format-personal-collection-name nickname first_name last_name email :site)]
         (when-not (= new-collection-name (:name collection))
           (t2/update! :model/Collection (:id collection) {:name new-collection-name}))))))
 
@@ -166,7 +166,7 @@
 
   Takes `limit`, `offset` for pagination.
 
-  Takes `query` for filtering on first name, last name, email.
+  Takes `query` for filtering on first name, last name, nickname, email.
 
   Also takes `group_id`, which filters on group id.
 
@@ -416,6 +416,7 @@
    body :- [:map
             [:first_name             {:optional true} [:maybe ms/NonBlankString]]
             [:last_name              {:optional true} [:maybe ms/NonBlankString]]
+            [:nickname               {:optional true} [:maybe ms/NonBlankString]]
             [:email                  ms/Email]
             [:user_group_memberships {:optional true} [:maybe [:sequential ::users.schema/user-group-membership]]]
             [:login_attributes       {:optional true} [:maybe users.schema/LoginAttributes]]
@@ -480,6 +481,7 @@
        [:email                  {:optional true} [:maybe ms/Email]]
        [:first_name             {:optional true} [:maybe ms/NonBlankString]]
        [:last_name              {:optional true} [:maybe ms/NonBlankString]]
+       [:nickname               {:optional true} [:maybe ms/NonBlankString]]
        [:user_group_memberships {:optional true} [:maybe [:sequential ::users.schema/user-group-membership]]]
        [:is_superuser           {:optional true} [:maybe :boolean]]
        [:is_data_analyst        {:optional true} [:maybe :boolean]]
@@ -515,7 +517,7 @@
                 api/*is-superuser?*)
         (when-let [changes (not-empty
                             (u/select-keys-when body
-                                                :present (cond-> #{:first_name :last_name :locale}
+                                                :present (cond-> #{:first_name :last_name :nickname :locale}
                                                            api/*is-superuser?* (conj :login_attributes :tenant_id))
                                                 :non-nil (cond-> #{:email}
                                                            api/*is-superuser?* (conj :is_superuser))))]
@@ -565,7 +567,7 @@
                     [:id ms/PositiveInt]]]
   (api/check-superuser)
   (check-not-internal-user id)
-  (let [user (t2/select-one [:model/User :id :email :first_name :last_name :is_active :sso_source :tenant_id]
+  (let [user (t2/select-one [:model/User :id :email :first_name :last_name :nickname :is_active :sso_source :tenant_id]
                             :type :personal
                             :id id)]
     (api/check-404 user)
@@ -575,7 +577,7 @@
     (api/check (tenants/tenant-is-active? (:tenant_id user))
                [400 {:message (tru "Not able to reactivate a user in a deactivated tenant")}])
     (events/publish-event! :event/user-reactivated {:object user :user-id api/*current-user-id*})
-    (reactivate-user! (dissoc user [:email :first_name :last_name]))))
+    (reactivate-user! (dissoc user [:email :first_name :last_name :nickname]))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                               Updating a Password -- PUT /api/user/:id/password                                |

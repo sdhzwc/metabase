@@ -130,7 +130,7 @@
   [_model _k pcs]
   (when (seq pcs)
     (let [pcid->recipients (-> (group-by :pulse_channel_id
-                                         (t2/select [:model/User :id :email :first_name :last_name :pcr.pulse_channel_id]
+                                         (t2/select [:model/User :id :email :first_name :last_name :nickname :pcr.pulse_channel_id]
                                                     {:left-join [[:pulse_channel_recipient :pcr] [:= :core_user.id :pcr.user_id]]
                                                      :where     [:and
                                                                  [:in :pcr.pulse_channel_id (map :id pcs)]

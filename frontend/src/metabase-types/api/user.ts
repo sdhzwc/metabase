@@ -31,6 +31,7 @@ export interface BaseUser {
   id: UserId;
   first_name: string | null;
   last_name: string | null;
+  nickname: string | null;
   common_name: string;
   email: string;
   locale: string | null;
@@ -85,6 +86,7 @@ export interface UserListResult {
   id: UserId;
   first_name: string | null;
   last_name: string | null;
+  nickname: string | null;
   common_name: string;
   email: string;
   personal_collection_id: CollectionId;
@@ -102,6 +104,7 @@ export type UserInfo = Pick<
   | "common_name"
   | "first_name"
   | "last_name"
+  | "nickname"
   | "email"
   | "date_joined"
   | "last_login"
@@ -135,6 +138,7 @@ export type CreateUserRequest = {
   email: string;
   first_name?: string;
   last_name?: string;
+  nickname?: string;
   user_group_memberships?: { id: number; is_group_manager: boolean }[];
   login_attributes?: UserAttributeMap;
   password?: string;
@@ -166,6 +170,7 @@ export type UpdateUserRequest = {
   email?: string | null;
   first_name?: string | null;
   last_name?: string | null;
+  nickname?: string | null;
   locale?: string | null;
   is_group_manager?: boolean;
   is_superuser?: boolean;

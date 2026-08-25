@@ -29,7 +29,7 @@
   (let [user-ids (keep :acknowledged_by advisories)
         id->user (when (seq user-ids)
                    (t2/select-fn->fn :id #(select-keys % [:id :common_name :email])
-                                     [:model/User :id :first_name :last_name :email]
+                                     [:model/User :id :first_name :last_name :nickname :email]
                                      :id [:in (set user-ids)]))]
     (mi/instances-with-hydrated-data
      advisories k

@@ -4,7 +4,7 @@
   revision system works through events and so when editing something, you should construct the last-edit-info
   yourself (using `edit-information-for-user`) rather looking at the revision table which might not be updated yet.
 
-  This constructs `:last-edit-info`, a map with keys `:timestamp`, `:id`, `:first_name`, `:last_name`, and
+  This constructs `:last-edit-info`, a map with keys `:timestamp`, `:id`, `:first_name`, `:last_name`, `:nickname`, and
   `:email`. It is not a full User object (missing some superuser metadata, last login time, and a common name). This
   was done to prevent another db call and hooking up timestamps to users but this can be added if preferred."
   (:require
@@ -26,6 +26,7 @@
    [:id         [:maybe ms/PositiveInt]]
    [:first_name [:maybe :string]]
    [:last_name  [:maybe :string]]
+   [:nickname   [:maybe :string]]
    [:email      [:maybe :string]]])
 
 (def MaybeAnnotated
@@ -49,10 +50,10 @@
               (reduce (fn [m card-updated-info]
                         (assoc m
                                (:model_id card-updated-info)
-                               (select-keys card-updated-info [:id :email :first_name :last_name :timestamp])))
+                               (select-keys card-updated-info [:id :email :first_name :last_name :nickname :timestamp])))
                       {}
                       (t2/reducible-query
-                       {:select    [:r.model_id :u.id :u.email :u.first_name :u.last_name :r.timestamp]
+                       {:select    [:r.model_id :u.id :u.email :u.first_name :u.last_name :u.nickname :r.timestamp]
                         :from      [[:revision :r]]
                         :left-join [[:core_user :u] [:= :u.id :r.user_id]]
                         :where     [:and
@@ -70,7 +71,7 @@
   revisions table as those revisions may not be present yet."
   [user]
   (merge {:timestamp (t/instant)}
-         (select-keys user [:id :first_name :last_name :email])))
+         (select-keys user [:id :first_name :last_name :nickname :email])))
 
 (def ^:private CollectionLastEditInfo
   "Schema for the map of bulk last-item-info. A map of two keys, `:card` and `:dashboard`, each of which is a map from
@@ -83,11 +84,11 @@
   "Fetch edited info from the revisions table. Revision information is timestamp, user id, email, first and last
   name. Takes card-ids and dashboard-ids and returns a map structured like
 
-  {:card      {card_id      {:id :email :first_name :last_name :timestamp}}
-   :dashboard {dashboard_id {:id :email :first_name :last_name :timestamp}}}"
+  {:card      {card_id      {:id :email :first_name :last_name :nickname :timestamp}}
+   :dashboard {dashboard_id {:id :email :first_name :last_name :nickname :timestamp}}}"
   [{:keys [card-ids dashboard-ids]}]
   (when (seq (concat card-ids dashboard-ids))
-    (let [latest-changes (t2/query {:select    [:u.id :u.email :u.first_name :u.last_name
+    (let [latest-changes (t2/query {:select    [:u.id :u.email :u.first_name :u.last_name :u.nickname
                                                 :r.model :r.model_id :r.timestamp]
                                     :from      [[:revision :r]]
                                     :left-join [[:core_user :u] [:= :u.id :r.user_id]]

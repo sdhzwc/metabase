@@ -8,6 +8,7 @@ import animationStyles from "metabase/css/core/animation.module.css";
 import { useSelector } from "metabase/redux";
 import { getUser } from "metabase/selectors/user";
 import { Flex, Tooltip } from "metabase/ui";
+import { getUserName } from "metabase/utils/user";
 
 import { getHasMetabotLogo } from "../../selectors";
 
@@ -16,7 +17,7 @@ import S from "./HomeGreeting.module.css";
 export const HomeGreeting = (): JSX.Element => {
   const user = useSelector(getUser);
   const showLogo = useSelector(getHasMetabotLogo);
-  const name = user?.first_name;
+  const name = getUserName(user);
   const message = useMemo(() => getMessage(name), [name]);
 
   return (

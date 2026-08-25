@@ -85,7 +85,7 @@ export type Table = {
 
 export type TableOwner = Pick<
   UserInfo,
-  "id" | "email" | "first_name" | "last_name"
+  "id" | "email" | "first_name" | "last_name" | "nickname"
 >;
 
 export type SchemaName = string;

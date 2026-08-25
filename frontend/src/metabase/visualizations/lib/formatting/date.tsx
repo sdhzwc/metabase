@@ -46,6 +46,18 @@ const DATE_STYLE_TO_FORMAT: DATE_STYLE_TO_FORMAT_TYPE = {
     month: "YYYY/M",
     quarter: "YYYY - [Q]Q",
   },
+  "YYYY-MM-DD": {
+    month: "YYYY-MM",
+    quarter: "YYYY - [Q]Q",
+  },
+  "YYYY.MM.DD": {
+    month: "YYYY.MM",
+    quarter: "YYYY - [Q]Q",
+  },
+  YYYY年M月D日: {
+    month: "YYYY年M月",
+    quarter: "YYYY年[Q]Q",
+  },
   "MMMM D, YYYY": {
     month: "MMMM YYYY",
   },
@@ -971,6 +983,88 @@ function getWeekFormatSpecsWithDateStyle(
         },
       },
     ];
+  } else if (dateStyle === "YYYY-MM-DD" || dateStyle === "YYYY.MM.DD") {
+    const styleSeparator = dateStyle === "YYYY-MM-DD" ? "-" : ".";
+
+    return [
+      {
+        same: "month",
+        format: [`${Y}${styleSeparator}MM${styleSeparator}DD`, "DD"],
+        removedYearFormat: [`MM${styleSeparator}DD`, "DD"],
+        tests: {
+          verbose: {
+            output: `2017${styleSeparator}01${styleSeparator}01–07`,
+            input: ["2017-01-01", "2017-01-07"],
+          },
+        },
+      },
+      {
+        same: "year",
+        format: [
+          `${Y}${styleSeparator}MM${styleSeparator}DD`,
+          `MM${styleSeparator}DD`,
+        ],
+        removedYearFormat: [`MM${styleSeparator}DD`, `MM${styleSeparator}DD`],
+        dashPad: " ",
+        tests: {
+          verbose: {
+            output: `2017${styleSeparator}01${styleSeparator}01 – 05${styleSeparator}14`,
+            input: ["2017-01-01", "2017-05-14"],
+          },
+        },
+      },
+      {
+        same: null,
+        format: [
+          `${Y}${styleSeparator}MM${styleSeparator}DD`,
+          `${Y}${styleSeparator}MM${styleSeparator}DD`,
+        ],
+        dashPad: " ",
+        tests: {
+          verbose: {
+            output: `2017${styleSeparator}01${styleSeparator}01 – 2018${styleSeparator}02${styleSeparator}04`,
+            input: ["2017-01-01", "2018-02-04"],
+          },
+        },
+      },
+    ];
+  } else if (dateStyle === "YYYY年M月D日") {
+    return [
+      {
+        same: "month",
+        format: [`${Y}年M月D日`, "D日"],
+        removedYearFormat: ["M月D日", "D日"],
+        tests: {
+          verbose: {
+            output: "2017年1月1日–7日",
+            input: ["2017-01-01", "2017-01-07"],
+          },
+        },
+      },
+      {
+        same: "year",
+        format: [`${Y}年M月D日`, "M月D日"],
+        removedYearFormat: ["M月D日", "M月D日"],
+        dashPad: " ",
+        tests: {
+          verbose: {
+            output: "2017年1月1日 – 5月14日",
+            input: ["2017-01-01", "2017-05-14"],
+          },
+        },
+      },
+      {
+        same: null,
+        format: [`${Y}年M月D日`, `${Y}年M月D日`],
+        dashPad: " ",
+        tests: {
+          verbose: {
+            output: "2017年1月1日 – 2018年2月4日",
+            input: ["2017-01-01", "2018-02-04"],
+          },
+        },
+      },
+    ];
   }
 
   // Handle text-based date formats
@@ -1389,6 +1483,9 @@ export function getDateStyleOptionsForUnit(
     dateStyleOption("M/D/YYYY", unit, abbreviate, separator),
     dateStyleOption("D/M/YYYY", unit, abbreviate, separator),
     dateStyleOption("YYYY/M/D", unit, abbreviate, separator),
+    dateStyleOption("YYYY-MM-DD", unit, abbreviate, separator),
+    dateStyleOption("YYYY.MM.DD", unit, abbreviate, separator),
+    dateStyleOption("YYYY年M月D日", unit, abbreviate, separator),
   ];
   const seen = new Set();
   return options.filter((option) => {

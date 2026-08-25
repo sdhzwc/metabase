@@ -1,4 +1,5 @@
 import type { NotificationRecipient } from "./notification";
+import type { UserInfo } from "./user";
 
 export type AdvisoryMatchStatus =
   | "active"
@@ -30,7 +31,10 @@ export type Advisory = {
   published_at: string;
   match_status: AdvisoryMatchStatus;
   last_evaluated_at: string | null;
-  acknowledged_by: { id: number; common_name: string; email: string } | null;
+  acknowledged_by: Pick<
+    UserInfo,
+    "id" | "common_name" | "email" | "nickname"
+  > | null;
   acknowledged_at: string | null;
   affected_versions: AdvisoryVersionRange[];
   download_jar_urls: AdvisoryDownloadJarUrl[];
@@ -44,7 +48,10 @@ export type ListAdvisoriesResponse = {
 export type AcknowledgeAdvisoryResponse = {
   advisory_id: string;
   match_status: AdvisoryMatchStatus;
-  acknowledged_by: { id: number; common_name: string; email: string } | null;
+  acknowledged_by: Pick<
+    UserInfo,
+    "id" | "common_name" | "email" | "nickname"
+  > | null;
   acknowledged_at: string | null;
 };
 

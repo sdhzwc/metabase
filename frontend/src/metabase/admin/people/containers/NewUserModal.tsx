@@ -38,6 +38,7 @@ export const NewUserModal = ({
         email: vals.email ?? "",
         first_name: vals.first_name ?? undefined,
         last_name: vals.last_name ?? undefined,
+        nickname: vals.nickname ?? undefined,
         login_attributes: vals.login_attributes || undefined,
         ...(password ? { password } : {}),
       }).unwrap();

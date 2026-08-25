@@ -1078,6 +1078,7 @@
                     :email      "zzzz@example.com",
                     :first_name "Test",
                     :last_name  "ZZZZ",
+                    :nickname   nil,
                     :timestamp  true}}
                   {:name "Card with history 2",
                    :last-edit-info
@@ -1085,6 +1086,7 @@
                     :email      "aaaa@example.com",
                     :first_name "Test",
                     :last_name  "AAAA",
+                    :nickname   nil,
                     ;; timestamp collapsed to true, ordinarily a OffsetDateTime
                     :timestamp  true}}
                   {:name "ZZ"}]
@@ -1420,6 +1422,8 @@
   (testing "Sorting by last-edited-by"
     (is (= [[:authority_level :asc :nulls-last]
             [:type :asc :nulls-first]
+            [:last_edit_nickname :nulls-last]
+            [:last_edit_nickname :asc]
             [:last_edit_last_name :nulls-last]
             [:last_edit_last_name :asc]
             [:last_edit_first_name :nulls-last]
@@ -1434,6 +1438,8 @@
   (testing "Sorting by last-edited-by"
     (is (= [[:authority_level :asc :nulls-last]
             [:type :asc :nulls-first]
+            [:%isnull.last_edit_nickname]
+            [:last_edit_nickname :asc]
             [:%isnull.last_edit_last_name]
             [:last_edit_last_name :asc]
             [:%isnull.last_edit_first_name]

@@ -17,7 +17,6 @@ import {
   UnstyledButton,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import { getFullName } from "metabase/utils/user";
 import type {
   GroupId,
   GroupInfo,
@@ -32,6 +31,13 @@ import { MembershipSelect } from "./MembershipSelect";
 import { ReactivateUserButton } from "./ReactivateUserButton";
 
 const enablePasswordLoginKey = "enable-password-login";
+
+const getNameColumnDisplayName = (user: User) => {
+  const firstName = user.first_name?.trim() || "";
+  const lastName = user.last_name?.trim() || "";
+
+  return [lastName, firstName].filter(Boolean).join(" ") || user.email;
+};
 
 interface PeopleListRowProps {
   user: User;
@@ -76,7 +82,7 @@ export const PeopleListRow = ({
     <tr key={user.id}>
       <Flex component="td" align="center" gap="md" c="text-primary-inverse">
         <UserAvatar bg={userToColor(user)} user={user} />
-        <Text fw="700">{getFullName(user) ?? "-"}</Text>
+        <Text fw="700">{getNameColumnDisplayName(user) ?? "-"}</Text>
       </Flex>
       <td>
         {user.sso_source === "google" ? (
@@ -90,6 +96,7 @@ export const PeopleListRow = ({
           </Tooltip>
         ) : null}
       </td>
+      <td>{user.nickname?.trim() || "-"}</td>
       <td>{user.email}</td>
       {showDeactivated ? (
         <Fragment>

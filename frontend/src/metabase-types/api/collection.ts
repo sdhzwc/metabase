@@ -48,7 +48,7 @@ export type CollectionType =
 
 export type LastEditInfo = Pick<
   UserInfo,
-  "id" | "email" | "first_name" | "last_name"
+  "id" | "email" | "first_name" | "last_name" | "nickname"
 > & {
   timestamp: string;
 };

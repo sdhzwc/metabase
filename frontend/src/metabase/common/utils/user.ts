@@ -4,7 +4,10 @@ import type { BaseUser, Group, Tenant } from "metabase-types/api";
 // Requires at least an `email` or `common_name` (mirroring `isUser` below), so
 // name-only objects like a tenant's `{ name }` can't be passed as first_name alone.
 export type PartialUser = Partial<
-  Pick<BaseUser, "first_name" | "last_name" | "email" | "common_name">
+  Pick<
+    BaseUser,
+    "first_name" | "last_name" | "nickname" | "email" | "common_name"
+  >
 > &
   (Pick<BaseUser, "email"> | Pick<BaseUser, "common_name">);
 export type PartialGroup = Pick<Group, "name">;
@@ -16,6 +19,7 @@ export type Named = PartialUser | PartialGroup | PartialTenant;
 export function prepareInitials(namedParty: Named): string | null {
   if (isUser(namedParty)) {
     return (
+      initial(namedParty.nickname) ||
       initial(namedParty.first_name) + initial(namedParty.last_name) ||
       emailInitials(namedParty)
     );

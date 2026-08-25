@@ -3,7 +3,7 @@ import { t } from "ttag";
 import type { UserInfo } from "metabase-types/api";
 
 export const getUserLabel = (user: UserInfo | null | undefined): string =>
-  user?.common_name || user?.email || t`Unknown`;
+  user?.nickname?.trim() || user?.common_name || user?.email || t`Unknown`;
 
 export function getFullName(user: NamedUser): string | null {
   const firstName = user.first_name?.trim() || "";
@@ -15,6 +15,10 @@ export const getUserName = (userInfo?: NamedUser) => {
   if (!userInfo) {
     return "";
   }
+  const nickname = userInfo.nickname?.trim();
+  if (nickname) {
+    return nickname;
+  }
   const name = getFullName(userInfo);
   return name || userInfo.email;
 };
@@ -22,5 +26,6 @@ export const getUserName = (userInfo?: NamedUser) => {
 export interface NamedUser {
   first_name?: string | null;
   last_name?: string | null;
+  nickname?: string | null;
   email?: string;
 }

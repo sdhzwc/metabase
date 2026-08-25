@@ -11,7 +11,7 @@ import { PLUGIN_GROUP_MANAGERS, PLUGIN_TENANTS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getUser } from "metabase/selectors/user";
 import { Box, Flex, Icon, Text, Tooltip, UnstyledButton } from "metabase/ui";
-import { getFullName } from "metabase/utils/user";
+import { getUserName } from "metabase/utils/user";
 import type { Group, Member, Membership } from "metabase-types/api";
 
 import { AddMemberRow } from "../AddMemberRow";
@@ -137,7 +137,7 @@ const UserMemberRow = ({
   return (
     <tr>
       <td>
-        <Text fw={700}>{getFullName(member) ?? "-"}</Text>
+        <Text fw={700}>{getUserName(member) || "-"}</Text>
       </td>
       {canEditMembership(group) && PLUGIN_GROUP_MANAGERS.UserTypeCell && (
         <PLUGIN_GROUP_MANAGERS.UserTypeCell

@@ -180,6 +180,7 @@ export const PeopleList = ({
             <tr>
               <th>{t`Name`}</th>
               <th />
+              <th>{t`Nickname`}</th>
               <th>{t`Email`}</th>
               {showDeactivated ? (
                 <Fragment>

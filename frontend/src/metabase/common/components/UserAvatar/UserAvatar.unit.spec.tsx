@@ -30,6 +30,18 @@ describe("UserAvatar", () => {
 
       expect(await screen.findByText("US")).toBeInTheDocument();
     });
+
+    test("prefers nickname initials", async () => {
+      const revisionUser = createMockUser({
+        first_name: "Testy",
+        last_name: "Tableton",
+        nickname: "Nick",
+      });
+
+      render(<UserAvatar user={revisionUser} />);
+
+      expect(await screen.findByText("N")).toBeInTheDocument();
+    });
   });
 
   describe("Revision history", () => {

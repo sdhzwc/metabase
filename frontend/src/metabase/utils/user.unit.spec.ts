@@ -1,4 +1,4 @@
-import { getFullName } from "metabase/utils/user";
+import { getFullName, getUserLabel, getUserName } from "metabase/utils/user";
 import { createMockUser } from "metabase-types/api/mocks";
 
 describe("lib/user", () => {
@@ -33,6 +33,33 @@ describe("lib/user", () => {
         last_name: null,
       };
       expect(getFullName(createMockUser(user))).toEqual(null);
+    });
+  });
+
+  describe("getUserName", () => {
+    test("prefers nickname over full name", () => {
+      expect(
+        getUserName(
+          createMockUser({
+            first_name: "Testy",
+            last_name: "Tableton",
+            nickname: "Nick",
+          }),
+        ),
+      ).toEqual("Nick");
+    });
+  });
+
+  describe("getUserLabel", () => {
+    test("prefers nickname over common name", () => {
+      expect(
+        getUserLabel(
+          createMockUser({
+            common_name: "Testy Tableton",
+            nickname: "Nick",
+          }),
+        ),
+      ).toEqual("Nick");
     });
   });
 });

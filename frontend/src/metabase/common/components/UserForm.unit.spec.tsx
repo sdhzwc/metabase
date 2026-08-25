@@ -27,6 +27,7 @@ const GROUPS = [
 const USER = createMockUser({
   first_name: "Bobby",
   last_name: "Tables",
+  nickname: "Bob",
   email: "bobby.tables@metabase.com",
   user_group_memberships: [
     { id: 1, is_group_manager: false },
@@ -99,6 +100,7 @@ describe("UserForm", () => {
 
       expect(screen.getByLabelText("First name")).toHaveValue("Bobby");
       expect(screen.getByLabelText("Last name")).toHaveValue("Tables");
+      expect(screen.getByLabelText("Nickname")).toHaveValue("Bob");
       expect(screen.getByLabelText(/Email/)).toHaveValue(
         "bobby.tables@metabase.com",
       );
@@ -391,6 +393,7 @@ describe("UserForm", () => {
       expect(await screen.findByLabelText(/Email/)).toBeInTheDocument();
       expect(screen.queryByLabelText("First name")).not.toBeInTheDocument();
       expect(screen.queryByLabelText("Last name")).not.toBeInTheDocument();
+      expect(screen.queryByLabelText("Nickname")).not.toBeInTheDocument();
     });
 
     it("hides the Attributes field when hideAttributes is set", async () => {

@@ -32,6 +32,7 @@ import {
 } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
 import * as Urls from "metabase/urls";
+import { getUserName } from "metabase/utils/user";
 import type { IconName } from "metabase-types/api";
 
 import { AboutModal } from "../AboutModal/AboutModal";
@@ -51,6 +52,7 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
   const dispatch = useDispatch();
 
   const user = useSelector(getUser);
+  const userName = getUserName(user);
   const applicationName = useSelector(getApplicationName);
 
   // generate the proper set of list items for the current user
@@ -194,7 +196,7 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
                   {user ? prepareInitials(user) : "?"}
                 </Avatar>
                 <Stack gap="xs">
-                  <Text lh="xs">{user?.first_name}</Text>
+                  <Text lh="xs">{userName}</Text>
                   <Text c="text-disabled" fz="md" lh="xs">
                     {user?.email}
                   </Text>

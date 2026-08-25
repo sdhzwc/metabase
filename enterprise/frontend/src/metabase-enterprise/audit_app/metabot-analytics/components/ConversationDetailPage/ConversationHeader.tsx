@@ -50,7 +50,6 @@ export function ConversationHeader({
   const userName = conversation.user
     ? getUserName(conversation.user) || t`Unknown`
     : t`Unknown`;
-  const firstName = conversation.user?.first_name?.trim() || userName;
   const firstProfile = conversation.profile_id ?? undefined;
 
   const crumbs = useMemo<Crumb[]>(
@@ -90,7 +89,7 @@ export function ConversationHeader({
                     component={ForwardRefLink}
                     to={Urls.editUser(conversation.user)}
                   >
-                    {t`View ${firstName}'s details`}
+                    {t`View ${userName}'s details`}
                   </Menu.Item>
                 </Menu.Dropdown>
               </Menu>

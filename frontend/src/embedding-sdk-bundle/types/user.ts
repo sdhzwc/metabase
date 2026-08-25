@@ -9,6 +9,7 @@ export type MetabaseUser = {
   id: SdkUserId;
   first_name: string | null;
   last_name: string | null;
+  nickname: string | null;
   common_name: string;
   email: string;
   locale: string | null;

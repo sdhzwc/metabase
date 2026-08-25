@@ -29,6 +29,9 @@
   {"M/D/YYYY"           [:month-d "/" :day-of-month-d "/" :year]
    "D/M/YYYY"           [:day-of-month-d "/" :month-d "/" :year]
    "YYYY/M/D"           [:year "/" :month-d "/" :day-of-month-d]
+   "YYYY-MM-DD"         [:year "-" :month-dd "-" :day-of-month-dd]
+   "YYYY.MM.DD"         [:year "." :month-dd "." :day-of-month-dd]
+   "YYYY年M月D日"       [:year "年" :month-d "月" :day-of-month-d "日"]
    "MMMM D, YYYY"       [:month-full " " :day-of-month-d ", " :year]
    "D MMMM, YYYY"       [:day-of-month-d " " :month-full ", " :year]
    "dddd, MMMM D, YYYY" [:day-of-week-full ", " :month-full " " :day-of-month-d ", " :year]})

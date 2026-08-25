@@ -75,6 +75,7 @@ export interface Dashboard {
     email: string;
     first_name: string;
     last_name: string;
+    nickname: string | null;
     timestamp: string;
   };
   last_used_param_values: Record<

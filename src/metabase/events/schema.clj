@@ -35,7 +35,7 @@
      schema]))
 
 (def ^:private user-hydrate
-  [:model/User :first_name :last_name :email])
+  [:model/User :first_name :last_name :nickname :email])
 
 ;; collection events
 

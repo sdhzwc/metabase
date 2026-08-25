@@ -6,6 +6,7 @@ import {
   formatDateTimeForParameter,
   formatDateTimeRangeWithUnit,
   formatDateTimeWithUnit,
+  getDateStyleOptionsForUnit,
 } from "metabase/visualizations/lib/formatting/date";
 
 import "dayjs/locale/es";
@@ -119,6 +120,39 @@ describe("formatDateTimeRangeWithUnit with date_style", () => {
 
     expect(formatDateTimeRangeWithUnit(input, "week", options)).toBe(
       "2017/1/1 – 2017/1/7",
+    );
+  });
+
+  it("should format Chinese date styles in cells", () => {
+    const input: [string] = ["2017-01-01"]; // Week: 2017-01-01 to 2017-01-07
+
+    expect(
+      formatDateTimeRangeWithUnit(input, "week", {
+        type: "cell",
+        date_style: "YYYY-MM-DD",
+      }),
+    ).toBe("2017-01-01 – 2017-01-07");
+    expect(
+      formatDateTimeRangeWithUnit(input, "week", {
+        type: "cell",
+        date_style: "YYYY.MM.DD",
+      }),
+    ).toBe("2017.01.01 – 2017.01.07");
+    expect(
+      formatDateTimeRangeWithUnit(input, "week", {
+        type: "cell",
+        date_style: "YYYY年M月D日",
+      }),
+    ).toBe("2017年1月1日 – 2017年1月7日");
+  });
+
+  it("should include Chinese date styles in date style options", () => {
+    const options = getDateStyleOptionsForUnit("default").map(
+      (option) => option.name,
+    );
+
+    expect(options).toEqual(
+      expect.arrayContaining(["2018-01-31", "2018.01.31", "2018年1月31日"]),
     );
   });
 

@@ -48,6 +48,7 @@ export type MetabaseDashboard = {
     email: string;
     first_name: string;
     last_name: string;
+    nickname: string | null;
     timestamp: string;
   };
 };

@@ -944,7 +944,7 @@
   - The user info for the creator of the pulse
   - The users affected by the pulse"
   [{bad-pulse-id :id pulse-name :name :keys [parameters creator_id]}]
-  (let [creator (t2/select-one [:model/User :first_name :last_name :email] creator_id)]
+  (let [creator (t2/select-one [:model/User :first_name :last_name :nickname :email] creator_id)]
     {:pulse-id       bad-pulse-id
      :pulse-name     pulse-name
      :bad-parameters parameters
@@ -964,7 +964,7 @@
                                         (assoc recipient
                                                :notification-type channel-type
                                                :recipient common_name))
-                                      (t2/select [:model/User :first_name :last_name :email]
+                                      (t2/select [:model/User :first_name :last_name :nickname :email]
                                                  :id [:in (map :user_id pulse-channel-recipients)]))))
                           :slack {:notification-type channel-type
                                   :recipient         channel}

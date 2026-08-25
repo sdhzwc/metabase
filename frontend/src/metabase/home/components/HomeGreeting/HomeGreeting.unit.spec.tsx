@@ -27,21 +27,21 @@ const setup = ({ currentUser, showLogo }: SetupOpts) => {
 describe("HomeGreeting", () => {
   it("should render with logo", () => {
     setup({
-      currentUser: createMockUser({ first_name: "John" }),
+      currentUser: createMockUser({ first_name: "John", nickname: "Wu Chao" }),
       showLogo: true,
     });
 
-    expect(screen.getByText(/John/)).toBeInTheDocument();
+    expect(screen.getByText(/Wu Chao/)).toBeInTheDocument();
     expect(screen.getAllByRole("img")).toHaveLength(2);
   });
 
   it("should render without logo", () => {
     setup({
-      currentUser: createMockUser({ first_name: "John" }),
+      currentUser: createMockUser({ first_name: "John", nickname: "Wu Chao" }),
       showLogo: false,
     });
 
-    expect(screen.getByText(/John/)).toBeInTheDocument();
+    expect(screen.getByText(/Wu Chao/)).toBeInTheDocument();
     expect(screen.queryByRole("img")).not.toBeInTheDocument();
   });
 });

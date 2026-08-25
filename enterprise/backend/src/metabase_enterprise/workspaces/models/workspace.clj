@@ -49,7 +49,7 @@
    (fn []
      (when-let [ids (seq (distinct (keep :creator_id workspaces)))]
        (u/index-by :id
-                   (t2/select [:model/User :id :first_name :last_name :email :common_name]
+                   (t2/select [:model/User :id :first_name :last_name :nickname :email :common_name]
                               :id [:in ids]))))
    :creator_id))
 

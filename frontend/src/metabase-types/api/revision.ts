@@ -42,6 +42,7 @@ export interface Revision {
     id: number;
     first_name: string;
     last_name: string;
+    nickname: string | null;
     common_name: string;
   };
 }

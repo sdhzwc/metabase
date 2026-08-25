@@ -11,6 +11,7 @@ describe("Edit user modal", () => {
     expect(await screen.findByText("Edit user")).toBeInTheDocument();
     expect(await screen.findByDisplayValue("Ash")).toBeInTheDocument();
     expect(await screen.findByDisplayValue("Ketchum")).toBeInTheDocument();
+    expect(await screen.findByDisplayValue("Pikachu Boy")).toBeInTheDocument();
     expect(
       await screen.findByDisplayValue("pikachuboy97@example.com"),
     ).toBeInTheDocument();
@@ -43,6 +44,7 @@ describe("Edit user modal", () => {
     expect(req).toEqual({
       first_name: "Misty",
       last_name: "Ketchum",
+      nickname: "Pikachu Boy",
       email: "pikachuboy97@example.com",
       user_group_memberships: [],
       login_attributes: {},
@@ -75,6 +77,7 @@ describe("Edit user modal", () => {
       expect(req).toEqual({
         first_name: "Madonna",
         last_name: null, // this null key must be present
+        nickname: null, // this null key must be present
         email: "name@example.com",
         user_group_memberships: [],
         login_attributes: {},
@@ -106,6 +109,7 @@ describe("Edit user modal", () => {
       expect(req).toEqual({
         first_name: null, // this null key must be present
         last_name: null, // this null key must be present
+        nickname: null, // this null key must be present
         email: "morpheus@example.com",
         user_group_memberships: [],
         login_attributes: {},
@@ -138,10 +142,35 @@ describe("Edit user modal", () => {
       expect(req).toEqual({
         first_name: null, // this null key must be present
         last_name: null, // this null key must be present
+        nickname: null, // this null key must be present
         email: "s+g@example.com",
         user_group_memberships: [],
         login_attributes: {},
       });
+    });
+  });
+
+  it("should send nickname updates to the API", async () => {
+    setup({ userData: defaultUser });
+    const nicknameField = await screen.findByLabelText("Nickname");
+    const submitButton = await screen.findByText("Update");
+
+    await userEvent.clear(nicknameField);
+    await userEvent.type(nicknameField, "Champion");
+    await userEvent.click(submitButton);
+
+    const call = fetchMock.callHistory.lastCall("path:/api/user/97", {
+      method: "PUT",
+    });
+    const req = await call?.request?.json();
+
+    expect(req).toEqual({
+      first_name: "Ash",
+      last_name: "Ketchum",
+      nickname: "Champion",
+      email: "pikachuboy97@example.com",
+      user_group_memberships: [],
+      login_attributes: {},
     });
   });
 });

@@ -19,15 +19,10 @@ import {
 
 import { AppSwitcher } from "./AppSwitcher";
 
-const USER = createMockUser();
+const USER_NICKNAME = "Wu Chao";
+const USER = createMockUser({ nickname: USER_NICKNAME });
 
-const REGULAR_ITEMS = [
-  // Unjustified type cast. FIXME
-  USER.first_name as string,
-  USER.email,
-  "Help",
-  "Sign out",
-];
+const REGULAR_ITEMS = [USER_NICKNAME, USER.email, "Help", "Sign out"];
 const ADMIN_ITEMS = [...REGULAR_ITEMS, "Main app", "Admin"];
 const HOSTED_ITEMS = [...ADMIN_ITEMS];
 
@@ -99,10 +94,7 @@ describe("ProfileLink", () => {
     await setup();
 
     // Should always render a profile link
-    expect(
-      // Unjustified type cast. FIXME
-      await screen.findByText(USER.first_name as string),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(USER_NICKNAME)).toBeInTheDocument();
     expect(await screen.findByText(USER.email)).toBeInTheDocument();
 
     //Should render a help submenu
@@ -128,7 +120,7 @@ describe("ProfileLink", () => {
         screen.queryByRole("img", { name: /mode/i }),
       ).not.toBeInTheDocument();
 
-      expect(screen.getByTestId("app-switcher-target")).toHaveTextContent("TT");
+      expect(screen.getByTestId("app-switcher-target")).toHaveTextContent("W");
     });
 
     it("should show the proper set of items for admin users", async () => {

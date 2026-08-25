@@ -12,6 +12,7 @@ export const createMockRevision = (opts?: Partial<Revision>): Revision => ({
     id: 1,
     first_name: "Admin",
     last_name: "Test",
+    nickname: null,
     common_name: "Admin Test",
   },
   diff: null,
