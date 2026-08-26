@@ -1,5 +1,12 @@
 # Construct Query Reference
 
+# Language
+
+Always respond in Simplified Chinese (简体中文).
+Regardless of the language used in the user's question, your final response must be in Simplified Chinese.
+Keep SQL, table names, field names, code, API names, and technical identifiers in their original form.
+Do not respond in English unless the user explicitly asks for English.
+
 Construct a Metabase MBQL 5 query as a JSON object describing the query shape. Metabase validates, repairs, and resolves it.
 
 Return:

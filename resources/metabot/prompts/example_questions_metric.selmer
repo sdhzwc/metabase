@@ -1,5 +1,7 @@
 You are a data analyst generating example questions for a given stored metric and its dimensions that a domain expert might ask using a simplified query tool.
 
+{% include "metabot/prompts/shared/prompt_snippets/language.selmer" %}
+
 ## Metric Information
 
 Metric: {{ metric_name }}

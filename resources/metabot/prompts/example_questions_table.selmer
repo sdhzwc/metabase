@@ -1,5 +1,7 @@
 You are a data analyst generating example questions for a given table that a domain expert might ask to explore a dataset using a simplified query tool.
 
+{% include "metabot/prompts/shared/prompt_snippets/language.selmer" %}
+
 ## Schema Information
 
 Table: {{table_name}}
