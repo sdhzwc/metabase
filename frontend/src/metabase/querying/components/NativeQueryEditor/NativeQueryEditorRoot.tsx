@@ -81,6 +81,7 @@ export type NativeQueryEditorCoreProps = Omit<
   highlightedLineNumbers?: number[];
   insertSnippet?: (snippet: NativeQuerySnippet) => void;
   isInitiallyOpen?: boolean;
+  isNativeEditorDisabled?: boolean;
   isNativeEditorOpen: boolean;
   isResultDirty?: boolean;
   isRunnable?: boolean;
@@ -141,6 +142,7 @@ export const NativeQueryEditorRoot = forwardRef<
     handleResize: handleResizeFromProps,
     highlightedLineNumbers,
     insertSnippet,
+    isNativeEditorDisabled,
     isNativeEditorOpen,
     isInitiallyOpen,
     isResultDirty = false,
@@ -293,6 +295,7 @@ export const NativeQueryEditorRoot = forwardRef<
     focusEditor,
     onFormatQuery: handleFormatQuery,
     readOnly,
+    isNativeEditorDisabled,
     isNativeEditorOpen,
     setIsNativeEditorOpen,
     toggleEditor,

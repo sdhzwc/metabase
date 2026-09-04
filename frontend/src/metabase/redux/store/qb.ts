@@ -48,6 +48,7 @@ export interface QueryBuilderUIControls {
   isShowingTimelineSidebar: boolean;
   focusedTimelineEventIds: number[] | null;
   isNativeEditorOpen: boolean;
+  isNativeEditorDisabled: boolean;
   isShowingAIQuestionAnalysisSidebar: boolean;
   initialChartSetting: InitialChartSettingState;
   isShowingRawTable: boolean;

@@ -45,7 +45,11 @@ import { getRowIdColumn } from "metabase/data-grid/utils/columns/row-id-column";
 import { getScrollBarSize } from "metabase/utils/dom";
 import { isNotNull } from "metabase/utils/types";
 
-import { getTruncatedColumnSizing } from "../utils/column-sizing";
+import {
+  addSortIndicatorColumnSizing,
+  getTruncatedColumnSizing,
+  updateSortIndicatorColumnSizing,
+} from "../utils/column-sizing";
 import { maybeExpandColumnWidths } from "../utils/maybe-expand-column-widths";
 
 import { useCellSelection } from "./use-cell-selection";
@@ -205,6 +209,15 @@ export const useDataGridInstance = <TData, TValue>({
 
   const fixedWidthColumnIds = utilityColumnIds;
 
+  const sortedColumnIds = useMemo(
+    () =>
+      columnsOptions
+        .filter((columnOptions) => columnOptions.sortDirection != null)
+        .map((columnOptions) => columnOptions.id),
+    [columnsOptions],
+  );
+  const previousSortedColumnIds = usePrevious(sortedColumnIds);
+
   // Columns that need text wrapping
   const wrappedColumnsOptions = useMemo(() => {
     return columnsOptions.filter((column) => column.wrap);
@@ -333,8 +346,13 @@ export const useDataGridInstance = <TData, TValue>({
               ...preserveColumnSizingMap,
             };
 
-        const newWidths = maybeExpandColumnWidths(
+        const columnSizingWithSortIndicators = addSortIndicatorColumnSizing(
           columnSizingMap,
+          sortedColumnIds,
+        );
+
+        const newWidths = maybeExpandColumnWidths(
+          columnSizingWithSortIndicators,
           fixedWidthColumnIds,
           minGridWidth,
         );
@@ -350,6 +368,7 @@ export const useDataGridInstance = <TData, TValue>({
       truncateLongCellWidth,
       fixedWidthColumnIds,
       minGridWidth,
+      sortedColumnIds,
     ],
   );
 
@@ -389,6 +408,23 @@ export const useDataGridInstance = <TData, TValue>({
   useEffect(() => {
     columnVirtualizer.measure();
   }, [columnVirtualizer, columnOrder]);
+
+  useEffect(() => {
+    if (
+      previousSortedColumnIds == null ||
+      _.isEqual(previousSortedColumnIds, sortedColumnIds)
+    ) {
+      return;
+    }
+
+    setColumnSizingMap((prev) =>
+      updateSortIndicatorColumnSizing(
+        prev,
+        previousSortedColumnIds,
+        sortedColumnIds,
+      ),
+    );
+  }, [previousSortedColumnIds, sortedColumnIds]);
 
   // Handle column resize from resize observer
   const handleColumnResize = useCallback(

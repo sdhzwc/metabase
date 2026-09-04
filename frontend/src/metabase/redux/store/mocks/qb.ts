@@ -24,6 +24,7 @@ export const createMockQueryBuilderUIControlsState = (
   initialChartSetting: {},
   isShowingRawTable: false,
   isNativeEditorOpen: false,
+  isNativeEditorDisabled: false,
   queryBuilderMode: "view",
   previousQueryBuilderMode: null,
   snippetCollectionId: null,

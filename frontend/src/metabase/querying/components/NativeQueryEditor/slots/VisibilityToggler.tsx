@@ -10,6 +10,7 @@ export function VisibilityToggler() {
   const {
     query,
     question,
+    isNativeEditorDisabled,
     isNativeEditorOpen,
     readOnly,
     setIsNativeEditorOpen,
@@ -19,6 +20,7 @@ export function VisibilityToggler() {
   if (
     !query.hasWritePermission() ||
     question.isArchived() ||
+    isNativeEditorDisabled ||
     !setIsNativeEditorOpen
   ) {
     return null;

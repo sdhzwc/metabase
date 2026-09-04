@@ -363,11 +363,34 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     [sorting],
   );
 
+  const setNativeEditorDisabledForClientSort = useCallback(
+    (isNativeEditorDisabled: boolean) => {
+      dispatch(
+        setUIControls({
+          isNativeEditorOpen: false,
+          isNativeEditorDisabled,
+          isShowingTemplateTagsEditor: false,
+          isShowingSnippetSidebar: false,
+          isShowingDataReference: false,
+          nativeEditorSelectedRange: [],
+        }),
+      );
+    },
+    [dispatch],
+  );
+
+  useEffect(() => {
+    return () => {
+      dispatch(setUIControls({ isNativeEditorDisabled: false }));
+    };
+  }, [dispatch]);
+
   const sortClientSideColumn = useCallback(
     (columnId: string, direction: SortDrillThruDirection) => {
+      setNativeEditorDisabledForClientSort(true);
       setSorting([{ id: columnId, desc: direction === "desc" }]);
     },
-    [],
+    [setNativeEditorDisabledForClientSort],
   );
 
   const handleHeaderCellClick = useCallback(
@@ -385,8 +408,10 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         );
 
         if (currentSorting == null) {
+          setNativeEditorDisabledForClientSort(true);
           setSorting([{ id: columnId, desc: true }]);
         } else if (currentSorting.desc) {
+          setNativeEditorDisabledForClientSort(true);
           setSorting((prev) =>
             prev.map((sorting) => {
               if (sorting.id === columnId) {
@@ -396,6 +421,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
             }),
           );
         } else {
+          setNativeEditorDisabledForClientSort(false);
           setSorting((prev) =>
             prev.filter((sorting) => sorting.id !== columnId),
           );
@@ -439,6 +465,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
       isDashboard,
       getClientSideSortDirections,
       sortClientSideColumn,
+      setNativeEditorDisabledForClientSort,
     ],
   );
 

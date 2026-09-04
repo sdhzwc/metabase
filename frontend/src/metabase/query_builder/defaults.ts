@@ -19,6 +19,7 @@ export const DEFAULT_UI_CONTROLS: QueryBuilderUIControls = {
   focusedTimelineEventIds: null,
   isShowingAIQuestionAnalysisSidebar: false,
   isNativeEditorOpen: false,
+  isNativeEditorDisabled: false,
   initialChartSetting: {},
   isShowingRawTable: false, // table/viz toggle
   queryBuilderMode: "view", // "view" | "notebook" | "dataset"

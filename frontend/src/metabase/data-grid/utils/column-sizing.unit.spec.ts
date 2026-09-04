@@ -1,4 +1,9 @@
-import { getTruncatedColumnSizing, pickRowsToMeasure } from "./column-sizing";
+import {
+  addSortIndicatorColumnSizing,
+  getTruncatedColumnSizing,
+  pickRowsToMeasure,
+  updateSortIndicatorColumnSizing,
+} from "./column-sizing";
 
 describe("pickRowsToMeasure", () => {
   const createData = (values: (string | null | undefined)[]) =>
@@ -96,5 +101,62 @@ describe("getTruncatedColumnSizing", () => {
     const result = getTruncatedColumnSizing(columnSizingMap, 200);
 
     expect(result).toEqual(columnSizingMap);
+  });
+});
+
+describe("addSortIndicatorColumnSizing", () => {
+  it("adds sort indicator width to sorted columns", () => {
+    expect(
+      addSortIndicatorColumnSizing(
+        {
+          source: 100,
+          name: 200,
+        },
+        ["source"],
+      ),
+    ).toEqual({
+      source: 114,
+      name: 200,
+    });
+  });
+
+  it("returns the original sizing map when no columns are sorted", () => {
+    const columnSizingMap = {
+      source: 100,
+      name: 200,
+    };
+
+    expect(addSortIndicatorColumnSizing(columnSizingMap, [])).toBe(
+      columnSizingMap,
+    );
+  });
+});
+
+describe("updateSortIndicatorColumnSizing", () => {
+  it("moves sort indicator width when the sorted column changes", () => {
+    expect(
+      updateSortIndicatorColumnSizing(
+        {
+          source: 114,
+          name: 200,
+        },
+        ["source"],
+        ["name"],
+      ),
+    ).toEqual({
+      source: 100,
+      name: 214,
+    });
+  });
+
+  it("returns the original sizing map when the sorted columns do not change", () => {
+    const columnSizingMap = {
+      source: 114,
+      name: 200,
+    };
+
+    expect(
+      updateSortIndicatorColumnSizing(columnSizingMap, ["source"], ["source"]),
+    ).toBe(columnSizingMap);
   });
 });

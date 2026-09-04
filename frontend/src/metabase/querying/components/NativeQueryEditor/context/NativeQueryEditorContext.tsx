@@ -26,6 +26,7 @@ export interface NativeQueryEditorContextValue {
   onFormatQuery: () => void;
 
   readOnly?: boolean;
+  isNativeEditorDisabled?: boolean;
   isNativeEditorOpen: boolean;
   setIsNativeEditorOpen?: (
     isOpen: boolean,

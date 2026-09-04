@@ -39,6 +39,7 @@ interface ViewMainContainerProps {
 
   isInitiallyOpen?: boolean;
   isNativeEditorOpen: boolean;
+  isNativeEditorDisabled: boolean;
   isRunnable: boolean;
   isRunning: boolean;
   isResultDirty: boolean;

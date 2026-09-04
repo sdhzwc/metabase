@@ -31,6 +31,7 @@ interface ViewNativeQueryEditorProps {
 
   isInitiallyOpen?: boolean;
   isNativeEditorOpen: boolean;
+  isNativeEditorDisabled: boolean;
   isRunnable: boolean;
   isRunning: boolean;
   isResultDirty: boolean;
@@ -70,7 +71,12 @@ interface ViewNativeQueryEditorProps {
 }
 
 export const ViewNativeQueryEditor = (props: ViewNativeQueryEditorProps) => {
-  const { question, isNativeEditorOpen, onSetDatabaseId } = props;
+  const {
+    question,
+    isNativeEditorOpen,
+    isNativeEditorDisabled,
+    onSetDatabaseId,
+  } = props;
 
   const legacyNativeQuery = question.legacyNativeQuery();
   const highlightedLineNumbers = useSelector(
@@ -98,6 +104,7 @@ export const ViewNativeQueryEditor = (props: ViewNativeQueryEditorProps) => {
         query={legacyNativeQuery}
         highlightedLineNumbers={highlightedLineNumbers}
         isInitiallyOpen={isNativeEditorOpen}
+        isNativeEditorDisabled={isNativeEditorDisabled}
         onSetDatabaseId={onSetDatabaseId}
         extensions={inlineSQLPrompt?.extensions}
         proposedQuestion={inlineSQLPrompt?.proposedQuestion}

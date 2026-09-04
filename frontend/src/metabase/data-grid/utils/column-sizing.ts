@@ -1,5 +1,7 @@
 import type { ColumnSizingState } from "@tanstack/react-table";
 
+const SORT_INDICATOR_WIDTH = 14;
+
 export const pickRowsToMeasure = <TData, TValue>(
   data: TData[],
   accessorFn: (row: TData) => TValue,
@@ -34,3 +36,61 @@ export const getTruncatedColumnSizing = (
       Math.min(value, truncateWidth),
     ]),
   );
+
+export const addSortIndicatorColumnSizing = <TColumn extends string>(
+  columnSizingMap: ColumnSizingState,
+  sortedColumnIds: TColumn[],
+): ColumnSizingState => {
+  if (sortedColumnIds.length === 0) {
+    return columnSizingMap;
+  }
+
+  return sortedColumnIds.reduce<ColumnSizingState>(
+    (acc, id) => {
+      if (acc[id] != null) {
+        acc[id] += SORT_INDICATOR_WIDTH;
+      }
+
+      return acc;
+    },
+    { ...columnSizingMap },
+  );
+};
+
+export const updateSortIndicatorColumnSizing = <TColumn extends string>(
+  columnSizingMap: ColumnSizingState,
+  previousSortedColumnIds: TColumn[],
+  sortedColumnIds: TColumn[],
+): ColumnSizingState => {
+  const previousSortedColumnIdsSet = new Set(previousSortedColumnIds);
+  const sortedColumnIdsSet = new Set(sortedColumnIds);
+  const columnsToShrink = previousSortedColumnIds.filter(
+    (id) => !sortedColumnIdsSet.has(id),
+  );
+  const columnsToGrow = sortedColumnIds.filter(
+    (id) => !previousSortedColumnIdsSet.has(id),
+  );
+
+  if (columnsToShrink.length === 0 && columnsToGrow.length === 0) {
+    return columnSizingMap;
+  }
+
+  const nextColumnSizingMap = { ...columnSizingMap };
+
+  columnsToShrink.forEach((id) => {
+    if (nextColumnSizingMap[id] != null) {
+      nextColumnSizingMap[id] = Math.max(
+        0,
+        nextColumnSizingMap[id] - SORT_INDICATOR_WIDTH,
+      );
+    }
+  });
+
+  columnsToGrow.forEach((id) => {
+    if (nextColumnSizingMap[id] != null) {
+      nextColumnSizingMap[id] += SORT_INDICATOR_WIDTH;
+    }
+  });
+
+  return nextColumnSizingMap;
+};
