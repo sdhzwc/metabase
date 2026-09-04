@@ -26,6 +26,15 @@ const ACTIONS: Record<string, ClickActionBase> = {
       return t`Sort descending`;
     },
   },
+  clear: {
+    name: "sort.clear",
+    icon: "close",
+    section: "sort",
+    buttonType: "sort",
+    get tooltip() {
+      return t`Clear sort`;
+    },
+  },
 };
 
 const getClientSideActionTooltip = (direction: Lib.SortDrillThruDirection) => {
@@ -55,6 +64,16 @@ export const getCustomSortClickAction = (
   name:
     direction === "asc" ? "client-sort.ascending" : "client-sort.descending",
   tooltip: getClientSideActionTooltip(direction),
+  type: "custom",
+  onClick,
+});
+
+export const getCustomClearSortClickAction = (
+  onClick: CustomClickAction["onClick"],
+): CustomClickAction => ({
+  ...ACTIONS.clear,
+  name: "client-sort.clear",
+  tooltip: t`Clear sorting in this table.`,
   type: "custom",
   onClick,
 });

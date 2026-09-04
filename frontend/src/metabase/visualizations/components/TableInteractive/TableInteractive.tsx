@@ -393,6 +393,11 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     [setNativeEditorDisabledForClientSort],
   );
 
+  const clearClientSideSort = useCallback(() => {
+    setNativeEditorDisabledForClientSort(false);
+    setSorting([]);
+  }, [setNativeEditorDisabledForClientSort]);
+
   const handleHeaderCellClick = useCallback(
     (
       event: React.MouseEvent<HTMLDivElement, MouseEvent>,
@@ -452,6 +457,11 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
             sortDirections: getClientSideSortDirections(columnId),
             onSortColumn: (direction: SortDrillThruDirection) =>
               sortClientSideColumn(columnId, direction),
+            onClearSort: sorting.some(
+              (columnSorting) => columnSorting.id === columnId,
+            )
+              ? clearClientSideSort
+              : undefined,
           },
         });
       }
@@ -466,6 +476,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
       getClientSideSortDirections,
       sortClientSideColumn,
       setNativeEditorDisabledForClientSort,
+      clearClientSideSort,
     ],
   );
 

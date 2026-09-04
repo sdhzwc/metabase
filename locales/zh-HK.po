@@ -22108,6 +22108,10 @@ msgstr "在目前表格中升序排列。下載不受影響。"
 msgid "Sort descending in this table. Downloads are unaffected."
 msgstr "在目前表格中降序排列。下載不受影響。"
 
+#: frontend/src/metabase/querying/drills/utils/sort-drill.ts:79
+msgid "Clear sorting in this table."
+msgstr "清除目前表格中的排序。"
+
 #: frontend/src/metabase/querying/drills/utils/summarize-column-drill.ts:15
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingMaxCategories.tsx:81
 #: metabase/lib/schema/aggregation.cljc:204

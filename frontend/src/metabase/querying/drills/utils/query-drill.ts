@@ -5,7 +5,10 @@ import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
 import { DRILLS } from "./constants";
-import { getCustomSortClickAction } from "./sort-drill";
+import {
+  getCustomClearSortClickAction,
+  getCustomSortClickAction,
+} from "./sort-drill";
 
 export function isGroupedDimensionClick(clicked: Lib.ClickObject) {
   return (
@@ -116,24 +119,32 @@ export function appendFallbackSortActions({
     return actions;
   }
 
-  return [
-    ...actions,
-    ...clientSideSort.directions.map((direction) =>
-      getCustomSortClickAction(direction, ({ closePopover }) => {
-        clientSideSort.onSortColumn(direction);
-        closePopover();
-      }),
-    ),
-  ];
+  const sortActions = clientSideSort.directions.map((direction) =>
+    getCustomSortClickAction(direction, ({ closePopover }) => {
+      clientSideSort.onSortColumn(direction);
+      closePopover();
+    }),
+  );
+  const clearSortActions = clientSideSort.onClearSort
+    ? [
+        getCustomClearSortClickAction(({ closePopover }) => {
+          clientSideSort.onClearSort?.();
+          closePopover();
+        }),
+      ]
+    : [];
+
+  return [...actions, ...sortActions, ...clearSortActions];
 }
 
 type ClientSideSort = {
   directions: Lib.SortDrillThruDirection[];
   onSortColumn: (direction: Lib.SortDrillThruDirection) => void;
+  onClearSort?: () => void;
 };
 
 function getClientSideSort(clicked: Lib.ClickObject): ClientSideSort | null {
-  const { sortDirections, onSortColumn } = clicked.extraData ?? {};
+  const { sortDirections, onSortColumn, onClearSort } = clicked.extraData ?? {};
 
   if (
     !Array.isArray(sortDirections) ||
@@ -145,8 +156,13 @@ function getClientSideSort(clicked: Lib.ClickObject): ClientSideSort | null {
     return null;
   }
 
+  if (onClearSort != null && typeof onClearSort !== "function") {
+    return null;
+  }
+
   return {
     directions: sortDirections,
-    onSortColumn,
+    onSortColumn: (direction) => onSortColumn(direction),
+    onClearSort: onClearSort ? () => onClearSort() : undefined,
   };
 }

@@ -1,4 +1,7 @@
-import type { ClickAction } from "metabase/visualizations/types";
+import type {
+  ClickAction,
+  CustomClickAction,
+} from "metabase/visualizations/types";
 import type { ClickObject, DrillThruDisplayInfo } from "metabase-lib";
 import { createMockColumn } from "metabase-types/api/mocks";
 
@@ -7,6 +10,18 @@ import {
   isGroupedDimensionClick,
   shouldHideDrill,
 } from "./query-drill";
+
+const getCustomAction = (action: ClickAction): CustomClickAction => {
+  if (
+    !("type" in action) ||
+    action.type !== "custom" ||
+    !("buttonType" in action)
+  ) {
+    throw new Error("Expected a custom action");
+  }
+
+  return action;
+};
 
 const groupedDimensionClick: ClickObject = {
   dimensions: [
@@ -131,24 +146,22 @@ describe("appendFallbackSortActions", () => {
       }),
     );
 
-    expect(actions.map((action) => action.name)).toEqual([
+    const customActions = actions.map(getCustomAction);
+
+    expect(customActions.map((action) => action.name)).toEqual([
       "client-sort.ascending",
       "client-sort.descending",
     ]);
-    expect(actions.map((action) => action.buttonType)).toEqual([
+    expect(customActions.map((action) => action.buttonType)).toEqual([
       "sort",
       "sort",
     ]);
-    expect(actions.map((action) => action.tooltip)).toEqual([
+    expect(customActions.map((action) => action.tooltip)).toEqual([
       "Sort ascending in this table. Downloads are unaffected.",
       "Sort descending in this table. Downloads are unaffected.",
     ]);
 
-    const sortAscending = actions[0];
-
-    if (!("onClick" in sortAscending)) {
-      throw new Error("Expected a custom action");
-    }
+    const sortAscending = customActions[0];
 
     sortAscending.onClick?.({
       dispatch: jest.fn(),
@@ -156,6 +169,51 @@ describe("appendFallbackSortActions", () => {
     });
 
     expect(onSortColumn).toHaveBeenCalledWith("asc");
+    expect(closePopover).toHaveBeenCalled();
+  });
+
+  it("adds a client-side clear sort action when a clear callback is provided", () => {
+    const onSortColumn = jest.fn();
+    const onClearSort = jest.fn();
+    const closePopover = jest.fn();
+
+    const actions = appendFallbackSortActions(
+      getOpts({
+        clicked: {
+          column: createMockColumn(),
+          value: undefined,
+          extraData: {
+            sortDirections: ["desc"],
+            onSortColumn,
+            onClearSort,
+          },
+        },
+      }),
+    );
+
+    const customActions = actions.map(getCustomAction);
+
+    expect(customActions.map((action) => action.name)).toEqual([
+      "client-sort.descending",
+      "client-sort.clear",
+    ]);
+    expect(customActions.map((action) => action.buttonType)).toEqual([
+      "sort",
+      "sort",
+    ]);
+    expect(customActions.map((action) => action.tooltip)).toEqual([
+      "Sort descending in this table. Downloads are unaffected.",
+      "Clear sorting in this table.",
+    ]);
+
+    const clearSort = customActions[1];
+
+    clearSort.onClick?.({
+      dispatch: jest.fn(),
+      closePopover,
+    });
+
+    expect(onClearSort).toHaveBeenCalled();
     expect(closePopover).toHaveBeenCalled();
   });
 
