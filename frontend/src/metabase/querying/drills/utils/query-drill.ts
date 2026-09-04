@@ -5,6 +5,7 @@ import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
 import { DRILLS } from "./constants";
+import { getCustomSortClickAction } from "./sort-drill";
 
 export function isGroupedDimensionClick(clicked: Lib.ClickObject) {
   return (
@@ -50,7 +51,7 @@ export function queryDrill(
     return question.setQuery(newQuery);
   };
 
-  return drills
+  const actions = drills
     .flatMap((drill) => {
       const drillInfo = Lib.displayInfo(query, stageIndex, drill);
       const drillHandler = DRILLS[drillInfo.type];
@@ -74,4 +75,78 @@ export function queryDrill(
       });
     })
     .filter(isNotNull);
+
+  return appendFallbackSortActions({
+    actions,
+    clicked,
+    isDrillEnabled,
+  });
+}
+
+type AppendFallbackSortActionsOpts = {
+  actions: ClickAction[];
+  clicked: Lib.ClickObject;
+  isDrillEnabled: (drill: DrillThruDisplayInfo) => boolean;
+};
+
+export function appendFallbackSortActions({
+  actions,
+  clicked,
+  isDrillEnabled,
+}: AppendFallbackSortActionsOpts): ClickAction[] {
+  const hasQuerySortAction = actions.some(
+    (action) =>
+      action.name === "sort.ascending" || action.name === "sort.descending",
+  );
+  const fallbackSortInfo: Lib.SortDrillThruInfo = {
+    type: "drill-thru/sort",
+    directions: ["asc", "desc"],
+  };
+  const clientSideSort = getClientSideSort(clicked);
+
+  if (
+    hasQuerySortAction ||
+    clientSideSort == null ||
+    !isDrillEnabled(fallbackSortInfo) ||
+    clicked.value !== undefined ||
+    clicked.column == null ||
+    clicked.column.base_type === "type/Structured" ||
+    clicked.column.effective_type === "type/Structured"
+  ) {
+    return actions;
+  }
+
+  return [
+    ...actions,
+    ...clientSideSort.directions.map((direction) =>
+      getCustomSortClickAction(direction, ({ closePopover }) => {
+        clientSideSort.onSortColumn(direction);
+        closePopover();
+      }),
+    ),
+  ];
+}
+
+type ClientSideSort = {
+  directions: Lib.SortDrillThruDirection[];
+  onSortColumn: (direction: Lib.SortDrillThruDirection) => void;
+};
+
+function getClientSideSort(clicked: Lib.ClickObject): ClientSideSort | null {
+  const { sortDirections, onSortColumn } = clicked.extraData ?? {};
+
+  if (
+    !Array.isArray(sortDirections) ||
+    sortDirections.some(
+      (direction) => direction !== "asc" && direction !== "desc",
+    ) ||
+    typeof onSortColumn !== "function"
+  ) {
+    return null;
+  }
+
+  return {
+    directions: sortDirections,
+    onSortColumn,
+  };
 }

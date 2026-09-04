@@ -22100,6 +22100,14 @@ msgstr "升序排列"
 msgid "Sort descending"
 msgstr "降序排列"
 
+#: frontend/src/metabase/querying/drills/utils/sort-drill.ts:33
+msgid "Sort ascending in this table. Downloads are unaffected."
+msgstr "在目前表格中升序排列。下載不受影響。"
+
+#: frontend/src/metabase/querying/drills/utils/sort-drill.ts:34
+msgid "Sort descending in this table. Downloads are unaffected."
+msgstr "在目前表格中降序排列。下載不受影響。"
+
 #: frontend/src/metabase/querying/drills/utils/summarize-column-drill.ts:15
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingMaxCategories.tsx:81
 #: metabase/lib/schema/aggregation.cljc:204
@@ -43082,4 +43090,3 @@ msgstr "按國家劃分的使用者獲取"
 #: resources/automagic_dashboards/table/TransactionTable/ByCountry.yaml
 msgid "Top 10 countries by sales"
 msgstr "按銷售排序的前 10 個國家"
-

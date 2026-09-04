@@ -59,7 +59,12 @@ import type {
   QueryClickActionsMode,
   VisualizationProps,
 } from "metabase/visualizations/types";
-import type { ClickObject, OrderByDirection } from "metabase-lib";
+import type {
+  ClickObject,
+  OrderByDirection,
+  SortDrillThruDirection,
+} from "metabase-lib";
+import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import { isFK, isID, isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
@@ -183,7 +188,13 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
 ) {
   const tableTheme = theme?.other?.table;
   const dispatch = useDispatch();
-  const isClientSideSortingEnabled = isDashboard;
+  const isNativeQuery = useMemo(() => {
+    try {
+      return Lib.queryDisplayInfo(question.query()).isNative;
+    } catch {
+      return false;
+    }
+  }, [question]);
   const isDashcardViewTable = isDashboard && !isSettings;
   const [sorting, setSorting] = useState<SortingState>([]);
 
@@ -192,19 +203,18 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   const { rows, cols } = data;
 
   const getColumnSortDirection = useMemo(() => {
-    if (!isClientSideSortingEnabled) {
-      return getServerColumnSortDirection;
-    }
-
     return (columnIndex: number) => {
       const col = cols[columnIndex];
       const sortingState = sorting.find((sort) => sort.id === col.name);
-      if (!sortingState) {
-        return undefined;
+      if (sortingState) {
+        return sortingState.desc ? "desc" : "asc";
       }
-      return sortingState.desc ? "desc" : "asc";
+
+      return isNativeQuery
+        ? undefined
+        : getServerColumnSortDirection(columnIndex);
     };
-  }, [sorting, cols, isClientSideSortingEnabled, getServerColumnSortDirection]);
+  }, [sorting, cols, isNativeQuery, getServerColumnSortDirection]);
 
   const columnOrder = useMemo(() => {
     return getColumnOrder(cols, settings["table.row_index"]);
@@ -338,6 +348,28 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     ],
   );
 
+  const getClientSideSortDirections = useCallback(
+    (columnId: string): SortDrillThruDirection[] => {
+      const currentSorting = sorting.find(
+        (columnSorting) => columnSorting.id === columnId,
+      );
+
+      if (currentSorting == null) {
+        return ["asc", "desc"];
+      }
+
+      return [currentSorting.desc ? "asc" : "desc"];
+    },
+    [sorting],
+  );
+
+  const sortClientSideColumn = useCallback(
+    (columnId: string, direction: SortDrillThruDirection) => {
+      setSorting([{ id: columnId, desc: direction === "desc" }]);
+    },
+    [],
+  );
+
   const handleHeaderCellClick = useCallback(
     (
       event: React.MouseEvent<HTMLDivElement, MouseEvent>,
@@ -347,7 +379,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         return;
       }
 
-      if (isClientSideSortingEnabled) {
+      if (isDashboard) {
         const currentSorting = sorting.find(
           (columnSorting) => columnSorting.id === columnId,
         );
@@ -387,7 +419,15 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         // Close the click actions popover after clicking on the column header the second time
         onVisualizationClick(null);
       } else {
-        onVisualizationClick({ ...newClicked, element: event.currentTarget });
+        onVisualizationClick({
+          ...newClicked,
+          element: event.currentTarget,
+          extraData: {
+            sortDirections: getClientSideSortDirections(columnId),
+            onSortColumn: (direction: SortDrillThruDirection) =>
+              sortClientSideColumn(columnId, direction),
+          },
+        });
       }
     },
     [
@@ -396,7 +436,9 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
       isPivoted,
       onVisualizationClick,
       sorting,
-      isClientSideSortingEnabled,
+      isDashboard,
+      getClientSideSortDirections,
+      sortClientSideColumn,
     ],
   );
 
