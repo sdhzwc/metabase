@@ -26,7 +26,10 @@ import {
 import { isQuestionDashCard } from "metabase/utils/dashboard";
 import type { ParameterSectionId } from "metabase-lib/v1/parameters/utils/operators";
 import { canUseCustomSource } from "metabase-lib/v1/parameters/utils/parameter-source";
-import { isTemporalUnitParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
+import {
+  isDateParameter,
+  isTemporalUnitParameter,
+} from "metabase-lib/v1/parameters/utils/parameter-type";
 import {
   getIsMultiSelect,
   parameterHasNoDisplayValue,
@@ -128,6 +131,9 @@ export const ParameterSettings = ({
 
   const isEmbeddedDisabled = embeddedParameterVisibility === "disabled";
   const isMultiValue = getIsMultiSelect(parameter) ? "multi" : "single";
+  const defaultValuePlaceholder = isDateParameter(parameter)
+    ? t`Select a default value…`
+    : t`No default`;
 
   const handleTypeChange = (sectionId: ParameterSectionId) => {
     const defaultOptionOfNextType = defaultOptionForSection[sectionId];
@@ -255,8 +261,10 @@ export const ParameterSettings = ({
             className={S.SettingValueWidget}
             parameter={parameter}
             value={parameter.default}
-            placeholder={t`No default`}
+            placeholder={defaultValuePlaceholder}
             setValue={onChangeDefaultValue}
+            isEditing
+            commitImmediately
             mimicMantine
           />
         </div>

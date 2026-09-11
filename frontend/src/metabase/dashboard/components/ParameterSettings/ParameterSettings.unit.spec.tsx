@@ -196,21 +196,40 @@ describe("ParameterSidebar", () => {
   });
 
   describe("date", () => {
-    beforeEach(() => {
+    it("should render type", () => {
       setup({
         parameter: createMockUiParameter({
           type: "date/single",
           sectionId: "date",
         }),
       });
-    });
-
-    it("should render type", () => {
       expect(screen.getByDisplayValue("Date picker")).toBeInTheDocument();
     });
 
     it("should render operator", () => {
+      setup({
+        parameter: createMockUiParameter({
+          type: "date/single",
+          sectionId: "date",
+        }),
+      });
       expect(screen.getByDisplayValue("Single Date")).toBeInTheDocument();
+    });
+
+    it("should allow to select a dynamic shortcut default for single date parameters", async () => {
+      const { onChangeDefaultValue } = setup({
+        parameter: createMockUiParameter({
+          type: "date/single",
+          sectionId: "date",
+        }),
+      });
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Select a default value…" }),
+      );
+      await userEvent.click(screen.getByRole("button", { name: "Today" }));
+
+      expect(onChangeDefaultValue).toHaveBeenCalledWith("thisday");
     });
   });
 
@@ -259,6 +278,7 @@ const setup = ({ parameter = createMockUiParameter() }: SetupOpts = {}) => {
   const onChangeName = jest.fn();
   const onChangeIsMultiSelect = jest.fn();
   const onChangeTemporalUnits = jest.fn();
+  const onChangeDefaultValue = jest.fn();
 
   renderWithProviders(
     <ParameterSettings
@@ -267,7 +287,7 @@ const setup = ({ parameter = createMockUiParameter() }: SetupOpts = {}) => {
       isParameterSlugUsed={jest.fn()}
       onChangeName={onChangeName}
       onChangeType={jest.fn()}
-      onChangeDefaultValue={jest.fn()}
+      onChangeDefaultValue={onChangeDefaultValue}
       onChangeIsMultiSelect={onChangeIsMultiSelect}
       onChangeQueryType={onChangeQueryType}
       onChangeSourceType={jest.fn()}
@@ -283,5 +303,6 @@ const setup = ({ parameter = createMockUiParameter() }: SetupOpts = {}) => {
     onChangeName,
     onChangeIsMultiSelect,
     onChangeTemporalUnits,
+    onChangeDefaultValue,
   };
 };
