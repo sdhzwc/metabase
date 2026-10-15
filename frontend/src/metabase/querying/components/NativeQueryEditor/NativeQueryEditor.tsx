@@ -4,6 +4,7 @@ import {
   type NativeQueryEditorCoreProps,
   NativeQueryEditorRoot,
 } from "./NativeQueryEditorRoot";
+import { ParameterDisplayConfigButton } from "./slots/ParameterDisplayConfigButton";
 import { ParametersList } from "./slots/ParametersList";
 import { RunButton } from "./slots/RunButton";
 import { Sidebar } from "./slots/Sidebar";
@@ -43,6 +44,7 @@ export const NativeQueryEditor = Object.assign(NativeQueryEditorBase, {
   TopBar,
   Sidebar,
   ParametersList,
+  ParameterDisplayConfigButton,
   VisibilityToggler,
   RunButton,
 });

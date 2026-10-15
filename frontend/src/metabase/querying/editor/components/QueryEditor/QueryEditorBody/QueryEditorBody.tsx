@@ -214,6 +214,7 @@ export function QueryEditorBody({
           <NativeQueryEditor.Sidebar
             features={NATIVE_EDITOR_SIDEBAR_FEATURES}
           />
+          <NativeQueryEditor.ParameterDisplayConfigButton />
           <NativeQueryEditor.VisibilityToggler />
         </NativeQueryEditor.TopBar>
         {extraButton}

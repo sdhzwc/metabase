@@ -7,6 +7,7 @@ describe("NativeQueryEditor composition API", () => {
     expect(NativeQueryEditor.TopBar).toBeDefined();
     expect(NativeQueryEditor.Sidebar).toBeDefined();
     expect(NativeQueryEditor.ParametersList).toBeDefined();
+    expect(NativeQueryEditor.ParameterDisplayConfigButton).toBeDefined();
     expect(NativeQueryEditor.VisibilityToggler).toBeDefined();
     expect(NativeQueryEditor.RunButton).toBeDefined();
   });
@@ -15,6 +16,10 @@ describe("NativeQueryEditor composition API", () => {
     ["TopBar", NativeQueryEditor.TopBar],
     ["Sidebar", NativeQueryEditor.Sidebar],
     ["ParametersList", NativeQueryEditor.ParametersList],
+    [
+      "ParameterDisplayConfigButton",
+      NativeQueryEditor.ParameterDisplayConfigButton,
+    ],
     ["VisibilityToggler", NativeQueryEditor.VisibilityToggler],
     ["RunButton", NativeQueryEditor.RunButton],
   ])("throws when %s is rendered outside the editor", (_name, Part) => {

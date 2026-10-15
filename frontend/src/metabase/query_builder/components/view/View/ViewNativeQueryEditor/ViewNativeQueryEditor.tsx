@@ -114,6 +114,7 @@ export const ViewNativeQueryEditor = (props: ViewNativeQueryEditorProps) => {
         <NativeQueryEditor.TopBar>
           <NativeQueryEditor.ParametersList />
           <NativeQueryEditor.Sidebar />
+          <NativeQueryEditor.ParameterDisplayConfigButton />
           <NativeQueryEditor.VisibilityToggler />
         </NativeQueryEditor.TopBar>
         <NativeQueryEditor.RunButton />

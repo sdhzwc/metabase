@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
 import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
@@ -8,6 +8,11 @@ import type { CardId, DashboardId, Parameter } from "metabase-types/api";
 
 import ResponsiveParametersListS from "./ResponsiveParametersList.module.css";
 import { SyncedParametersList } from "./SyncedParametersList";
+import {
+  PARAMETER_DISPLAY_CONFIG_EVENT,
+  getDefaultVisibleParameterSlugs,
+  readVisibleParameterSlugs,
+} from "./parameter-display-config";
 
 interface ResponsiveParametersListProps {
   classNames?: {
@@ -22,6 +27,7 @@ interface ResponsiveParametersListProps {
   enableParameterRequiredBehavior: boolean;
   commitImmediately?: boolean;
   isSortable?: boolean;
+  showAllParameters?: boolean;
 }
 
 export const ResponsiveParametersList = ({
@@ -34,9 +40,52 @@ export const ResponsiveParametersList = ({
   enableParameterRequiredBehavior,
   commitImmediately = true,
   isSortable,
+  showAllParameters = false,
 }: ResponsiveParametersListProps) => {
   const [mobileShowParameterList, setShowMobileParameterList] = useState(false);
+  const [visibleParameterSlugs, setVisibleParameterSlugs] = useState<string[]>(
+    () => getDefaultVisibleParameterSlugs(parameters.map(({ slug }) => slug)),
+  );
   const isSmallScreen = useIsSmallScreen();
+  const parameterSlugKey = parameters.map(({ slug }) => slug).join("\u0000");
+  const parameterSlugs = useMemo(
+    () => (parameterSlugKey ? parameterSlugKey.split("\u0000") : []),
+    [parameterSlugKey],
+  );
+
+  useEffect(() => {
+    if (parameters.length === 0) {
+      return;
+    }
+
+    const storedSlugs = readVisibleParameterSlugs(cardId);
+    const nextVisibleSlugs = storedSlugs
+      ? storedSlugs.filter((slug) => parameterSlugs.includes(slug))
+      : getDefaultVisibleParameterSlugs(parameterSlugs);
+
+    setVisibleParameterSlugs(nextVisibleSlugs);
+  }, [cardId, parameterSlugs, parameters.length]);
+
+  useEffect(() => {
+    const handleConfigChange = (event: Event) => {
+      // This listener handles only events emitted by saveVisibleParameterSlugs.
+      const { detail } = event as CustomEvent<{
+        cardId?: CardId;
+        slugs: string[];
+      }>;
+      if (detail.cardId === cardId) {
+        setVisibleParameterSlugs(
+          detail.slugs.filter((slug) => parameterSlugs.includes(slug)),
+        );
+      }
+    };
+    window.addEventListener(PARAMETER_DISPLAY_CONFIG_EVENT, handleConfigChange);
+    return () =>
+      window.removeEventListener(
+        PARAMETER_DISPLAY_CONFIG_EVENT,
+        handleConfigChange,
+      );
+  }, [cardId, parameterSlugs]);
 
   const handleFilterButtonClick = useCallback(() => {
     setShowMobileParameterList((mobileShow) => !mobileShow);
@@ -45,6 +94,15 @@ export const ResponsiveParametersList = ({
   const activeFilters = useMemo(() => {
     return parameters.filter((p) => !!p.value).length;
   }, [parameters]);
+
+  const hiddenParameterSlugs = useMemo(
+    () =>
+      parameters
+        .filter((parameter) => !visibleParameterSlugs.includes(parameter.slug))
+        .map((parameter) => parameter.slug)
+        .join(","),
+    [parameters, visibleParameterSlugs],
+  );
 
   return (
     <Box
@@ -68,7 +126,6 @@ export const ResponsiveParametersList = ({
         </Button>
       )}
       <Box
-        py="sm"
         className={cx(
           ResponsiveParametersListS.ParametersListContainer,
           {
@@ -91,21 +148,28 @@ export const ResponsiveParametersList = ({
             </ActionIcon>
           </Flex>
         )}
-        <SyncedParametersList
-          className={cx(
-            ResponsiveParametersListS.StyledParametersList,
-            classNames?.parametersList,
-          )}
-          cardId={cardId}
-          dashboardId={dashboardId}
-          parameters={parameters}
-          setParameterValue={setParameterValue}
-          setParameterIndex={setParameterIndex}
-          enableParameterRequiredBehavior={enableParameterRequiredBehavior}
-          isEditing
-          isSortable={isSortable}
-          commitImmediately={commitImmediately}
-        />
+        <Flex align="center" gap="sm" px="sm" py="sm" wrap="wrap">
+          <SyncedParametersList
+            className={cx(
+              ResponsiveParametersListS.StyledParametersList,
+              classNames?.parametersList,
+            )}
+            cardId={cardId}
+            dashboardId={dashboardId}
+            parameters={parameters}
+            hideParameters={
+              isSmallScreen || showAllParameters
+                ? undefined
+                : hiddenParameterSlugs
+            }
+            setParameterValue={setParameterValue}
+            setParameterIndex={setParameterIndex}
+            enableParameterRequiredBehavior={enableParameterRequiredBehavior}
+            isEditing
+            isSortable={isSortable}
+            commitImmediately={commitImmediately}
+          />
+        </Flex>
       </Box>
     </Box>
   );
