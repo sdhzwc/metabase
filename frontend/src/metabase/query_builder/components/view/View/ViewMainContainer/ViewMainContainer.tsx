@@ -104,6 +104,7 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
 
   const { ref: mainRef, height: mainHeight } = useElementSize();
   const { ref: footerRef, height: footerHeight } = useElementSize();
+  const { isNative } = Lib.queryDisplayInfo(question.query());
 
   if (queryBuilderMode === "notebook") {
     // we need to render main only in view mode
@@ -111,7 +112,6 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
   }
 
   const queryMode = mode && mode.queryMode();
-  const { isNative } = Lib.queryDisplayInfo(question.query());
   const isSidebarOpen = showLeftSidebar || showRightSidebar;
 
   const availableHeight = mainHeight ? mainHeight - footerHeight : undefined;

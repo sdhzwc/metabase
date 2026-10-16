@@ -17,18 +17,24 @@ jest.mock("metabase/common/hooks/use-locale", () => ({
   useLocale: () => ({ locale: "en" }),
 }));
 
-const parameters = Array.from({ length: 5 }, (_, index) =>
+const parameters = Array.from({ length: 6 }, (_, index) =>
   createMockParameter({
     id: `${index}`,
     name: `Parameter ${index}`,
     slug: `parameter-${index}`,
   }),
 );
-
 function setup(isNativeEditorOpen = false) {
   // The slot reads only these three values from the editor context.
   const context = {
     question: { id: () => 1, parameters: () => parameters },
+    query: {
+      queryText: () => "SELECT date, SUM(amount) FROM sales GROUP BY date",
+      setQueryText: jest.fn((queryText) => ({
+        queryText: () => queryText,
+      })),
+    },
+    setDatasetQuery: jest.fn(),
     isNativeEditorOpen,
     setParameterValue: jest.fn(),
   } as unknown as NativeQueryEditorContextValue;
@@ -58,17 +64,17 @@ describe("ParameterDisplayConfigButton", () => {
     });
     expect(screen.getByRole("img", { hidden: true })).toHaveClass("Icon-gear");
     fireEvent.click(trigger);
-    expect(screen.getByText("5 parameters, 3 selected")).toBeInTheDocument();
+    expect(screen.getByText("6 parameters, 5 selected")).toBeInTheDocument();
 
     fireEvent.change(
       screen.getByRole("textbox", { name: "Search parameters" }),
       {
-        target: { value: "Parameter 4" },
+        target: { value: "Parameter 5" },
       },
     );
     expect(screen.getAllByRole("checkbox")).toHaveLength(1);
     fireEvent.click(screen.getByRole("checkbox"));
-    expect(screen.getByText("5 parameters, 4 selected")).toBeInTheDocument();
+    expect(screen.getByText("6 parameters, 6 selected")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     expect(
@@ -76,13 +82,54 @@ describe("ParameterDisplayConfigButton", () => {
         localStorage.getItem("metabase.query-editor.visible-parameters:1") ??
           "null",
       ),
-    ).toEqual(["parameter-0", "parameter-1", "parameter-2", "parameter-4"]);
+    ).toEqual(parameters.map(({ slug }) => slug));
   });
 
-  it("hides the configuration entry while the editor is open", () => {
-    setup(true);
+  it("stores display groups independently from parameter visibility", () => {
+    setup();
+
+    const trigger = screen.getByRole("button", {
+      name: "Configure visible parameters",
+    });
+    fireEvent.click(trigger);
+    fireEvent.click(screen.getByRole("tab", { name: "Group configuration" }));
+    expect(screen.getByText("6 groups, 0 selected")).toBeInTheDocument();
+
+    fireEvent.click(screen.getAllByRole("checkbox")[1]);
+    expect(screen.getByText("6 groups, 1 selected")).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("tab", { name: "Parameter configuration" }),
+    );
+    expect(screen.getByText("6 parameters, 5 selected")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
     expect(
-      screen.queryByRole("button", { name: "Configure visible parameters" }),
-    ).not.toBeInTheDocument();
+      JSON.parse(
+        localStorage.getItem("metabase.query-editor.visible-groups:1") ??
+          "null",
+      ),
+    ).toEqual(["parameter-1"]);
+  });
+
+  it("closes when the trigger is clicked again", () => {
+    setup();
+    const trigger = screen.getByRole("button", {
+      name: "Configure visible parameters",
+    });
+
+    fireEvent.click(trigger);
+    expect(trigger).toHaveAttribute("aria-expanded", "true");
+    fireEvent.click(trigger);
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("keeps the configuration entry available while the editor is open", () => {
+    setup(true);
+    const trigger = screen.getByRole("button", {
+      name: "Configure visible parameters",
+    });
+    expect(trigger).toBeInTheDocument();
+    fireEvent.click(trigger);
+    expect(screen.getByText("6 parameters, 5 selected")).toBeInTheDocument();
   });
 });

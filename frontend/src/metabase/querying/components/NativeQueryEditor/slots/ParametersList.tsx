@@ -8,13 +8,8 @@ import { useNativeQueryEditorContext } from "../context/NativeQueryEditorContext
  * bar. Renders nothing when the consumer did not provide `setParameterValue`.
  */
 export function ParametersList() {
-  const {
-    question,
-    query,
-    setDatasetQuery,
-    setParameterValue,
-    isNativeEditorOpen,
-  } = useNativeQueryEditorContext();
+  const { question, query, setDatasetQuery, setParameterValue } =
+    useNativeQueryEditorContext();
 
   if (!setParameterValue) {
     return null;
@@ -35,7 +30,6 @@ export function ParametersList() {
       setParameterValue={setParameterValue}
       setParameterIndex={setParameterIndex}
       enableParameterRequiredBehavior
-      showAllParameters={isNativeEditorOpen}
     />
   );
 }

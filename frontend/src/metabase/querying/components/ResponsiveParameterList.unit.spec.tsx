@@ -85,7 +85,7 @@ describe("ResponsiveParametersList", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("collapses parameters beyond the default three", () => {
+    it("collapses parameters beyond the default five", () => {
       const parameters = Array.from({ length: 6 }, (_, index) =>
         createMockParameter({
           id: `${index}`,
@@ -96,7 +96,7 @@ describe("ResponsiveParametersList", () => {
 
       setup({ cardId: 1, parameters });
 
-      expect(screen.getAllByTestId("parameter-widget")).toHaveLength(3);
+      expect(screen.getAllByTestId("parameter-widget")).toHaveLength(5);
       expect(screen.queryByText("Parameters (6)")).not.toBeInTheDocument();
       expect(
         screen.queryByRole("button", { name: /more parameters/ }),
@@ -126,7 +126,7 @@ describe("ResponsiveParametersList", () => {
       ).toEqual(["parameter-1", "parameter-3"]);
     });
 
-    it("shows every parameter while the editor is open", () => {
+    it("keeps the editor parameter list aligned with the saved configuration", () => {
       const parameters = Array.from({ length: 6 }, (_, index) =>
         createMockParameter({
           id: `${index}`,
@@ -136,9 +136,9 @@ describe("ResponsiveParametersList", () => {
       );
       saveVisibleParameterSlugs(1, ["parameter-0"]);
 
-      setup({ cardId: 1, parameters, showAllParameters: true });
+      setup({ cardId: 1, parameters });
 
-      expect(screen.getAllByTestId("parameter-widget")).toHaveLength(6);
+      expect(screen.getAllByTestId("parameter-widget")).toHaveLength(1);
     });
   });
 });
