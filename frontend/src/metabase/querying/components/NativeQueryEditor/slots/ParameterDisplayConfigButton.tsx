@@ -74,27 +74,7 @@ export function ParameterDisplayConfigButton() {
     const nextGroupSlugs =
       storedGroupSlugs?.filter((slug) => parameterSlugs.includes(slug)) ?? [];
     setSelectedGroupSlugs(nextGroupSlugs);
-
-    if (storedGroupSlugs === null || nextGroupSlugs.length === 0) {
-      return;
-    }
-
-    const updatedQueryText = updateQueryGroupFields(
-      query.queryText(),
-      [],
-      nextGroupSlugs,
-      Object.fromEntries(
-        parameters.map((parameter) => [
-          parameter.slug,
-          parameter.name || parameter.slug,
-        ]),
-      ),
-    );
-    if (updatedQueryText !== query.queryText()) {
-      setDatasetQuery(query.setQueryText(updatedQueryText));
-      runQuery?.();
-    }
-  }, [cardId, parameterSlugs, parameters, query, runQuery, setDatasetQuery]);
+  }, [cardId, parameterSlugs]);
 
   const draftSelection =
     activeTab === "parameters" ? draftSlugs : draftGroupSlugs;

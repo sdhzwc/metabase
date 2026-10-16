@@ -9,6 +9,7 @@ import {
   NativeQueryEditorContextProvider,
   type NativeQueryEditorContextValue,
 } from "metabase/querying/components/NativeQueryEditor/context/NativeQueryEditorContext";
+import { readVisibleGroupSlugs } from "metabase/querying/components/parameter-display-config";
 import { createMockParameter } from "metabase-types/api/mocks";
 
 import { ParameterDisplayConfigButton } from "./ParameterDisplayConfigButton";
@@ -44,6 +45,8 @@ function setup(isNativeEditorOpen = false) {
       <ParameterDisplayConfigButton />
     </NativeQueryEditorContextProvider>,
   );
+
+  return context;
 }
 
 describe("ParameterDisplayConfigButton", () => {
@@ -103,12 +106,26 @@ describe("ParameterDisplayConfigButton", () => {
     expect(screen.getByText("6 parameters, 5 selected")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(readVisibleGroupSlugs(1)).toEqual(["parameter-1"]);
     expect(
-      JSON.parse(
-        localStorage.getItem("metabase.query-editor.visible-groups:1") ??
-          "null",
-      ),
-    ).toEqual(["parameter-1"]);
+      localStorage.getItem("metabase.query-editor.visible-groups:1"),
+    ).toBeNull();
+  });
+
+  it("does not update the SQL when group selection is cancelled", () => {
+    const context = setup();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Configure visible parameters" }),
+    );
+    fireEvent.click(screen.getByRole("tab", { name: "Group configuration" }));
+    fireEvent.click(screen.getAllByRole("checkbox")[1]);
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(context.setDatasetQuery).not.toHaveBeenCalled();
+    expect(
+      localStorage.getItem("metabase.query-editor.visible-groups:1"),
+    ).toBeNull();
   });
 
   it("closes when the trigger is clicked again", () => {

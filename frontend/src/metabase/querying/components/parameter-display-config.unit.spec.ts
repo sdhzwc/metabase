@@ -5,7 +5,10 @@ import {
 } from "./parameter-display-config";
 
 describe("parameter display configuration", () => {
-  afterEach(() => localStorage.clear());
+  afterEach(() => {
+    localStorage.clear();
+    saveVisibleGroupSlugs(1, []);
+  });
 
   it("stores and reads display group selections independently", () => {
     saveVisibleGroupSlugs(1, ["region", "store"]);
