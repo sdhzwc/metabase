@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
@@ -60,6 +60,7 @@ export function ParameterDisplayConfigButton() {
   const [selectedGroupSlugs, setSelectedGroupSlugs] = useState<string[]>([]);
   const [draftSlugs, setDraftSlugs] = useState<string[]>([]);
   const [draftGroupSlugs, setDraftGroupSlugs] = useState<string[]>([]);
+  const loadedGroupConfigKey = useRef<string | null>(null);
 
   useEffect(() => {
     const stored = readVisibleParameterSlugs(cardId);
@@ -70,11 +71,50 @@ export function ParameterDisplayConfigButton() {
   }, [cardId, parameterSlugs]);
 
   useEffect(() => {
+    const groupConfigKey = `${cardId ?? "new-question"}:${parameterSlugKey}`;
+    if (loadedGroupConfigKey.current === groupConfigKey) {
+      return;
+    }
+    loadedGroupConfigKey.current = groupConfigKey;
+
     const storedGroupSlugs = readVisibleGroupSlugs(cardId);
     const nextGroupSlugs =
       storedGroupSlugs?.filter((slug) => parameterSlugs.includes(slug)) ?? [];
     setSelectedGroupSlugs(nextGroupSlugs);
-  }, [cardId, parameterSlugs]);
+
+    // A missing or empty browser setting means there is nothing to restore.
+    if (storedGroupSlugs === null) {
+      return;
+    }
+
+    const updatedQueryText = updateQueryGroupFields(
+      query.queryText(),
+      parameterSlugs,
+      nextGroupSlugs,
+      Object.fromEntries(
+        parameters.map((parameter) => [
+          parameter.slug,
+          parameter.name || parameter.slug,
+        ]),
+      ),
+    );
+    if (updatedQueryText !== query.queryText()) {
+      setDatasetQuery(query.setQueryText(updatedQueryText));
+      // `setDatasetQuery` updates React state asynchronously. Defer the run
+      // until the editor has rendered the new query, otherwise the runner can
+      // execute the previous SQL.
+      const timeoutId = window.setTimeout(() => runQuery?.(), 0);
+      return () => window.clearTimeout(timeoutId);
+    }
+  }, [
+    cardId,
+    parameterSlugKey,
+    parameterSlugs,
+    parameters,
+    query,
+    runQuery,
+    setDatasetQuery,
+  ]);
 
   const draftSelection =
     activeTab === "parameters" ? draftSlugs : draftGroupSlugs;
@@ -136,8 +176,9 @@ export function ParameterDisplayConfigButton() {
       ),
     );
     if (updatedQueryText !== query.queryText()) {
-      setDatasetQuery(query.setQueryText(updatedQueryText));
-      runQuery?.();
+      const updatedQuery = query.setQueryText(updatedQueryText);
+      setDatasetQuery(updatedQuery);
+      window.setTimeout(() => runQuery?.(), 0);
     }
     setOpened(false);
   };

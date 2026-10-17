@@ -6,10 +6,8 @@ export const VISIBLE_GROUPS_CONFIG_EVENT =
   "metabase:visible-groups-config-changed";
 
 const STORAGE_KEY = "metabase.query-editor.visible-parameters";
+const VISIBLE_GROUPS_STORAGE_KEY = "metabase.query-editor.visible-groups";
 const DEFAULT_VISIBLE_PARAMETER_COUNT = 5;
-// Group configuration is intentionally scoped to this page lifetime. Unlike
-// parameter visibility, it must not survive a refresh or a closed tab.
-const visibleGroupSlugsByCard = new Map<CardId | "new-question", string[]>();
 
 function getStorageKey(prefix: string, cardId?: CardId) {
   return `${prefix}:${cardId ?? "new-question"}`;
@@ -70,19 +68,18 @@ export function saveVisibleParameterSlugs(
 }
 
 export function readVisibleGroupSlugs(cardId?: CardId): string[] | null {
-  const slugs = visibleGroupSlugsByCard.get(cardId ?? "new-question");
-  return slugs ? [...slugs] : null;
+  return readSlugs(VISIBLE_GROUPS_STORAGE_KEY, cardId);
 }
 
 export function saveVisibleGroupSlugs(
   cardId: CardId | undefined,
   slugs: string[],
 ) {
-  visibleGroupSlugsByCard.set(cardId ?? "new-question", [...slugs]);
-  window.dispatchEvent(
-    new CustomEvent(VISIBLE_GROUPS_CONFIG_EVENT, {
-      detail: { cardId, slugs },
-    }),
+  saveSlugs(
+    VISIBLE_GROUPS_STORAGE_KEY,
+    VISIBLE_GROUPS_CONFIG_EVENT,
+    cardId,
+    slugs,
   );
 }
 
@@ -188,6 +185,18 @@ export function updateQueryGroupFields(
       groupMatch[1],
       updateSqlList(groupMatch[1], previousFields, nextFields),
     );
+
+    // Removing the last grouping field should remove the whole GROUP BY
+    // clause. Leaving the keyword behind produces invalid SQL such as
+    // `GROUP BY `.
+    if (updatedGroup.trim() === "") {
+      const beforeGroupBy = updatedQuery.slice(0, groupMatch.index).trimEnd();
+      const afterGroupBy = updatedQuery
+        .slice(groupMatch.index + groupMatch[0].length)
+        .trimStart();
+      return [beforeGroupBy, afterGroupBy].filter(Boolean).join(" ");
+    }
+
     return (
       updatedQuery.slice(0, groupStart) +
       updatedGroup +

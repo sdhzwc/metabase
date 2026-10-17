@@ -107,9 +107,9 @@ describe("ParameterDisplayConfigButton", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     expect(readVisibleGroupSlugs(1)).toEqual(["parameter-1"]);
-    expect(
-      localStorage.getItem("metabase.query-editor.visible-groups:1"),
-    ).toBeNull();
+    expect(localStorage.getItem("metabase.query-editor.visible-groups:1")).toBe(
+      '["parameter-1"]',
+    );
   });
 
   it("does not update the SQL when group selection is cancelled", () => {

@@ -38,4 +38,24 @@ describe("parameter display configuration", () => {
       ),
     ).toBe("SELECT date FROM sales GROUP BY date");
   });
+
+  it("removes GROUP BY when its last field is unchecked", () => {
+    expect(
+      updateQueryGroupFields(
+        "SELECT date, store FROM sales GROUP BY store",
+        ["store"],
+        [],
+      ),
+    ).toBe("SELECT date FROM sales");
+  });
+
+  it("removes GROUP BY when no grouping fields remain", () => {
+    expect(
+      updateQueryGroupFields(
+        "SELECT date, store FROM sales GROUP BY store",
+        ["store"],
+        [],
+      ),
+    ).toBe("SELECT date FROM sales");
+  });
 });
