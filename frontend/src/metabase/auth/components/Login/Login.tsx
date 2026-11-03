@@ -13,6 +13,7 @@ import { AuthLayout } from "../AuthLayout";
 
 interface LoginQueryString {
   redirect?: string;
+  userid?: string;
 }
 
 interface LoginQueryParams {
@@ -28,6 +29,7 @@ export const Login = ({ params, location }: LoginProps): JSX.Element => {
   const providers = useSelector(getAuthProviders);
   const selection = getSelectedProvider(providers, params?.provider);
   const redirectUrl = location?.query?.redirect;
+  const userid = location?.query?.userid;
   const applicationName = useSelector(getApplicationName);
 
   usePageTitle(t`Login`);
@@ -50,7 +52,7 @@ export const Login = ({ params, location }: LoginProps): JSX.Element => {
       </Box>
       {selection && selection.Panel && (
         <Box mt="2.5rem">
-          <selection.Panel redirectUrl={redirectUrl} />
+          <selection.Panel redirectUrl={redirectUrl} userid={userid} />
         </Box>
       )}
       {!selection && (

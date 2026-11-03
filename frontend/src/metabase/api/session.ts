@@ -20,6 +20,12 @@ export interface SessionResponse {
   id: string;
 }
 
+export interface DirectLoginResponse {
+  id?: string;
+  matched: boolean;
+  status?: number;
+}
+
 export interface MfaChallengeResponse {
   mfa_required: true;
   methods: MfaMethod[];
@@ -54,6 +60,13 @@ export const sessionApi = Api.injectEndpoints({
         method: "POST",
         url: "/api/session",
         body,
+      }),
+    }),
+    createSessionWithUserid: builder.mutation<DirectLoginResponse, string>({
+      query: (userid) => ({
+        method: "POST",
+        url: "/api/session/direct",
+        body: { userid },
       }),
     }),
     createSessionWithGoogleAuth: builder.mutation<

@@ -210,6 +210,34 @@
                                    (login-throttlers :username)   username]
           (do-login))))))
 
+(api.macros/defendpoint :post "/direct"
+  "Log in using an employee ID from the dst_user_mapping table."
+  [_route-params
+   _query-params
+   {:keys [userid]} :- [:map [:userid ms/NonBlankString]]
+   request]
+  (let [mapping (t2/select-one [:dst_user_mapping :email :status]
+                               :user_id userid)
+        user    (when (= 1 (:status mapping))
+                  (when-let [email (:email mapping)]
+                    (t2/select-one [:model/User :id :email :is_active]
+                                   :%lower.email (u/lower-case-en email)
+                                   :is_active true)))]
+    (if-not user
+      {:matched false
+       :status  (:status mapping)}
+      (update
+       (session-response
+        (auth-identity/create-session-with-auth-tracking!
+         user
+         (request/device-info request)
+         :provider/password)
+        request)
+       :body
+       assoc
+       :matched true
+       :status  1))))
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;

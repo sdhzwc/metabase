@@ -43115,3 +43115,15 @@ msgstr "系统变量"
 #: frontend/src/metabase/querying/components/template_tags/TagEditorSidebar.tsx
 msgid "This variable is automatically filled from the current signed-in user and cannot be manually set or overridden."
 msgstr "由当前登录用户信息自动填充，无法手动设置或覆盖。"
+
+#: frontend/src/metabase/auth/components/PasswordPanel/PasswordPanel.tsx
+msgid "User is not enabled. Please contact an administrator."
+msgstr "用户未启用，请联系管理员"
+
+#: frontend/src/metabase/auth/components/PasswordPanel/PasswordPanel.tsx
+msgid "User is disabled. Please contact an administrator."
+msgstr "用户已停用，请联系管理员"
+
+#: frontend/src/metabase/auth/components/PasswordPanel/PasswordPanel.tsx
+msgid "User does not exist. Please contact an administrator."
+msgstr "用户不存在，请联系管理员"
