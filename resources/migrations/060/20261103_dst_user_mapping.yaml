@@ -1,0 +1,111 @@
+## Map internal employee accounts to Metabase users
+
+databaseChangeLog:
+  - logicalFilePath: migrations/060_update_migrations.yaml
+
+  - changeSet:
+      id: v60.2026-11-03T00:00:00
+      author: wuchao
+      comment: Create dst_user_mapping table for internal employee to Metabase account mapping
+      changes:
+        - createTable:
+            tableName: dst_user_mapping
+            remarks: Internal employee to Metabase account mapping
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: varchar(50)
+                  remarks: Employee code
+                  constraints:
+                    nullable: false
+              - column:
+                  name: email
+                  type: varchar(100)
+                  remarks: Email address
+                  constraints:
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(255)
+                  remarks: Employee name
+                  constraints:
+                    nullable: false
+              - column:
+                  name: source
+                  type: int
+                  defaultValueNumeric: 1
+                  remarks: 1 - WeCom
+              - column:
+                  name: status
+                  type: int
+                  defaultValueNumeric: 1
+                  remarks: 0 - disabled, 1 - active, 99 - stopped
+              - column:
+                  name: create_time
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: Creation time
+              - column:
+                  name: update_time
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: Last update time
+              - column:
+                  name: ext1
+                  type: varchar(100)
+              - column:
+                  name: ext2
+                  type: varchar(100)
+              - column:
+                  name: ext3
+                  type: varchar(100)
+              - column:
+                  name: ext4
+                  type: varchar(100)
+              - column:
+                  name: ext5
+                  type: varchar(100)
+      rollback:
+        - dropTable:
+            tableName: dst_user_mapping
+
+  - changeSet:
+      id: v60.2026-11-03T00:00:01
+      author: wuchao
+      comment: Add indexes to dst_user_mapping lookup columns
+      changes:
+        - createIndex:
+            tableName: dst_user_mapping
+            indexName: idx_user_id
+            columns:
+              - column:
+                  name: user_id
+        - createIndex:
+            tableName: dst_user_mapping
+            indexName: idx_email
+            columns:
+              - column:
+                  name: email
+        - createIndex:
+            tableName: dst_user_mapping
+            indexName: idx_source
+            columns:
+              - column:
+                  name: source
+      rollback:
+        - dropIndex:
+            tableName: dst_user_mapping
+            indexName: idx_user_id
+        - dropIndex:
+            tableName: dst_user_mapping
+            indexName: idx_email
+        - dropIndex:
+            tableName: dst_user_mapping
+            indexName: idx_source
