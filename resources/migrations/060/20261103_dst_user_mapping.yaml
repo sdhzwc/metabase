@@ -83,29 +83,29 @@ databaseChangeLog:
       changes:
         - createIndex:
             tableName: dst_user_mapping
-            indexName: idx_user_id
+            indexName: idx_dst_user_mapping_user_id
             columns:
               - column:
                   name: user_id
         - createIndex:
             tableName: dst_user_mapping
-            indexName: idx_email
+            indexName: idx_dst_user_mapping_email
             columns:
               - column:
                   name: email
         - createIndex:
             tableName: dst_user_mapping
-            indexName: idx_source
+            indexName: idx_dst_user_mapping_source
             columns:
               - column:
                   name: source
       rollback:
         - dropIndex:
             tableName: dst_user_mapping
-            indexName: idx_user_id
+            indexName: idx_dst_user_mapping_user_id
         - dropIndex:
             tableName: dst_user_mapping
-            indexName: idx_email
+            indexName: idx_dst_user_mapping_email
         - dropIndex:
             tableName: dst_user_mapping
-            indexName: idx_source
+            indexName: idx_dst_user_mapping_source
