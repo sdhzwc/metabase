@@ -1,6 +1,7 @@
 (ns metabase.session.api
   "/api/session endpoints"
   (:require
+   [clojure.string :as str]
    [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -210,12 +211,31 @@
                                    (login-throttlers :username)   username]
           (do-login))))))
 
+(defn- valid-direct-login-signature?
+  [salt time sign]
+  (and (string? time)
+       (boolean (re-matches #"[0-9]{1,19}" time))
+       (some-> (parse-long time) pos?)
+       (string? sign)
+       (boolean (re-matches #"[0-9a-f]{32}" sign))
+       (let [digest (.digest (java.security.MessageDigest/getInstance "MD5")
+                             (.getBytes (str salt time) java.nio.charset.StandardCharsets/UTF_8))
+             expected (.formatHex (java.util.HexFormat/of) digest)]
+         (java.security.MessageDigest/isEqual
+          (.getBytes expected java.nio.charset.StandardCharsets/UTF_8)
+          (.getBytes ^String sign java.nio.charset.StandardCharsets/UTF_8)))))
+
 (api.macros/defendpoint :post "/direct"
   "Log in using an employee ID from the dst_user_mapping table."
   [_route-params
    _query-params
-   {:keys [userid]} :- [:map [:userid ms/NonBlankString]]
+   {:keys [userid time sign]} :- [:map [:userid ms/NonBlankString]
+                                  [:time {:optional true} :any]
+                                  [:sign {:optional true} :any]]
    request]
+  (let [salt (config/config-str :mb-salt)]
+    (when-not (str/blank? salt)
+      (api/check (valid-direct-login-signature? salt time sign) [403 (tru "Invalid signature.")])))
   (let [mapping (t2/select-one [:dst_user_mapping :email :status]
                                :user_id userid)
         user    (when (= 1 (:status mapping))

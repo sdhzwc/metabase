@@ -18,6 +18,8 @@ export interface AuthProviderButtonProps {
 export interface AuthProviderPanelProps {
   redirectUrl?: string;
   userid?: string;
+  time?: string;
+  sign?: string;
 }
 
 export type GetAuthProviders = (providers: AuthProvider[]) => AuthProvider[];

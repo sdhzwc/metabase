@@ -43127,3 +43127,8 @@ msgstr "用户已停用，请联系管理员"
 #: frontend/src/metabase/auth/components/PasswordPanel/PasswordPanel.tsx
 msgid "User does not exist. Please contact an administrator."
 msgstr "用户不存在，请联系管理员"
+
+#: frontend/src/metabase/auth/components/PasswordPanel/PasswordPanel.tsx
+#: metabase/session/api.clj
+msgid "Invalid signature."
+msgstr "签名无效"

@@ -22,9 +22,16 @@ import { ActionList, ActionListItem } from "./PasswordPanel.styled";
 interface PasswordPanelProps {
   redirectUrl?: string;
   userid?: string;
+  time?: string;
+  sign?: string;
 }
 
-export const PasswordPanel = ({ redirectUrl, userid }: PasswordPanelProps) => {
+export const PasswordPanel = ({
+  redirectUrl,
+  userid,
+  time,
+  sign,
+}: PasswordPanelProps) => {
   const providers = useSelector(getExternalAuthProviders);
   const isLdapEnabled = useSelector(getIsLdapEnabled);
   const hasSessionCookies = useSelector(getHasSessionCookies);
@@ -35,6 +42,7 @@ export const PasswordPanel = ({ redirectUrl, userid }: PasswordPanelProps) => {
   );
   const [remember, setRemember] = useState(false);
   const [directLoginDenied, setDirectLoginDenied] = useState(false);
+  const [directLoginError, setDirectLoginError] = useState<string | null>(null);
   const [directLoginStatus, setDirectLoginStatus] = useState<number | null>(
     null,
   );
@@ -45,9 +53,25 @@ export const PasswordPanel = ({ redirectUrl, userid }: PasswordPanelProps) => {
     }
 
     let cancelled = false;
+    setDirectLoginError(null);
+    setDirectLoginDenied(false);
     dispatch(
-      sessionApi.endpoints.createSessionWithUserid.initiate(userid),
+      sessionApi.endpoints.createSessionWithUserid.initiate({
+        userid,
+        time,
+        sign,
+      }),
     ).then((result) => {
+      if (!cancelled && "error" in result) {
+        setDirectLoginError(
+          result.error &&
+            "status" in result.error &&
+            result.error.status === 403
+            ? t`Invalid signature.`
+            : t`An error occurred while logging in.`,
+        );
+        return;
+      }
       if (cancelled || !("data" in result) || !result.data.matched) {
         if (!cancelled && "data" in result && !result.data.matched) {
           setDirectLoginDenied(true);
@@ -61,7 +85,7 @@ export const PasswordPanel = ({ redirectUrl, userid }: PasswordPanelProps) => {
     return () => {
       cancelled = true;
     };
-  }, [dispatch, userid]);
+  }, [dispatch, userid, time, sign]);
 
   const handleSubmit = useCallback(
     async (data: LoginData) => {
@@ -84,6 +108,14 @@ export const PasswordPanel = ({ redirectUrl, userid }: PasswordPanelProps) => {
         remember={remember}
         onCancel={() => setMfaChallenge(null)}
       />
+    );
+  }
+
+  if (userid && directLoginError) {
+    return (
+      <Box role="alert" c="text-primary" ta="center">
+        {directLoginError}
+      </Box>
     );
   }
 

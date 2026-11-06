@@ -14,6 +14,8 @@ import { AuthLayout } from "../AuthLayout";
 interface LoginQueryString {
   redirect?: string;
   userid?: string;
+  time?: string;
+  sign?: string;
 }
 
 interface LoginQueryParams {
@@ -52,7 +54,12 @@ export const Login = ({ params, location }: LoginProps): JSX.Element => {
       </Box>
       {selection && selection.Panel && (
         <Box mt="2.5rem">
-          <selection.Panel redirectUrl={redirectUrl} userid={userid} />
+          <selection.Panel
+            redirectUrl={redirectUrl}
+            userid={userid}
+            time={location?.query?.time}
+            sign={location?.query?.sign}
+          />
         </Box>
       )}
       {!selection && (
