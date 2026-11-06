@@ -5,7 +5,7 @@ import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
 import { useLocale } from "metabase/common/hooks/use-locale";
 import {
   getDefaultVisibleParameterSlugs,
-  readVisibleParameterSlugs,
+  getVisibleParameterSlugs,
   saveVisibleParameterSlugs,
 } from "metabase/querying/components/parameter-display-config";
 import {
@@ -32,7 +32,7 @@ export function ParameterDisplayConfigButton() {
   const { locale } = useLocale();
   const isChinese = isSimplifiedChineseLocale(locale);
   const parameters = question.parameters();
-  const cardId = question.id() ?? undefined;
+  const cardId = question.id() ?? question.card().original_card_id;
   const parameterSlugKey = parameters.map(({ slug }) => slug).join("\u0000");
   const parameterSlugs = useMemo(
     () => (parameterSlugKey ? parameterSlugKey.split("\u0000") : []),
@@ -47,11 +47,7 @@ export function ParameterDisplayConfigButton() {
   const [draftSlugs, setDraftSlugs] = useState<string[]>([]);
 
   useEffect(() => {
-    const stored = readVisibleParameterSlugs(cardId);
-    setSelectedSlugs(
-      stored?.filter((slug) => parameterSlugs.includes(slug)) ??
-        getDefaultVisibleParameterSlugs(parameterSlugs),
-    );
+    setSelectedSlugs(getVisibleParameterSlugs(cardId, parameterSlugs));
   }, [cardId, parameterSlugs]);
 
   const filteredParameters = parameters.filter((parameter) => {

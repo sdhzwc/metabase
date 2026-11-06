@@ -75,7 +75,6 @@ function ParameterValueWidgetTriggerInner(
         [S.selected]: hasValue,
       })}
       aria-label={ariaLabel}
-      maw="100%"
       {...htmlProps}
       {...attributes}
     >

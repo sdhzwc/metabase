@@ -7,6 +7,7 @@
 // dispatched push/replace action mutates state.routing).
 
 import { createMockEntitiesState } from "__support__/store";
+import { deserializeCardFromUrl } from "metabase/common/utils/card";
 import {
   createMockQueryBuilderState,
   createMockQueryBuilderUIControlsState,
@@ -21,6 +22,7 @@ import type { Card } from "metabase-types/api";
 import {
   ORDERS_ID,
   createSampleDatabase,
+  createSavedNativeCard,
   createSavedStructuredCard,
 } from "metabase-types/api/mocks/presets";
 
@@ -125,6 +127,41 @@ describe("QB Actions > updateUrl (navigation producer contract)", () => {
       cardId: question.id(),
       objectId: undefined,
     });
+  });
+
+  it("preserves native query parameters in the ad-hoc URL", async () => {
+    const card = createSavedNativeCard({
+      dataset_query: {
+        type: "native",
+        database: 1,
+        native: {
+          query: "select {{foo}}",
+          "template-tags": {
+            foo: {
+              id: "foo",
+              name: "foo",
+              type: "number",
+              "display-name": "Foo",
+            },
+          },
+        },
+      },
+    });
+    const question = buildSavedQuestion(card);
+
+    const { dispatch } = await setup({
+      question,
+      options: { dirty: true, replaceState: false },
+    });
+
+    const hash = getDispatchedNavigation(dispatch)?.descriptor.hash;
+    expect(hash).toBeDefined();
+    const serializedCard = deserializeCardFromUrl(hash!.slice(1));
+    expect(serializedCard.parameters).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ slug: "foo", type: "number/=" }),
+      ]),
+    );
   });
 
   describe("push vs replace decision", () => {

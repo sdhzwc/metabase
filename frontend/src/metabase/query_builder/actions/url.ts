@@ -81,9 +81,16 @@ export const updateUrl = createThunkAction(
         datasetEditorTab = getDatasetEditorTab(getState());
       }
 
+      // Native query parameters are derived from template tags when the card
+      // does not contain an explicit `parameters` array. Materialize them
+      // before serializing a dirty question so they survive the navigation to
+      // the ad-hoc question URL after a parameter value is changed.
+      const questionForUrl = isNative
+        ? question.applyTemplateTagParameters()
+        : question;
       const card = isAdHocModelOrMetric
         ? getCard(getState())!
-        : question.card();
+        : questionForUrl.card();
       const newState = {
         card,
         cardId: question.id(),

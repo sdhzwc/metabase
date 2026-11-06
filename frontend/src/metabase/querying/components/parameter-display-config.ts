@@ -31,6 +31,25 @@ export function readVisibleParameterSlugs(cardId?: CardId): string[] | null {
   }
 }
 
+/**
+ * Return the saved selection when it still matches the current question.
+ * A new question can inherit the storage key from a previous query, so an
+ * empty or stale selection must not hide every parameter in the list.
+ */
+export function getVisibleParameterSlugs(
+  cardId: CardId | undefined,
+  parameterSlugs: string[],
+) {
+  const storedSlugs = readVisibleParameterSlugs(cardId);
+  const matchingSlugs = storedSlugs?.filter((slug) =>
+    parameterSlugs.includes(slug),
+  );
+
+  return matchingSlugs?.length
+    ? matchingSlugs
+    : getDefaultVisibleParameterSlugs(parameterSlugs);
+}
+
 export function saveVisibleParameterSlugs(
   cardId: CardId | undefined,
   slugs: string[],

@@ -85,7 +85,7 @@ describe("ResponsiveParametersList", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("collapses parameters beyond the default three", () => {
+    it("collapses parameters beyond the default five", () => {
       const parameters = Array.from({ length: 6 }, (_, index) =>
         createMockParameter({
           id: `${index}`,
@@ -96,7 +96,7 @@ describe("ResponsiveParametersList", () => {
 
       setup({ cardId: 1, parameters });
 
-      expect(screen.getAllByTestId("parameter-widget")).toHaveLength(3);
+      expect(screen.getAllByTestId("parameter-widget")).toHaveLength(5);
       expect(screen.queryByText("Parameters (6)")).not.toBeInTheDocument();
       expect(
         screen.queryByRole("button", { name: /more parameters/ }),
@@ -139,6 +139,36 @@ describe("ResponsiveParametersList", () => {
       setup({ cardId: 1, parameters, showAllParameters: true });
 
       expect(screen.getAllByTestId("parameter-widget")).toHaveLength(6);
+    });
+
+    it("falls back to the default parameters when the saved selection is stale", () => {
+      const parameters = Array.from({ length: 2 }, (_, index) =>
+        createMockParameter({
+          id: `${index}`,
+          name: `Parameter ${index}`,
+          slug: `parameter-${index}`,
+        }),
+      );
+      saveVisibleParameterSlugs(undefined, []);
+
+      setup({ parameters });
+
+      expect(screen.getAllByTestId("parameter-widget")).toHaveLength(2);
+    });
+
+    it("shows parameters for a new question regardless of saved card settings", () => {
+      const parameters = [
+        createMockParameter({
+          id: "1",
+          name: "Parameter 1",
+          slug: "parameter-1",
+        }),
+      ];
+      saveVisibleParameterSlugs(undefined, []);
+
+      setup({ parameters });
+
+      expect(screen.getAllByTestId("parameter-widget")).toHaveLength(1);
     });
   });
 });

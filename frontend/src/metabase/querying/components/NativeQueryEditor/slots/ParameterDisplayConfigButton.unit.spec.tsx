@@ -58,7 +58,7 @@ describe("ParameterDisplayConfigButton", () => {
     });
     expect(screen.getByRole("img", { hidden: true })).toHaveClass("Icon-gear");
     fireEvent.click(trigger);
-    expect(screen.getByText("5 parameters, 3 selected")).toBeInTheDocument();
+    expect(screen.getByText("5 parameters, 5 selected")).toBeInTheDocument();
 
     fireEvent.change(
       screen.getByRole("textbox", { name: "Search parameters" }),
@@ -76,7 +76,7 @@ describe("ParameterDisplayConfigButton", () => {
         localStorage.getItem("metabase.query-editor.visible-parameters:1") ??
           "null",
       ),
-    ).toEqual(["parameter-0", "parameter-1", "parameter-2", "parameter-4"]);
+    ).toEqual(["parameter-0", "parameter-1", "parameter-2", "parameter-3"]);
   });
 
   it("hides the configuration entry while the editor is open", () => {

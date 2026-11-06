@@ -55,9 +55,7 @@ function FormattedParameterValue({
   };
 
   if (parameterHasNoDisplayValue(value)) {
-    return (
-      <Ellipsified showTooltip={!isPopoverOpen}>{placeholder}</Ellipsified>
-    );
+    return <span title={placeholder}>{placeholder}</span>;
   }
 
   const first = getValue(value);

@@ -29,7 +29,7 @@ export function ParametersList() {
 
   return (
     <ResponsiveParametersList
-      cardId={question.id()}
+      cardId={question.id() ?? question.card().original_card_id}
       dashboardId={question.getDashboardProps().dashboardId}
       parameters={question.parameters()}
       setParameterValue={setParameterValue}

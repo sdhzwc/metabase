@@ -11,7 +11,7 @@ import { SyncedParametersList } from "./SyncedParametersList";
 import {
   PARAMETER_DISPLAY_CONFIG_EVENT,
   getDefaultVisibleParameterSlugs,
-  readVisibleParameterSlugs,
+  getVisibleParameterSlugs,
 } from "./parameter-display-config";
 
 interface ResponsiveParametersListProps {
@@ -58,12 +58,7 @@ export const ResponsiveParametersList = ({
       return;
     }
 
-    const storedSlugs = readVisibleParameterSlugs(cardId);
-    const nextVisibleSlugs = storedSlugs
-      ? storedSlugs.filter((slug) => parameterSlugs.includes(slug))
-      : getDefaultVisibleParameterSlugs(parameterSlugs);
-
-    setVisibleParameterSlugs(nextVisibleSlugs);
+    setVisibleParameterSlugs(getVisibleParameterSlugs(cardId, parameterSlugs));
   }, [cardId, parameterSlugs, parameters.length]);
 
   useEffect(() => {

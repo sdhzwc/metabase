@@ -200,6 +200,9 @@ export const ParameterValueWidget = ({
   }, [hasValue, isEditing, isFocused, noPopover, parameterTypeIcon]);
 
   const translatedPlaceholder = tc(placeholder);
+  const emptyParameterMinWidth = parameterHasNoDisplayValue(value)
+    ? Math.max(120, (translatedPlaceholder?.length ?? 0) * 16 + 40)
+    : undefined;
 
   if (noPopover) {
     return (
@@ -213,6 +216,7 @@ export const ParameterValueWidget = ({
           className={cx(S.noPopover, className)}
           ariaLabel={parameter.name}
           hasValue={hasValue}
+          style={{ minWidth: emptyParameterMinWidth }}
         >
           {typeIcon}
           <div className={S.Prefix}>{prefix}</div>
@@ -262,6 +266,7 @@ export const ParameterValueWidget = ({
             hasValue={hasValue}
             className={cx(CS.cursorPointer, className)}
             ariaLabel={placeholder}
+            style={{ minWidth: emptyParameterMinWidth }}
             mimicMantine={mimicMantine}
             hasPopover
           >
@@ -270,12 +275,20 @@ export const ParameterValueWidget = ({
             <div
               className={CS.mr1}
               style={
-                isStringParameter(parameter)
-                  ? { maxWidth: "190px", overflow: "hidden" }
-                  : {
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
+                parameterHasNoDisplayValue(value)
+                  ? {
+                      width: "max-content",
+                      maxWidth: "none",
+                      overflow: "visible",
+                      textOverflow: "clip",
+                      whiteSpace: "nowrap",
                     }
+                  : isStringParameter(parameter)
+                    ? { maxWidth: "190px", overflow: "hidden" }
+                    : {
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                      }
               }
             >
               <FormattedParameterValue

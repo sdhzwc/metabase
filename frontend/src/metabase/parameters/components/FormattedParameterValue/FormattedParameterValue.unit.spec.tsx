@@ -51,7 +51,7 @@ describe("FormattedParameterValue", () => {
     expect(screen.queryByText("Custom Label")).not.toBeInTheDocument();
   });
 
-  it("should render the placeholder with truncation when there is no value", () => {
+  it("should render the full placeholder when there is no value", () => {
     setup({
       // Unjustified type cast. FIXME
       value: null as any,
@@ -61,8 +61,7 @@ describe("FormattedParameterValue", () => {
 
     const text = screen.getByText("Filter this long column name");
     expect(text).toBeInTheDocument();
-    // Ellipsified renders a Mantine Text with truncate, which sets data-truncate
-    expect(text).toHaveAttribute("data-truncate", "end");
+    expect(text).not.toHaveAttribute("data-truncate");
   });
 
   it("should translate boolean filter value", () => {
