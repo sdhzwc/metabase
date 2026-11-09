@@ -215,7 +215,14 @@
   [salt time sign]
   (and (string? time)
        (boolean (re-matches #"[0-9]{1,19}" time))
-       (some-> (parse-long time) pos?)
+       (let [timestamp (parse-long time)
+             now       (System/currentTimeMillis)
+             ;; Keep the direct-login signature valid for five minutes after it is issued.
+             validity-ms (* 5 60 1000)]
+         (and (some? timestamp)
+              (pos? timestamp)
+              (let [age-ms (- now timestamp)]
+                (<= 0 age-ms validity-ms))))
        (string? sign)
        (boolean (re-matches #"[0-9a-f]{32}" sign))
        (let [digest (.digest (java.security.MessageDigest/getInstance "MD5")
